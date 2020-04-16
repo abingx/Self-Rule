@@ -2,7 +2,7 @@
 国区wps
 
 [Script]
-http-response ^https?:\/\/account\.wps\.cn\/api\/users requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/eHpo1/Surge/master/Script/wps.js
+^https://account.wps.cn/api/users/ url script-response-body https://raw.githubusercontent.com/abingx/Self-Rule/master/Wps.js
 
 [MITM]
 hostname = account.wps.cn
@@ -16,12 +16,12 @@ obj = {
   exp: 0,
   level: 3,
   privilege: [
-    { spid: "data_recover", times: 0, expire_time: 1631619709 },
-    { spid: "ocr", times: 0, expire_time: 1631619709 },
-    { spid: "pdf2doc", times: 0, expire_time: 1631619709 },
-    { spid: "pdf_merge", times: 0, expire_time: 1631619709 },
-    { spid: "pdf_sign", times: 0, expire_time: 1631619709 },
-    { spid: "pdf_split", times: 0, expire_time: 1631619709 }
+    { spid: "data_recover", times: 0, expire_time: 1902561247 },
+    { spid: "ocr", times: 0, expire_time: 1902561247 },
+    { spid: "pdf2doc", times: 0, expire_time: 1902561247 },
+    { spid: "pdf_merge", times: 0, expire_time: 1902561247 },
+    { spid: "pdf_sign", times: 0, expire_time: 1902561247 },
+    { spid: "pdf_split", times: 0, expire_time: 1902561247 }
   ],
   result: "ok",
   total_buy: 0,
