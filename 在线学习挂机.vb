@@ -22,11 +22,11 @@ Function findkeywords(keywords) //获取关键字坐标
     KeyDown 17, 1
     KeyPress 70, 1
     KeyUp 17, 1
-    Delay 300
+    Delay 500
     SayString keywords
     Delay 500
     FindColor x1, y1, x2, y2, "3296FF", intX, intY
-    Delay 100
+    Delay 200
     KeyPress "Esc", 1
 End Function
 
