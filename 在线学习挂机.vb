@@ -1,3 +1,4 @@
+//veison 2.0
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -19,15 +20,14 @@ End Function
 
 Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
-    Delay 200
     KeyDown 17, 1
     KeyPress 70, 1
     KeyUp 17, 1
-    Delay 500
+    Delay 300
     SayString keywords
     Delay 500
     FindColor x1, y1, x2, y2, "3296FF", intX, intY
-    Delay 200
+    Delay 100
     KeyPress "Esc", 1
 End Function
 
@@ -50,10 +50,13 @@ End Function
 
 
 Rem quxuexi  //标记
+Delay 5000
 findkeywords("去学习")
 If intX < 0 And intY < 0 Then 
-    call backtopage()
-    Goto endstudy
+    Delay 10000
+    Goto quxuexi
+    //call backtopage()
+    //Goto endstudy
 EndIf
 MoveTo intX+5, intY+5
 LeftClick 1
@@ -81,3 +84,11 @@ While True
 Wend
 
 Rem endstudy
+
+
+//done
+//自定义函数运行 
+//todo
+//判断页面是否完成加载 
+//多页面执行
+//后台运行
