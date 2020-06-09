@@ -19,6 +19,7 @@ End Function
 
 Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
+    Delay 200
     KeyDown 17, 1
     KeyPress 70, 1
     KeyUp 17, 1
