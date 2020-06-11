@@ -55,7 +55,7 @@ If intX < 0 And intY < 0 Then
 End If
 MoveTo intX+5, intY+5
 LeftClick 1
-P = Call pageloading("视频正在")
+P = Call pageloading("视频加载中")
 IF P Then
 	Call backtopage()
 	Delay 10000
