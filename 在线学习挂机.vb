@@ -48,9 +48,9 @@ If intX < 0 And intY < 0 Then
     If P Then
     	KeyPress 116, 1  
     	Delay 30000
-    	goto quxuexi
+    	Goto quxuexi
     Else 
-    	Goto endstudy
+    	Goto quxuexi
 	End If
 End If
 MoveTo intX+5, intY+5
