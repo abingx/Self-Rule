@@ -1,4 +1,4 @@
-//Veison 3.1
+//Veison 3.2
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -76,10 +76,20 @@ Else
     	End If
     	Call findkeywords("该视频已学习时长")
     	IfColor intX+90, intY-83, "FFFFFF", 0 Then
-        Call backtopage()
-        Delay 10000
-        Goto quxuexi
+            Call backtopage()
+            Delay 10000
+            Goto quxuexi
     	End If
+        Call findkeywords("缓冲中")
+        If intX > 0 And intY > 0 Then 
+            Delay 30000
+            Call findkeywords("缓冲中")
+            If intX > 0 And intY > 0 Then 
+                Call backtopage()
+                Delay 10000
+                Goto quxuexi
+            End If
+        End If
     	Delay 500
     	KeyPress "Up", 1
 	Wend
@@ -101,6 +111,5 @@ End Function
 //done
 //自定义函数运行 
 //todo
-//判断页面是否完成加载 ?
 //多页面执行
 //后台运行
