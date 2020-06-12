@@ -1,4 +1,4 @@
-//Veison 3.0
+//Veison 3.1
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -44,7 +44,7 @@ Rem quxuexi  //标记
 Delay 500
 Call findkeywords("去学习")
 If intX < 0 And intY < 0 Then 
-    P = Call pageloading("视频")
+    P = pageloading("视频")
     If P Then
     	KeyPress 116, 1  
     	Delay 30000
@@ -53,9 +53,10 @@ If intX < 0 And intY < 0 Then
     	Goto quxuexi
 	End If
 End If
+
 MoveTo intX+5, intY+5
 LeftClick 1
-P = Call pageloading("视频加载中")
+P = pageloading("视频加载中")
 IF P Then
 	Call backtopage()
 	Delay 10000
@@ -66,9 +67,9 @@ Else
     	Call findkeywords("恭喜您")
     	If intX > 0 And intY > 0 Then 
         	MoveTo intX+303,intY+54
-        	Delay 800
-        	LeftClick 1
         	Delay 500
+        	LeftClick 1
+        	Delay 1000
         	Call backtopage()
         	Delay 10000
         	Goto quxuexi
