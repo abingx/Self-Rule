@@ -1,4 +1,4 @@
-//veison 2.0
+//Veison 3.0
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -10,13 +10,6 @@ x1 = Clng(MyArray(0))   //窗口左上X
 y1 = Clng(MyArray(1))   //窗口左上y
 x2 = Clng(MyArray(2))   //窗口右下X
 y2 = Clng(MyArray(3))   //窗口右下y
-
-Function pageloading( ) //页面是否完成加载，需修改
-    GetColor=GetPixelColor(x1+10,y1+67)
-    IfColor x1+10,y1+67,"FFFFFF",0 Then  
-    Else
-    End If 
-End Function
 
 Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
@@ -31,6 +24,69 @@ Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
 End Function
 
+Function pageloading(loadingkeywords) //页面是否完成加载，返回值1为未正常加载
+	Delay 30000
+	Call findkeywords(loadingkeywords)
+    If intX > 0 and intY > 0 Then
+    	pageloading = 1
+    Else	
+    	pageloading = 0
+    End If
+End Function
+
+Function backtopage() //返回上一页
+    MoveTo x1+20, y1+17
+    LeftClick 1
+    Delay 10000
+End Function
+
+Rem quxuexi  //标记
+Delay 500
+Call findkeywords("去学习")
+If intX < 0 And intY < 0 Then 
+    P = Call pageloading("视频")
+    If P Then
+    	KeyPress 116, 1  
+    	Delay 30000
+    	goto quxuexi
+    Else 
+    	Goto endstudy
+	End If
+End If
+MoveTo intX+5, intY+5
+LeftClick 1
+P = Call pageloading("视频加载中")
+IF P Then
+	Call backtopage()
+	Delay 10000
+	goto quxuexi
+Else
+	While True
+    	Delay 60000
+    	Call findkeywords("恭喜您")
+    	If intX > 0 And intY > 0 Then 
+        	MoveTo intX+303,intY+54
+        	Delay 800
+        	LeftClick 1
+        	Delay 500
+        	Call backtopage()
+        	Delay 10000
+        	Goto quxuexi
+    	End If
+    	Call findkeywords("该视频已学习时长")
+    	IfColor intX+90, intY-83, "FFFFFF", 0 Then
+        Call backtopage()
+        Delay 10000
+        Goto quxuexi
+    	End If
+    	Delay 500
+    	KeyPress "Up", 1
+	Wend
+End If	
+
+Rem endstudy
+
+
 Function findkeig(keigxrze) //暂未使用，下一步优化时使用
     findkeywords(keigxrze)
     If intX > 0 And intY > 0 Then 
@@ -41,54 +97,9 @@ Function findkeig(keigxrze) //暂未使用，下一步优化时使用
         //刷新页面
     End If
 End Function
-
-Function backtopage() //返回上一页
-    MoveTo x1+20, y1+17
-    LeftClick 1
-    Delay 10000
-End Function
-
-
-Rem quxuexi  //标记
-Delay 5000
-findkeywords("去学习")
-If intX < 0 And intY < 0 Then 
-    Delay 10000
-    Goto quxuexi
-    //call backtopage()
-    //Goto endstudy
-EndIf
-MoveTo intX+5, intY+5
-LeftClick 1
-Delay 500
-While True
-    Delay 60000
-    findkeywords("恭喜您")
-    If intX > 0 And intY > 0 Then 
-        MoveTo intX+303,intY+54
-        Delay 500
-        LeftClick 1
-        Delay 500
-        call backtopage()
-        Delay 10000
-        Goto quxuexi
-    End If
-    findkeywords("该视频已学习时长")
-    IfColor intX+90, intY-83, "FFFFFF", 0 Then
-        call backtopage()
-        Delay 10000
-        Goto quxuexi
-    End If
-    Delay 500
-    KeyPress "Up", 1
-Wend
-
-Rem endstudy
-
-
 //done
 //自定义函数运行 
 //todo
-//判断页面是否完成加载 
+//判断页面是否完成加载 ?
 //多页面执行
 //后台运行
