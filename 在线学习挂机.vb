@@ -1,4 +1,4 @@
-//Veison 4.1
+//Veison 4.2
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -96,6 +96,7 @@ If intX < 0 And intY < 0 Then
     End If 
     Call backtopage()
     Delay 10000
+    Call yemmpjdr()
     Goto keiglwxk
 End If
 MoveTo intX+5, intY+5
@@ -117,6 +118,8 @@ Else
         	LeftClick 1
         	Delay 1000
         	Call backtopage()
+        	Delay 10000
+        	Call yemmpjdr()
         	Goto keigxrze
     	End If
     	Call findkeywords("您已完成了")
@@ -126,11 +129,15 @@ Else
         	LeftClick 1
         	Delay 1000
         	Call backtopage()
+        	Delay 10000
+        	Call yemmpjdr()
         	Goto keigxrze
     	End If
     	Call findkeywords("该视频已学习时长")
     	IfColor intX+90, intY-83, "FFFFFF", 0 Then
             Call backtopage()
+            Delay 10000
+            Call yemmpjdr()
             Goto keigxrze
     	End If
         Call findkeywords("缓冲中")
@@ -139,6 +146,8 @@ Else
             Call findkeywords("缓冲中")
             If intX > 0 And intY > 0 Then 
                 Call backtopage()
+                Delay 10000
+                Call yemmpjdr()
                 Goto keigxrze
             End If
         End If
@@ -147,6 +156,8 @@ Else
     	CI = CI + 1
 	Wend
 	Call backtopage()
+	Delay 10000
+	Call yemmpjdr()
 	Goto keigxrze4
 End If	
 
