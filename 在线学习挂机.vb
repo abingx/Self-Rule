@@ -107,7 +107,8 @@ IF P Then
 	KeyPress 116, 1  
 	Goto xtxijpmm
 Else
-	While True
+	CI = 0
+	While CI < 60
     	Delay 60000
     	Call findkeywords("恭喜您")
     	If intX > 0 And intY > 0 Then 
@@ -143,7 +144,10 @@ Else
         End If
     	Delay 500
     	KeyPress "Up", 1
+    	CI = CI + 1
 	Wend
+	Call backtopage()
+	Goto keigxrze4
 End If	
 
 Rem endstudy
