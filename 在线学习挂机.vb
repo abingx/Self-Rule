@@ -1,4 +1,4 @@
-//Veison 4.0
+//Veison 4.1
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -56,19 +56,22 @@ Function findkeig(keiglwxk)
     End If
 End Function
 
-Rem Main
-Call findkeywords("所属教学计划")
-If intX > 0 and intY > 0 Then
-    Goto keiglwxk
-End If 
-Call findkeywords("上课时间")
-If intX > 0 and intY > 0 Then
-    Goto keigxrze
-End If 
-Call findkeywords("视频详情")
-If intX > 0 and intY > 0 Then
-    Goto xtxijpmm
-End If 
+Function yemmpjdr()
+	Call findkeywords("所属教学计划")
+	If intX > 0 and intY > 0 Then
+    	Goto keiglwxk
+	End If 
+	Call findkeywords("上课时间")
+	If intX > 0 and intY > 0 Then
+    	Goto keigxrze
+	End If 
+	Call findkeywords("视频详情")
+	If intX > 0 and intY > 0 Then
+    	Goto xtxijpmm
+	End If 
+End Function
+
+Call yemmpjdr()
 
 Rem keiglwxk
 If PB = 1 Then
@@ -115,6 +118,15 @@ Else
         	Call backtopage()
         	Goto keigxrze
     	End If
+    	Call findkeywords("您已完成了")
+    	If intX > 0 And intY > 0 Then 
+        	MoveTo intX+303,intY+54
+        	Delay 500
+        	LeftClick 1
+        	Delay 1000
+        	Call backtopage()
+        	Goto keigxrze
+    	End If
     	Call findkeywords("该视频已学习时长")
     	IfColor intX+90, intY-83, "FFFFFF", 0 Then
             Call backtopage()
@@ -133,6 +145,7 @@ Else
     	KeyPress "Up", 1
 	Wend
 End If	
+
 Rem endstudy
 
 
