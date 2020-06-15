@@ -57,6 +57,7 @@ Function findkeig(keiglwxk)
 End Function
 
 Rem Main
+//每个页面均进行页面判断，以决定页面跳转和程序跳转
 Call findkeywords("所属教学计划")
 If intX > 0 and intY > 0 Then
     Goto keiglwxk
