@@ -1,4 +1,4 @@
-//Veison 3.2
+//Veison 4.0
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -24,6 +24,26 @@ Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
 End Function
 
+Function decidepage()   //返回值1在课程类型选择界面，返回值2在课程选择界面，返回值3课程学习界面
+	Call findkeywords("培训名额")
+	If intX > 0 and intY > 0 Then
+		decidepage = 1
+		Goto pageover
+	End If
+	Call findkeywords("上课时间")
+	If intX > 0 and intY > 0 Then
+		decidepage = 2
+		Goto pageover
+	End If
+	Call findkeywords("视频详情")
+	If intX > 0 and intY > 0 Then
+		decidepage = 3
+		Goto pageover
+	End If
+	REM pageover
+End Function
+
+
 Function pageloading(loadingkeywords) //页面是否完成加载，返回值1为未正常加载
 	Delay 30000
 	Call findkeywords(loadingkeywords)
@@ -39,6 +59,17 @@ Function backtopage() //返回上一页
     LeftClick 1
     Delay 10000
 End Function
+
+
+Rem Main
+P = decidepage()
+If P = 1 Then
+	Goto ???
+ElseIf P = 2 Then
+	Goto quxuexi
+ElseIf P = 3 Then
+	Goto ???
+End If
 
 Rem quxuexi  //标记
 Delay 500
@@ -96,6 +127,14 @@ Else
 End If	
 
 Rem endstudy
+
+
+
+
+
+
+
+
 
 
 Function findkeig(keigxrze) //暂未使用，下一步优化时使用
