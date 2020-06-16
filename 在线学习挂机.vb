@@ -1,4 +1,4 @@
-//Veison 4.2
+//Veison 4.3
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -25,7 +25,7 @@ Function findkeywords(keywords) //获取关键字坐标
     KeyPress "Esc", 1
 End Function
 
-Function pageloading(loadingkeywords) //页面是否完成加载，返回值1为未正常加载???
+Function pageloading(loadingkeywords) //页面是否完成加载，返回值1为未正常加载
 	Delay 30000
 	Call findkeywords(loadingkeywords)
     If intX > 0 and intY > 0 Then
@@ -57,23 +57,34 @@ Function findkeig(keiglwxk)
 End Function
 
 Function yemmpjdr()
+	yemmpjdr = 0
 	Call findkeywords("所属教学计划")
 	If intX > 0 and intY > 0 Then
-    	Goto keiglwxk
+    	yemmpjdr = 1
 	End If 
 	Call findkeywords("上课时间")
 	If intX > 0 and intY > 0 Then
-    	Goto keigxrze
+    	yemmpjdr = 2
 	End If 
 	Call findkeywords("视频详情")
 	If intX > 0 and intY > 0 Then
-    	Goto xtxijpmm
+    	yemmpjdr = 3
 	End If 
 End Function
 
-Call yemmpjdr()
+Rem Main
 
 Rem keiglwxk
+PA = yemmpjdr()
+If PA = 0 Then
+    KeyPress 116, 1
+    Delay 30000
+    Goto Main
+Elseif PA = 2 Then
+    Goto keigxrze
+Elseif PA = 3 Then
+    Goto xtxijpmm    
+End If
 If PB = 1 Then
     GJ = "线上课程【必修课】"
 Else
@@ -82,6 +93,16 @@ End If
 Call findkeig(GJ)
 
 Rem keigxrze
+PA = yemmpjdr()
+If PA = 0 Then
+    KeyPress 116, 1
+    Delay 30000
+    Goto Main
+Elseif PA = 1 Then
+    Goto keiglwxk
+Elseif PA = 3 Then
+    Goto xtxijpmm    
+End If
 P = pageloading("视频")
 If P = 0 Then
 	KeyPress 116, 1  
@@ -103,6 +124,16 @@ MoveTo intX+5, intY+5
 LeftClick 1
 
 Rem xtxijpmm
+PA = yemmpjdr()
+If PA = 0 Then
+    KeyPress 116, 1
+    Delay 30000
+    Goto Main
+Elseif PA = 1 Then
+    Goto keiglwxk
+Elseif PA = 2 Then
+    Goto keigxrze    
+End If
 P = pageloading("视频加载中")  //偶尔没有出现"视频加载中"
 IF P Then
 	KeyPress 116, 1  
