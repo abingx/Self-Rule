@@ -189,7 +189,7 @@ Else
 	Call backtopage()
 	Delay 10000
 	Call yemmpjdr()
-	Goto keigxrze4
+	Goto keigxrze
 End If	
 
 Rem endstudy
