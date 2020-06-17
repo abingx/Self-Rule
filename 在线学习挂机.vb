@@ -135,7 +135,7 @@ Elseif PA = 2 Then
     Goto keigxrze    
 End If
 P = pageloading("视频加载中")  //偶尔没有出现"视频加载中"
-IF P Then
+IF P = 1 Then
 	KeyPress 116, 1  
 	Goto xtxijpmm
 Else
