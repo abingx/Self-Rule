@@ -1,7 +1,7 @@
 mixed-port: 7890
 redir-port: 7892
 allow-lan: false
-mode: Rule
+mode: rule
 log-level: info
 external-controller: '0.0.0.0:9090'
 secret: ''
@@ -18,7 +18,7 @@ cfw-profile-mixin:
     nameserver:
       - 114.114.114.114
       - 223.5.5.5
-      - 8.8.8.8      
+      - 8.8.8.8
     fallback:
       - tls://dns.rubyfish.cn:853
       - tls://1.0.0.1:853
@@ -50,17 +50,17 @@ cfw-conn-break-strategy:
   proxy: none
   profile: true
   mode: true
-Proxy:
+proxies:
   - name: Shadowsocks
     type: socks5
     server: 127.0.0.1
     port: 1080
-Proxy Group:
+proxy-groups:
   - name: Proxy
     type: select
     proxies:
       - Shadowsocks
-Rule:
+rules:
   - 'MATCH,DIRECT'
 cfw-child-process:
   - command: subconverter.exe
