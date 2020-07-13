@@ -1,4 +1,4 @@
-//Veison 4.3
+//Veison 4.4
 Dim MyArray   //定义变量，用于获取窗口大小
 Dim x1, y1, x2, y2   //定义窗口坐标变量
 Dim intX, intY    //定义坐标变量
@@ -165,7 +165,7 @@ Else
         	Goto keigxrze
     	End If
     	Call findkeywords("该视频已学习时长")
-    	IfColor intX+90, intY-83, "FFFFFF", 0 Then
+    	IfColor intX+541, intY-82, "FFFFFF", 0 Then
             Call backtopage()
             Delay 10000
             Call yemmpjdr()
