@@ -2,13 +2,12 @@
 #- Safari 内输入 命令 + 空格 + 关键词 快速指定搜索引擎搜索
 #注：先进入设置更改 Safari 默认搜索为 DuckDuckGO
 
-hostname = m.sm.cn
+hostname = m.so.com
 
-
-^https:\/\/m.sm.cn\/s\?q=db\+([^&]+).+ url 302 https://m.douban.com/search/?query=$1
-^https:\/\/m.sm.cn\/s\?q=ddg\+([^&]+).+ url 302 https://duckduckgo.com/?ia=about&q=$1
-^https:\/\/m.sm.cn\/s\?q=bd\+([^&]+).+ url 302 https://www.baidu.com/s?wd=$1
-^https:\/\/m.sm.cn\/s\?q=gh\+([^&]+).+ url 302 https://github.com/search?q=$1
-^https:\/\/m.sm.cn\/s\?q=gm\+([^&]+).+ url 302 https://www.google.com/search?&tbm=isch&q=$1
-^https:\/\/m.sm.cn\/s\?q=yd\+([^&]+).+ url 302 https://dict.youdao.com/search?q=$1
-^https:\/\/m.sm.cn\/s\?q=([^&]+).+ url 302 https://www.google.com/search?q=$1
+^https:\/\/m.so.com\/s\?q=db\+([^&]+).+ url 302 https://m.douban.com/search/?query=$1
+^https:\/\/m.so.com\/s\?q=ddg\+([^&]+).+ url 302 https://duckduckgo.com/?ia=about&q=$1
+^https:\/\/m.so.com\/s\?q=bd\+([^&]+).+ url 302 https://www.baidu.com/s?wd=$1
+^https:\/\/m.so.com\/s\?q=gh\+([^&]+).+ url 302 https://github.com/search?q=$1
+^https:\/\/m.so.com\/s\?q=gm\+([^&]+).+ url 302 https://www.google.com/search?&tbm=isch&q=$1
+^https:\/\/m.so.com\/s\?q=yd\+([^&]+).+ url 302 https://dict.youdao.com/search?q=$1
+^https:\/\/m.so.com\/s\?q=([^&]+).+ url 302 https://www.google.com/search?q=$1
