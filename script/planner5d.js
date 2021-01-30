@@ -1,16 +1,16 @@
-var obj= {
-  "accessDays": 9999,
+var obj = JSON.parse($response.body);
+
+obj=
+{
+  "accessDays": 999999999,
   "allSets": 1,
+  "error": 0,
   "m": {
-    "r": "0",
-    "t": "5",
+    "r": "999999999",
     "useSubscriptions": true,
-    "expiredSubscription": 9999,
-    "subscription": "com.planner5d.planner5d.subscription.yearly",
-    "expiresDate": "2031-02-02 06:23:07"
-  },
-  "copyright": "Planner 5D®© 2011--2021",
-  "error": 0
+    "expiredSubscription": "999999999",
+    "subscription": "com.planner5d.planner5d.subscription.yearly"
+  }
 };
 
 $done({body: JSON.stringify(obj)});
