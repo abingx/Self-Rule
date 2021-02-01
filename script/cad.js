@@ -39,7 +39,7 @@ var obj = {
       "serverEndTimeStamp" : 1954815132000,
       "amount" : 0,
       "appTryStatus" : true,
-      "serverEndTime" : "2012-12-12 12:12:12",
+      "serverEndTime" : "2031-12-12 12:12:12",
       "goodId" : 73,
       "canBuy" : false,
       "canUpgrade" : false,
@@ -47,7 +47,7 @@ var obj = {
       "descs" : "免费领取高级账户1小时试用,不包含免广告和云图扩容",
       "serverStartTime" : "2021-02-01 21:09:58",
       "serverStartTimeStamp" : 1612184998000,
-      "name" : "高级账户（试用）"
+      "name" : "高级账户"
     },
     "active" : {
       "app_try_give_id" : 9,
