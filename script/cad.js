@@ -1,3 +1,5 @@
+var obj = JSON.parse($response.body);
+let a = obj.rs.utoken;
 var obj = {
   "code" : "0",
   "rs" : {
@@ -109,6 +111,7 @@ var obj = {
   "status" : true,
   "msg" : ""
 };
+let obj.rs.utoken = a;
 
 
 $done({ body: JSON.stringify(obj) });
