@@ -1,5 +1,7 @@
-let obj = JSON.parse($response.body);
+var obj = JSON.parse($response.body);
+console.log(obj);
 var a = obj.rs.utoken;
+console.log(a);
 let obj.rs.vipInfo = {
   "serverEndTimeStamp" : 1954815132000,
   "amount" : 0,
