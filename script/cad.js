@@ -18,16 +18,16 @@ obj.rs.active = {
   "app_try_give_id" : 9,
   "app_try_get_show" : true,
   "app_try_give_show" : false,
-  "app_try_give_usable" : false,
+  "app_try_give_usable" : true,
   "app_try_get_id" : 2,
   "app_try_get_overdue" : true,
-  "app_try_get_guide" : false,
+  "app_try_get_guide" : true,
   "app_try_get_info" : {
     "try_request_date" : 1612185018648,
     "try_end_date" : 1954815132000,
     "try_start_date" : 1612184998000
   },
-  "app_try_get_usable" : false
+  "app_try_get_usable" : true
 };
 let obj.rs.utoken = a;
 
