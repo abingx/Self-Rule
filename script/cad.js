@@ -1,4 +1,5 @@
-let obj = JSON.parse($response.body);
+var obj = JSON.parse($response.body);
+console.log(obj);
 var a = obj.rs.utoken;
 let obj.rs.vipInfo = {
   "serverEndTimeStamp" : 1954815132000,
@@ -31,7 +32,7 @@ let obj.rs.active = {
   "app_try_get_usable" : false
 };
 let obj.rs.utoken = a;
-console.log(obj.rs.active);
+
 
 $done({ body: JSON.stringify(obj) });
 
