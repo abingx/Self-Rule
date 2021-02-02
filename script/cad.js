@@ -1,7 +1,7 @@
 var obj = JSON.parse($response.body);
-console.log(obj);
+console.log(obj)
 //var a = obj.rs.utoken;
-let obj.rs.vipInfo = {
+obj.rs.vipInfo = {
   "serverEndTimeStamp" : 1954815132000,
   "amount" : 0,
   "appTryStatus" : true,
@@ -16,7 +16,7 @@ let obj.rs.vipInfo = {
   "name" : "高级账户"
 };
 
-let obj.rs.active = {
+obj.rs.active = {
   "app_try_give_id" : 9,
   "app_try_get_show" : true,
   "app_try_give_show" : false,
