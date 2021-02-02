@@ -1,5 +1,5 @@
 var obj = JSON.parse($response.body);
-//var a = obj.rs.utoken;
+var a = obj.rs.utoken;
 obj.rs.vipInfo = {
   "serverEndTimeStamp" : 1954815132000,
   "amount" : 0,
@@ -14,9 +14,22 @@ obj.rs.vipInfo = {
   "serverStartTimeStamp" : 1612184998000,
   "name" : "高级账户"
 };
-
-
-//let obj.rs.utoken = a;
+obj.rs.active = {
+  "app_try_give_id" : 9,
+  "app_try_get_show" : true,
+  "app_try_give_show" : false,
+  "app_try_give_usable" : false,
+  "app_try_get_id" : 2,
+  "app_try_get_overdue" : true,
+  "app_try_get_guide" : false,
+  "app_try_get_info" : {
+    "try_request_date" : 1612185018648,
+    "try_end_date" : 1954815132000,
+    "try_start_date" : 1612184998000
+  },
+  "app_try_get_usable" : false
+};
+let obj.rs.utoken = a;
 
 
 $done({body: JSON.stringify(obj)});
