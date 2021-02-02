@@ -1,6 +1,6 @@
 var obj = JSON.parse($response.body);
 console.log(obj);
-var a = obj.rs.utoken;
+//var a = obj.rs.utoken;
 let obj.rs.vipInfo = {
   "serverEndTimeStamp" : 1954815132000,
   "amount" : 0,
@@ -15,7 +15,7 @@ let obj.rs.vipInfo = {
   "serverStartTimeStamp" : 1612184998000,
   "name" : "高级账户"
 };
-console.log(obj.rs.vipInfo);
+
 let obj.rs.active = {
   "app_try_give_id" : 9,
   "app_try_get_show" : true,
@@ -30,10 +30,10 @@ let obj.rs.active = {
     "try_start_date" : 1612184998000
   },
   "app_try_get_usable" : false
-};
-let obj.rs.utoken = a;
+}
+//let obj.rs.utoken = a;
 
 
-$done({ body: JSON.stringify(obj) });
+$done({body: JSON.stringify(obj)});
 
 
