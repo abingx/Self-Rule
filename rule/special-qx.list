@@ -7,12 +7,12 @@ IP-CIDR,192.168.0.0/16, direct
 IP-CIDR,169.254.0.0/16, direct
 IP-CIDR,224.0.0.0/4, direct
 IP-CIDR,240.0.0.0/4, direct
-host-suffix, okzy.tv, direct
-host-suffix, good.jieshuo-okzy.com, direct
-host-suffix, unsplash.com, direct
-host-suffix, rpg.pic-imges.com, direct
-host-suffix, vip.okokbo.com, direct
-host-suffix, sohu.com-v-sohu.com, direct
+;host-suffix, api.okzy.tv, direct
+;host-suffix, good.jieshuo-okzy.com, direct
+;host-suffix, unsplash.com, direct
+;host-suffix, rpg.pic-imges.com, direct
+;host-suffix, vip.okokbo.com, direct
+;host-suffix, sohu.com-v-sohu.com, direct
 host-suffix, pics.dmm.co.jp, Japan
 host-suffix, pics.javbus.com, Japan
 host-suffix, emby.nexitally.com, United States
