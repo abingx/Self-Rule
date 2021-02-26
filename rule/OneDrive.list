@@ -1,5 +1,5 @@
   # OneDrive
-  - host-suffix,1drv.com
-  - host-suffix,onedrive.com
-  - host-suffix,storage.live.com
-  - host-suffix,oneclient.sfx.ms
+  host-suffix,1drv.com
+  host-suffix,onedrive.com
+  host-suffix,storage.live.com
+  host-suffix,oneclient.sfx.ms
