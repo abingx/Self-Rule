@@ -1,0 +1,5 @@
+  # OneDrive
+  host-suffix, 1drv.com, direct
+  host-suffix, onedrive.com, direct
+  host-suffix, storage.live.com, direct
+  host-suffix, oneclient.sfx.ms, direct
