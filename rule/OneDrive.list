@@ -5,7 +5,6 @@
   host-suffix, oneclient.sfx.ms, direct  
   host-suffix, onedrive.com, direct
   host-suffix, *.onedrive.com, direct
-  host-suffix, onedrive.live.com, direct
   host-suffix, login.live.com, direct
   host-suffix, g.live.com, direct
   host-suffix, spoprod-a.akamaihd.net, direct
