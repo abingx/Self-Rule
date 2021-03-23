@@ -4,7 +4,6 @@
   host-suffix, storage.live.com, direct
   host-suffix, oneclient.sfx.ms, direct  
   host-suffix, onedrive.com, direct
-  host-suffix, *.onedrive.com, direct
   host-suffix, login.live.com, direct
   host-suffix, g.live.com, direct
   host-suffix, spoprod-a.akamaihd.net, direct
@@ -31,11 +30,8 @@
   host-suffix, login.windows.net, direct
   host-suffix, login.microsoftonline.com, direct
   host-suffix, *.files.1drv.com, direct
-  host-suffix, *.onedrive.live.com, direct
-  host-suffix, *.*.onedrive.live.com, direct
   host-suffix, storage.live.com, direct
   host-suffix, *.storage.live.com, direct
-  host-suffix, *.*.storage.live.com, direct
   host-suffix, *.groups.office.live.com, direct
   host-suffix, *.groups.photos.live.com, direct
   host-suffix, *.groups.skydrive.live.com, direct
@@ -54,7 +50,5 @@
   host-suffix, skyapi.live.net, direct
   host-suffix, snapi.live.net, direct
   host-suffix, *.livefilestore.com, direct
-  host-suffix, *.*.livefilestore.com, direct
   host-suffix, storage.msn.com, direct
   host-suffix, *.storage.msn.com, direct
-  host-suffix, *.*.storage.msn.com, direct
