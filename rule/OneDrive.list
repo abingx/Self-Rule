@@ -2,61 +2,60 @@
   host-suffix, 1drv.com, direct
   host-suffix, onedrive.com, direct
   host-suffix, storage.live.com, direct
-  host-suffix, oneclient.sfx.ms, direct
-  
-onedrive.com 
-*.onedrive.com 
-onedrive.live.com 
-login.live.com 
-g.live.com 
-spoprod-a.akamaihd.net 
-*.mesh.com 
-p.sfx.ms 
-oneclient.sfx.ms 
-*.microsoft.com 
-fabric.io 
-*.crashlytics.com 
-vortex.data.microsoft.com 
-posarprodcssservice.accesscontrol.windows.net 
-redemptionservices.accesscontrol.windows.net 
-token.cp.microsoft.com/ 
-tokensit.cp.microsoft-tst.com/ 
-*.office.com 
-*.officeapps.live.com 
-*.aria.microsoft.com 
-*.mobileengagement.windows.net 
-*.branch.io 
-*.adjust.com 
-*.servicebus.windows.net 
-vas.samsungapps.com 
-odc.officeapps.live.com 
-login.windows.net 
-login.microsoftonline.com
-*.files.1drv.com 
-*.onedrive.live.com 
-*.*.onedrive.live.com 
-storage.live.com 
-*.storage.live.com 
-*.*.storage.live.com 
-*.groups.office.live.com 
-*.groups.photos.live.com 
-*.groups.skydrive.live.com 
-favorites.live.com 
-oauth.live.com 
-photos.live.com 
-skydrive.live.com 
-api.live.net 
-apis.live.net 
-docs.live.net 
-*.docs.live.net 
-policies.live.net 
-*.policies.live.net 
-settings.live.net 
-*.settings.live.net 
-skyapi.live.net 
-snapi.live.net 
-*.livefilestore.com 
-*.*.livefilestore.com 
-storage.msn.com 
-*.storage.msn.com 
-*.*.storage.msn.com 
+  host-suffix, oneclient.sfx.ms, direct  
+  host-suffix, onedrive.com, direct
+  host-suffix, *.onedrive.com, direct
+  host-suffix, onedrive.live.com, direct
+  host-suffix, login.live.com, direct
+  host-suffix, g.live.com, direct
+  host-suffix, spoprod-a.akamaihd.net, direct
+  host-suffix, *.mesh.com, direct
+  host-suffix, p.sfx.ms, direct
+  host-suffix, oneclient.sfx.ms, direct 
+  host-suffix, *.microsoft.com, direct
+  host-suffix, fabric.io, direct
+  host-suffix, *.crashlytics.com, direct 
+  host-suffix, vortex.data.microsoft.com, direct 
+  host-suffix, posarprodcssservice.accesscontrol.windows.net, direct
+  host-suffix, redemptionservices.accesscontrol.windows.net, direct
+  host-suffix, token.cp.microsoft.com, direct
+  host-suffix, tokensit.cp.microsoft-tst.com, direct
+  host-suffix, *.office.com, direct
+  host-suffix, *.officeapps.live.com, direct 
+  host-suffix, *.aria.microsoft.com, direct
+  host-suffix, *.mobileengagement.windows.net, direct 
+  host-suffix, *.branch.io, direct
+  host-suffix, *.adjust.com, direct
+  host-suffix, *.servicebus.windows.net, direct 
+  host-suffix, vas.samsungapps.com, direct
+  host-suffix, odc.officeapps.live.com, direct
+  host-suffix, login.windows.net, direct
+  host-suffix, login.microsoftonline.com, direct
+  host-suffix, *.files.1drv.com, direct
+  host-suffix, *.onedrive.live.com, direct
+  host-suffix, *.*.onedrive.live.com, direct
+  host-suffix, storage.live.com, direct
+  host-suffix, *.storage.live.com, direct
+  host-suffix, *.*.storage.live.com, direct
+  host-suffix, *.groups.office.live.com, direct
+  host-suffix, *.groups.photos.live.com, direct
+  host-suffix, *.groups.skydrive.live.com, direct
+  host-suffix, favorites.live.com, direct
+  host-suffix, oauth.live.com, direct
+  host-suffix, photos.live.com, direct
+  host-suffix, skydrive.live.com, direct
+  host-suffix, api.live.net, direct
+  host-suffix, apis.live.net, direct
+  host-suffix, docs.live.net, direct
+  host-suffix, *.docs.live.net, direct
+  host-suffix, policies.live.net, direct
+  host-suffix, *.policies.live.net, direct
+  host-suffix, settings.live.net, direct
+  host-suffix, *.settings.live.net, direct
+  host-suffix, skyapi.live.net, direct
+  host-suffix, snapi.live.net, direct
+  host-suffix, *.livefilestore.com, direct
+  host-suffix, *.*.livefilestore.com, direct
+  host-suffix, storage.msn.com, direct
+  host-suffix, *.storage.msn.com, direct
+  host-suffix, *.*.storage.msn.com, direct
