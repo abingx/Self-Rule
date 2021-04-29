@@ -1,4 +1,7 @@
-var obj = JSON.parse($response.body);
-let obj.subscription.expirationDate = 1890725831000;
+let obj = JSON.parse($response.body);
+obj.subscription.expirationDate = 1890725831000;
+obj.subscription.tier = "Pro";
+obj.subscription.subscriptionActive = true;
+obj.isBetaUser = false;
 
-$done({ body: JSON.stringify(obj) });
+$done({body: JSON.stringify(obj)});
