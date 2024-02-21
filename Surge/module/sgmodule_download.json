@@ -61,14 +61,19 @@
             "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/babytree.snippet/_end_/babytree.sgmodule?type=qx-rewrite&target=surge-module"
         },
         {
-            "name": "视频app广告",
+            "name": "广告必须死_视频app广告",
             "repo": "https://github.com/RuCu6/QuanX",
             "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/cnftp.snippet/_end_/cnftp.sgmodule?type=qx-rewrite&target=surge-module"
         },
         {
-            "name": "keep广告",
+            "name": "Maasea_keep广告",
             "repo": "https://github.com/Maasea/sgmodule",
             "url": "https://raw.githubusercontent.com/Maasea/sgmodule/master/KeepAds.sgmodule"
+        },
+        {
+            "name": "M广告必须死_Bilibili广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/bilibili.snippet/_end_/bilibili.sgmodule?type=qx-rewrite&target=surge-module"
         }
     ],
     "download": [
