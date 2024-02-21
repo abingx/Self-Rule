@@ -1,0 +1,35 @@
+#!name=Any-Search
+#!desc=需要把Safari的搜索引擎设置为：DuckDuckGo或自定义搜索引擎为https://duckduckgo.com/?q=%s。命令+空格+关键词,快速指定搜索引擎搜索。
+
+[URL Rewrite]
+# (Google图片)gm 
+^https:\/\/duckduckgo.com\/\?q=gm\+([^&]+) https://www.google.com/search?&tbm=isch&q=$1 302
+# (GitHub)gh 
+^https:\/\/duckduckgo.com\/\?q=gh\+([^&]+) https://github.com/search?q=$1 302
+# (Google 搜索 TestFlight)tf 
+^https:\/\/duckduckgo.com\/\?q=tf(\+|%20)([^&]+) https://www.google.com/search?as_q=$2&as_sitesearch=testflight.apple.com 302
+# (微博)wb 
+^https:\/\/duckduckgo.com\/\?q=wb\+([^&]+) https://s.weibo.com/weibo/$1 302
+# (微信)wx 
+^https:\/\/duckduckgo.com\/\?q=wx\+([^&]+) https://weixin.sogou.com/weixinwap?query=$1 302
+# (京东)jd 
+^https:\/\/duckduckgo.com\/\?q=jd\+([^&]+) https://so.m.jd.com/ware/search.action?keyword=$1 302
+# (淘宝)tb 
+^https:\/\/duckduckgo.com\/\?q=tb\+([^&]+) https://s.m.taobao.com/h5?q=$1 302
+# (天猫)tm 
+^https:\/\/duckduckgo.com\/\?q=tm\+([^&]+) https://s.m.tmall.com/m/search.htm?q=$1 302
+# (YouTube)ytb 
+^https:\/\/duckduckgo.com\/\?q=ytb\+([^&]+) https://www.youtube.com/results?search_query=$1 302
+# (PornHub)ph 
+^https:\/\/duckduckgo.com\/\?q=ph\+([^&]+) https://cn.pornhub.com/video/search?search=$1 302
+# (Goolge)gg 
+^https:\/\/duckduckgo.com\/\?q=gg\+([^&]+) https://www.google.com/search?q=$1 302
+# (百度)bd 
+^https:\/\/duckduckgo.com\/\?q=bd\+([^&]+) https://www.baidu.com/s?wd=$1 302
+# (DuckDuckGo)ddg 
+^https:\/\/duckduckgo.com\/\?q=ddg\+([^&]+) https://duckduckgo.com/?ia=about&q=$1 302
+# (Bing)无指令 
+^https:\/\/duckduckgo.com\/\?q=([^&]+) https://www.bing.com/search?q=$1 302
+
+[MITM]
+hostname = %APPEND% duckduckgo.com

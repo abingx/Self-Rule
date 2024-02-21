@@ -1,0 +1,46 @@
+name: Update SystemOTA
+
+on:
+  schedule:
+    - cron: '1 1 * * 1'  # 每周一的 1:01 执行一次
+
+jobs:
+  process_systemota_list:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Download SystemOTA List
+      run: |
+        curl -o SystemOTA.list https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/SystemOTA/SystemOTA.list
+
+    - name: Process SystemOTA List
+      run: |
+        timestamp=$(grep -oP '\d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}' SystemOTA.list)
+        sed -i '/^#/d' SystemOTA.list
+        sed -i 's/$/,REJECT/' SystemOTA.list
+        echo "#!name=Block SystemOTA" > Surge/module/SystemOTA.sgmodule
+        echo "#!desc=最后更新时间 $timestamp" >> Surge/module/SystemOTA.sgmodule
+        echo "#!author=blackmatrix7" >> Surge/module/SystemOTA.sgmodule
+        echo "#!repo=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/SystemOTA/SystemOTA.list" >> Surge/module/SystemOTA.sgmodule
+        echo "#!system=mac" >> Surge/module/SystemOTA.sgmodule
+        echo "[Rule]" >> Surge/module/SystemOTA.sgmodule
+        cat SystemOTA.list >> Surge/module/SystemOTA.sgmodule
+
+    - name: Commit and Push Changes
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions"
+
+        # Check if SystemOTA.sgmodule does not exist or has changes
+        if [ ! -f Surge/module/SystemOTA.sgmodule ] || [ "$(git status --porcelain Surge/module/SystemOTA.sgmodule)" ]; then
+          git add Surge/module/SystemOTA.sgmodule
+          git commit -m "Update SystemOTA.sgmodule"
+          git push
+          curl "https://push.allinhub.top/v1/sender/CIDfn7IGEiJBQTJQSEJMQTI3WkY1T1NPRDdSUEVIWUFQTklOREtENzRJIgQIARACKiJBRldMTk1NRTVYSUY1QURSVzZUSUJFRFBHT1JFU01LVEFV.wg7MM2Av4fN4MlRLmBtHzf8VigNkeg5ypbsRU8YL1vc.aqC_iUVC_EM6-VTeF5c880kFOJmAuj51tYpvAqx0fCs?title=Github%20Actions&text=SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0"
+          curl "https://push.allinhub.top/v1/sender/CICi_LAGEiJBRE5MNzROV1VSTU80QkxWNlhJUjQyR1VYUVo3WlZVTFFBIgQIARACKiJBRldMTk1NRTVYSUY1QURSVzZUSUJFRFBHT1JFU01LVEFV.BlLSdyksTLqIf6PG732DnRwU5K7iMNEax5sPx_GPrnQ.wS5SrsG6fGA7ySKWrR-gqJnRPsrE_PPuVjyv3fl5A7w?title=Github%20Actions&text=SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0"
+        else
+          echo "No changes in SystemOTA.sgmodule."
+        fi

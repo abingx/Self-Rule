@@ -1,0 +1,2 @@
+copy "C:\Users\allin\AppData\Roaming\Microsoft\InputMethod\Chs\ChsPinyinUDL.dat" "D:\OneDrive\备份\windows词库\" /y
+copy "C:\Users\allin\AppData\Roaming\Microsoft\InputMethod\Chs\ChsPinyinUDL_Beta.dat" "D:\OneDrive\备份\windows词库\" /y

@@ -1,0 +1,39 @@
+tell application "Safari"
+	activate
+	set URL of document 1 to "https://www.ofd.cn/domConversionOfd/?type=ofdtopdf"
+	delay 1
+	repeat while (do JavaScript "document.documentElement.innerText" in document 1) does not contain "OFD文件转换为PDF"
+		delay 0.5
+	end repeat
+	do JavaScript "document.getElementById('global-uploader-btn').click();" in document 1
+	tell application "System Events" to keystroke "G" using {command down, shift down}
+	delay 0.5
+	tell application "System Events" to keystroke "v" using {command down}
+	delay 0.5
+	tell application "System Events" to keystroke return
+	delay 0.5
+	tell application "System Events" to keystroke return
+	delay 0.5
+	repeat while (do JavaScript "document.documentElement.innerText" in document 1) does not contain "开始转换"
+		delay 0.5
+	end repeat
+	do JavaScript "document.getElementsByClassName('el-button el-button--primary')[1].click();" in document 1
+	repeat while (do JavaScript "document.documentElement.innerText" in document 1) does not contain "继续转换"
+		delay 0.5
+	end repeat
+	do JavaScript "document.getElementsByClassName('down_icon')[0].click();" in document 1
+	delay 2
+	close windows
+end tell
+
+
+
+
+filepath=$(echo $1)
+dirpath=$(dirname "$filepath")"/"
+filename=$(basename $filepath .ofd)
+resultpath="/Users/xuebing/Downloads/"$filename".pdf"
+mv $filepath ~/.Trash/
+if [ "$dirpath" != "/Users/xuebing/Downloads/" ]; then
+ mv $resultpath $dirpath
+fi

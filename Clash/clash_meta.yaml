@@ -1,0 +1,505 @@
+#wiki:https://wiki.metacubex.one/
+port: 7890
+socks-port: 7891
+redir-port: 7892
+tproxy-port: 7893
+mixed-port: 7894
+
+unified-delay: false
+geodata-mode: true
+tcp-concurrent: false
+find-process-mode: strict
+global-client-fingerprint: chrome
+
+allow-lan: true
+mode: rule
+log-level: info
+ipv6: true
+
+external-controller: 0.0.0.0:9090
+#external-ui: ui
+secret: hyperapp
+
+geox-url:
+  geoip: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  mmdb: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+sniffer:
+  enable: false
+  sniff:
+    TLS:
+      ports: [443, 8443]
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+
+proxy-providers:
+  provider2:
+    type: http
+    path: ./proxy/provider2.yaml
+    url: #填写yaml格式的节点或配置链接
+    interval: 3600
+    health-check:
+      enable: true
+      interval: 600
+      url: https://cp.cloudflare.com/generate_204
+
+proxy-groups:
+  - name: "Proxy"
+    type: select
+    use:
+      - provider2
+  - name: Global
+    type: select
+    proxies:
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - DIRECT
+      - Proxy
+  - name: ChatGPT
+    type: select
+    proxies:
+      - US
+      - JP
+      - SG
+      - TW
+  - name: Bing
+    type: select
+    proxies:
+      - US
+      - HK
+      - JP
+      - SG
+      - TW
+      - DIRECT
+  - name: VPS
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: Apple
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: OneDrive
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: Speedtest
+    type: select
+    proxies:
+      - DIRECT
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - Proxy
+  - name: Final
+    type: select
+    proxies:
+      - Global
+      - DIRECT
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: "HK"
+    type: url-test
+    filter: '香港'
+    use:
+      - provider2
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "US"
+    type: url-test
+    filter: '美国'
+    use:
+      - provider2
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "SG"
+    type: url-test
+    filter: '新加坡'
+    use:
+      - provider2
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "JP"
+    type: url-test
+    filter: '日本'
+    use:
+      - provider2
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "TW"
+    type: url-test
+    filter: '台湾'
+    use:
+      - provider2
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+
+rule-providers:
+  Direct_Fix:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Direct/Direct.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Direct_Fix.list
+  Download:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Download/Download.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Download.list
+  ChatGPT:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI.list
+    format: text
+    interval: 604800
+    path: ./ruleset/ChatGPT.list
+  Bing:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bing/Bing.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Bing.list
+  Apple:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Apple.list
+  Apple_Domain:
+    behavior: domain
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple_Domain.txt
+    format: text
+    interval: 604800
+    path: ./ruleset/Apple_Domain.txt
+  OneDrive:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OneDrive/OneDrive.list
+    format: text
+    interval: 604800
+    path: ./ruleset/OneDrive.list
+  Speedtest:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Speedtest/Speedtest.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Speedtest.list
+  Global:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Global.list
+  Global_Domain:
+    behavior: domain
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global_Domain.txt
+    format: text
+    interval: 604800
+    path: ./ruleset/Global_Domain.txt
+  Anti_IP:
+    behavior: classical
+    type: http
+    # url: https://raw.githubusercontent.com/lwd-temp/anti-ip-attribution/main/generated/rule-provider.yaml
+    url: https://raw.githubusercontent.com/lwd-temp/anti-ip-attribution/main/generated/surge.list #
+    format: text #
+    interval: 604800
+    path: ./ruleset/Anti_IP.list #
+  ChinaMax:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax.list
+    format: text
+    interval: 604800
+    path: ./ruleset/ChinaMax.list
+  ChinaMax_Domain:
+    behavior: domain
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax_Domain.txt
+    format: text
+    interval: 604800
+    path: ./ruleset/ChinaMax_Domain.txt
+  ChinaMax_IP:
+    behavior: ipcidr
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax_IP.txt
+    format: text
+    interval: 604800
+    path: ./ruleset/ChinaMax_IP.txt 
+  Lan:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Lan/Lan.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Lan.list
+  WeChat:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/WeChat/WeChat.list
+    format: text
+    interval: 604800
+    path: ./ruleset/WeChat.list
+  Binance:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Binance/Binance.list
+    format: text
+    interval: 604800
+    path: ./ruleset/Binance.list
+rules:
+  - DOMAIN-SUFFIX,poe.com,Global
+  - DOMAIN,bard.google.com,US
+  - DOMAIN-SUFFIX,bendibao.com,DIRECT
+  - DOMAIN,www.yppan.com,DIRECT
+  - DOMAIN-SUFFIX,digitaloceanspaces.com,DIRECT
+  - DOMAIN-SUFFIX,toolpad.org,DIRECT
+  - DOMAIN-SUFFIX,anytype.io,DIRECT
+ # - DOMAIN-SUFFIX,orxyji.xyz,DIRECT
+  - DOMAIN-SUFFIX,dogapi.yachts,Global
+  - DOMAIN-SUFFIX,paopao.dog,Global
+  - DOMAIN-SUFFIX,splashtop.com,DIRECT
+  - DOMAIN-SUFFIX,allinhub.top,Global
+  - IP-CIDR,132.145.93.220/32,VPS,no-resolve
+  - IP-CIDR,146.56.161.117/32,VPS,no-resolve
+  - RULE-SET,Direct_Fix,DIRECT
+  - RULE-SET,Lan,DIRECT
+  - RULE-SET,Download,DIRECT
+  - RULE-SET,Binance,Global
+  - RULE-SET,ChatGPT,ChatGPT
+  - RULE-SET,Bing,Bing
+  - RULE-SET,Speedtest,Speedtest
+  - RULE-SET,OneDrive,OneDrive
+  - RULE-SET,Apple,Apple
+  - RULE-SET,Apple_Domain,Apple
+  - RULE-SET,Global,Global
+  - RULE-SET,Global_Domain,Global
+  - RULE-SET,WeChat,DIRECT
+  - RULE-SET,Anti_IP,DIRECT
+  - RULE-SET,ChinaMax,DIRECT
+  - RULE-SET,ChinaMax_Domain,DIRECT
+  - RULE-SET,ChinaMax_IP,DIRECT
+  - OR,((DST-PORT,25), (DST-PORT,110), (DST-PORT,143), (DST-PORT,465), (DST-PORT,587)),DIRECT
+  - AND,((OR,((DOMAIN,time-ios.apple.com), (DOMAIN,time.apple.com), (DOMAIN-SUFFIX,pool.ntp.org))), (DST-PORT,123)),DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,Final
+
+tun:
+  enable: true
+  stack: gvisor
+  dns-hijack:
+    - 'any:53'
+  auto-route: true
+  auto-detect-interface: true
+
+dns:
+  enable: true
+  ipv6: true
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: true
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - tls://1.12.12.12
+  fallback:
+    - https://[2001:4860:4860::8844]/dns-query
+    - https://[2606:4700:4700::1001]/dns-query
+    - tls://8.8.4.4/
+    - https://45.11.45.11/dns-query
+  fallback-filter:
+    geoip: true
+    ipcidr:
+      - 240.0.0.0/4
+    domain:
+      - +.amazonaws.com
+      - +.amazon
+      - +.astrill.com
+      - +.asn247.net
+      - +.astrill.org
+      - +.facebook.com
+      - +.cdninstagram.com
+      - +.fb.com
+      - +.fb.me
+      - +.fbaddins.com
+      - +.fbcdn.net
+      - +.fbsbx.com
+      - +.fbworkmail.com
+      - +.instagram.com
+      - +.m.me
+      - +.messenger.com
+      - +.oculus.com
+      - +.oculuscdn.com
+      - +.rocksdb.org
+      - +.whatsapp.com
+      - +.whatsapp.net
+      - +.gitbook.io
+      - +.gitbook.com
+      - +.github.io
+      - +.github.com
+      - +.githubusercontent.com
+      - +.githubassets.com
+      - +.githubapp.com
+      - +.ampproject.org
+      - +.appspot.com
+      - +.blogger.com
+      - +.google.com
+      - +.google.cn
+      - +.googleusercontent.com
+      - +.googleapis.com
+      - +.googleapis.cn
+      - +.gstatic.com
+      - +.ggpht.com
+      - +.gmail.com
+      - +.gvt1.com
+      - +.gvt2.com
+      - +.youtu.be
+      - +.yt.be
+      - +.ytimg.com
+      - +.googlevideo.com
+      - +.youtube.com
+      - +.mega.co.nz
+      - +.mega.nz
+      - +.protonmail.ch
+      - +.protonmail.com
+      - +.protonstatus.com
+      - +.recruitee.com
+      - +.w.org
+      - +.rfa.org
+      - +.twitter.com
+      - +.pscp.tv
+      - +.periscope.tv
+      - +.t.co
+      - +.twimg.co
+      - +.twimg.com
+      - +.twitpic.com
+      - +.vine.co
+      - +.whoer.net
+      - +.whrq.net
+      - +.wikimapia.org
+      - +.wikimedia.org
+      - +.wikipedia.org
+      - +.wikiquote.org
+      - +.wikiwand.com
+  fake-ip-filter:
+    - "*.lan"
+    - amplifi.lan
+    - router.synology.com
+    - sila.razer.com
+    - router.asus.com
+    - routerlogin.net
+    - orbilogin.com
+    - www.LinksysSmartWiFi.com
+    - LinksysSmartWiFi.com
+    - myrouter.local
+    - www.miwifi.com
+    - miwifi.com
+    - mediarouter.home
+    - tplogin.cn
+    - tplinklogin.net
+    - melogin.cn
+    - falogin.cn
+    - swscan.apple.com
+    - mesu.apple.com
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
+    - time.*.com
+    - time.*.gov
+    - time.*.edu.cn
+    - time.*.apple.com
+    - time1.*.com
+    - time2.*.com
+    - time3.*.com
+    - time4.*.com
+    - time5.*.com
+    - time6.*.com
+    - time7.*.com
+    - ntp.*.com
+    - ntp.*.com
+    - ntp1.*.com
+    - ntp2.*.com
+    - ntp3.*.com
+    - ntp4.*.com
+    - ntp5.*.com
+    - ntp6.*.com
+    - ntp7.*.com
+    - "*.time.edu.cn"
+    - "*.ntp.org.cn"
+    - +.pool.ntp.org
+    - time1.cloud.tencent.com
+    - time.pool.aliyun.com
+    - +.music.163.com
+    - "*.126.net"
+    - musicapi.taihe.com
+    - music.taihe.com
+    - songsearch.kugou.com
+    - trackercdn.kugou.com
+    - "*.kuwo.cn"
+    - api-jooxtt.sanook.com
+    - api.joox.com
+    - joox.com
+    - +.y.qq.com
+    - +.music.tc.qq.com
+    - aqqmusic.tc.qq.com
+    - +.stream.qqmusic.qq.com
+    - "*.xiami.com"
+    - +.music.migu.cn
+    - +.srv.nintendo.net
+    - +.stun.playstation.net
+    - xbox.*.microsoft.com
+    - +.xboxlive.com
+    - "*.battlenet.com.cn"
+    - "*.battlenet.com"
+    - "*.blzstatic.cn"
+    - "*.battle.net"
+    - localhost.ptlogin2.qq.com
+    - localhost.sec.qq.com
+    - proxy.golang.org
+    - lens.l.google.com
+    - +.stun.*.*
+    - +.stun.*.*.*
+    - +.stun.*.*.*.*
+    - +.stun.*.*.*.*.*
+    - "*.mcdn.bilivideo.cn"

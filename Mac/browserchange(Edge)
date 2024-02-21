@@ -1,0 +1,50 @@
+var edge = Application('Microsoft Edge');
+var safari = Application('Safari');
+var systemEvents = Application('System Events');
+const frontmost_app_name = Application('System Events').applicationProcesses.where({ frontmost: true }).name()[0];
+
+if (frontmost_app_name == 'Safari') {
+	var safari_current_tab_url = safari.windows[0].currentTab.url();
+	closeSafariTab();
+	edge.activate();
+	if (edge.windows.length == 0) {
+		edge.Window().make();
+	}
+  var tab = edge.Tab({
+    url: safari_current_tab_url
+  });
+  edge.windows[0].tabs.push(tab);
+} else if (frontmost_app_name == 'Microsoft Edge'){
+  var edge_current_tab_url = edge.windows[0].activeTab.url();
+	closeEdgeTab();
+	safari.activate();
+	if (safari.windows.length <= 1) {
+		safari.Document().make();
+	}
+  var tab = safari.Tab({
+    url: edge_current_tab_url
+  });
+  tabCount = safari.windows[0].tabs.push(tab) - 1;
+  safari.windows[0].currentTab = safari.windows[0].tabs[tabCount];
+} else{
+
+}
+
+function closeSafariTab(){
+	var safariProcess = systemEvents.processes.byName('Safari');
+	var safariFileMenu = safariProcess.menuBars[0].menuBarItems.byName('文件');
+	var safariCloseMenu = safariFileMenu.menus[0].menuItems.byName('关闭标签页');
+	var safariCloseWindowMenu = safariFileMenu.menus[0].menuItems.byName('关闭窗口');
+	if (safariCloseMenu.enabled()) {
+		safariCloseMenu.click();
+	}else {
+		safariCloseWindowMenu.click();
+	}
+}
+
+function closeEdgeTab(){
+	var edgeProcess = systemEvents.processes.byName('Microsoft Edge');
+	var edgeFileMenu = edgeProcess.menuBars[0].menuBarItems.byName('文件');
+	var edgeCloseMenu = edgeFileMenu.menus[0].menuItems.byName('关闭标签页');
+	edgeCloseMenu.click();
+}

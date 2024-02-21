@@ -1,0 +1,1 @@
+do shell script "/Applications/VirtualBox.app/Contents/MacOS/VBoxManage startvm 'Windows7'"

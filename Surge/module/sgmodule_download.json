@@ -1,0 +1,151 @@
+{
+    "un_download": [
+        {
+            "name": "Sub-Store",
+            "repo": "https://github.com/sub-store-org/Sub-Store",
+            "url": "https://raw.githubusercontent.com/sub-store-org/Sub-Store/master/config/Surge.sgmodule"
+        },
+        {
+            "name": "🍟 Fries: 🌐 DNS: DNS设置增强插件/模块",
+            "repo": "https://github.com/VirgilClyne/GetSomeFries/wiki/🌐-DNS",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/sgmodule/DNS.sgmodule"
+        },
+        {
+            "name": "bm7_Advertising",
+            "repo": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Surge/AllInOne/AllInOne.sgmodule",
+            "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rewrite/Surge/AllInOne/AllInOne.sgmodule"
+        },
+        {
+            "name": "bm7_Advertising_MITM",
+            "repo": "https://github.com/blackmatrix7/ios_rule_script/tree/master/rule/Surge/Advertising",
+            "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Surge/Advertising/Advertising_MITM.sgmodule"
+        },
+        {
+            "name": "广告合集",
+            "repo": "https://github.com/fmz200/wool_scripts",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/fmz200/wool_scripts/main/QuantumultX/rewrite/chongxie.txt/_end_/chongxie.sgmodule?type=qx-rewrite&target=surge-module&del=true"
+        },
+        {
+            "name": "广告必须死_知乎广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/zhihu.snippet/_end_/zhihu.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_小红书广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/xiaohongshu.snippet/_end_/xiaohongshu.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_微博广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/weibo.snippet/_end_/weibo.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_网易云音乐广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/cloudmusic.snippet/_end_/cloudmusic.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_财新网广告、会员",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/caixin.snippet/_end_/caixin.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_菜鸟广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/cainiao.snippet/_end_/cainiao.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_宝宝树孕育广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/babytree.snippet/_end_/babytree.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "视频app广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/cnftp.snippet/_end_/cnftp.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "keep广告",
+            "repo": "https://github.com/Maasea/sgmodule",
+            "url": "https://raw.githubusercontent.com/Maasea/sgmodule/master/KeepAds.sgmodule"
+        }
+    ],
+    "download": [
+        {
+            "name": " iRingo: 解锁完整的 Apple功能和集成服务_TF区域限制",
+            "repo": "https://github.com/VirgilClyne/iRingo/wiki/✈-TestFlight",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/iRingo/main/sgmodule/TestFlight.sgmodule"
+        },
+        {
+            "name": " iRingo: 解锁完整的 Apple功能和集成服务_Siri和搜索",
+            "repo": "https://github.com/VirgilClyne/iRingo/wiki/🔍-Siri与搜索",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/iRingo/main/sgmodule/Siri.sgmodule"
+        },
+        {
+            "name": "🍟 Fries: 🌐 通用: 通用设置增强插件/模块IOS",
+            "repo": "https://github.com/VirgilClyne/GetSomeFries/wiki/🌐-通用",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/sgmodule/General.sgmodule"
+        },
+        {
+            "name": "🍟 Fries: 🌐 通用: 通用设置增强插件/模块Mac",
+            "repo": "https://github.com/VirgilClyne/GetSomeFries/wiki/🌐-通用",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/sgmodule/General.mac.sgmodule"
+        },
+        {
+            "name": "🍟 Fries: 🚫 HTTPDNS: HTTPDNS禁止插件/模块/规则集",
+            "repo": "https://github.com/VirgilClyne/GetSomeFries/wiki/🚫-HTTPDNS",
+            "url": "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/sgmodule/HTTPDNS.Block.sgmodule"
+        },
+        {
+            "name": "🪐 BiliUniverse: ⚙ Enhanced: 全面自定义哔哩哔哩app主界面",
+            "repo": "https://github.com/BiliUniverse/Universe/wiki/⚙-Enhanced",
+            "url": "https://raw.githubusercontent.com/BiliUniverse/Enhanced/main/modules/BiliBili.Enhanced.sgmodule"
+        },
+        {
+            "name": "🪐 BiliUniverse: 🛡️ ADBlock: 自定义去除app广告与界面元素",
+            "repo": "https://github.com/BiliUniverse/Universe/wiki/🛡-ADBlock",
+            "url": "https://raw.githubusercontent.com/BiliUniverse/ADBlock/main/modules/BiliBili.ADBlock.sgmodule"
+        },
+        {
+            "name": "BoxJS",
+            "repo": "https://github.com/chavyleung/scripts",
+            "url": "https://raw.githubusercontent.com/chavyleung/scripts/master/box/rewrite/boxjs.rewrite.surge.sgmodule"
+        },
+        {
+            "name": "Script Hub",
+            "repo": "https://github.com/Script-Hub-Org/Script-Hub",
+            "url": "https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-hub.surge.sgmodule"
+        },
+        {
+            "name": "bm7_to_AppleOTA",
+            "repo": "https://github.com/abingx/Self-Rule/blob/master/Surge/module/SystemOTA.sgmodule",
+            "url": "https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/module/SystemOTA.sgmodule"
+        },
+        {
+            "name": "Maasea_YouTube广告",
+            "repo": "https://github.com/Maasea/sgmodule",
+            "url": "https://raw.githubusercontent.com/Maasea/sgmodule/master/YoutubeAds.sgmodule"
+        },
+        {
+            "name": "广告必须死_MyBlockAds",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/MyBlockAds.conf/_end_/MyBlockAds.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_高德广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/Cube/amap.snippet/_end_/amap.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "广告必须死_移除指定网页广告",
+            "repo": "https://github.com/RuCu6/QuanX",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/RuCu6/QuanX/main/Rewrites/WebPage.conf/_end_/WebPage.sgmodule?type=qx-rewrite&target=surge-module"
+        },
+        {
+            "name": "高德打车每日签到",
+            "repo": "https://github.com/wf021325/qx/tree/main/task",
+            "url": "http://script.hub/file/_start_/https://raw.githubusercontent.com/wf021325/qx/master/task/ampDache.js/_end_/ampDache.sgmodule?type=qx-rewrite&target=surge-module&cron=高德地图打车签到&cronexp=1%201%20*%20*%20*&del=true"
+        }
+    ]
+}
