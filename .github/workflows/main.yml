@@ -39,8 +39,7 @@ jobs:
           git add Surge/module/SystemOTA.sgmodule
           git commit -m "Update SystemOTA.sgmodule"
           git push
-          curl "https://push.allinhub.top/v1/sender/CIDfn7IGEiJBQTJQSEJMQTI3WkY1T1NPRDdSUEVIWUFQTklOREtENzRJIgQIARACKiJBRldMTk1NRTVYSUY1QURSVzZUSUJFRFBHT1JFU01LVEFV.wg7MM2Av4fN4MlRLmBtHzf8VigNkeg5ypbsRU8YL1vc.aqC_iUVC_EM6-VTeF5c880kFOJmAuj51tYpvAqx0fCs?title=Github%20Actions&text=SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0"
-          curl "https://push.allinhub.top/v1/sender/CICi_LAGEiJBRE5MNzROV1VSTU80QkxWNlhJUjQyR1VYUVo3WlZVTFFBIgQIARACKiJBRldMTk1NRTVYSUY1QURSVzZUSUJFRFBHT1JFU01LVEFV.BlLSdyksTLqIf6PG732DnRwU5K7iMNEax5sPx_GPrnQ.wS5SrsG6fGA7ySKWrR-gqJnRPsrE_PPuVjyv3fl5A7w?title=Github%20Actions&text=SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0"
+          curl "https://push.allinhub.top/v1/sender/CIDIr7IGEiJBQUFOVjJRQkdKU0pFRkhHRktQQ1lRR01KUk9DRkJLS05FIgQIARACKiJBRldMTk1NRTVYSUY1QURSVzZUSUJFRFBHT1JFU01LVEFV.H7p3fOVOWJUCnTh_sasx19e6ncJ--u4W6LSt9-YTKkg.ZtVAGfQlNLVB1MvxyPYUwBXeFBpf4n9eEsswDDQYZV8?title=Github%20Actions&text=SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0"
         else
           echo "No changes in SystemOTA.sgmodule."
         fi
