@@ -28,7 +28,7 @@ function filterAndMap(data, regex) {
 }
 
 const regexes = {
-  Other: /^(?!.*(香港|日本|新加坡|美国|台湾))/,
+  UN: /^(?!.*(香港|日本|新加坡|美国|台湾))/,
   HK: /香港/,
   JP: /日本/,
   US: /美国/,
@@ -41,7 +41,7 @@ const regexes = {
 
 let filtered = {};
 Object.keys(regexes).forEach(key => {
-  if (key === 'Other' || key === 'PaopaoDog') {
+  if (key === 'UN' || key === 'PaopaoDog') {
     filtered[key] = filterAndMap(proxies1, regexes[key]);
   } else if (key === 'FishChips') {
     filtered[key] = filterAndMap(proxies2, regexes[key]);
@@ -51,7 +51,7 @@ Object.keys(regexes).forEach(key => {
 });
 
 function createOutbound(tag) {
-  let type = tag === 'AmyTelecom' || tag === 'PaopaoDog' || tag === 'FishChips' || tag === 'Other' ? 'selector' : 'urltest';
+  let type = tag === 'AmyTelecom' || tag === 'PaopaoDog' || tag === 'FishChips' || tag === 'UN' ? 'selector' : 'urltest';
   return filtered[tag].length > 0 ? { "outbounds": filtered[tag], "tag": tag, "type": type } : null;
 }
 
@@ -75,33 +75,24 @@ function updateOutbound(tag, defaultTags) {
   }
 }
 
-updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "Other", "Direct", "AmyTelecom", "PaopaoDog", "FishChips"]);
+updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "UN", "Direct", "AmyTelecom", "PaopaoDog", "FishChips"]);
 const globalOutbound = config.outbounds.find(o => o.tag === 'Global');
 const proxyIndex = globalOutbound.outbounds.findIndex(out => out === 'Proxy');
 if (proxyIndex !== -1) {
   globalOutbound.outbounds.splice(proxyIndex, 0, 'Vmess');
 };
-updateOutbound('Bing', ["Direct", "HK", "JP", "US", "SG", "TW", "Other", "Global"]);
-updateOutbound('AI', ["US", "JP", "SG", "TW", "Global"]);
-updateOutbound('Telegram', ["SG", "HK", "JP", "US", "TW", "Other", "Global"]);
-updateOutbound('GitHub', ["US", "HK", "JP", "SG", "TW", "Other", "Global", "Direct"]);
-updateOutbound('Crypto', ["HK", "JP", "US", "SG", "TW", "Other", "Global", "Direct"]);
-updateOutbound('Oracle', ["Other", "HK", "JP", "US", "SG", "TW", "Global", "Direct"]);
-updateOutbound('VPS', ["Direct", "HK", "JP", "US", "SG", "TW", "Other", "Global"]);
-updateOutbound('Apple', ["Direct", "HK", "JP", "US", "SG", "TW", "Other", "Global"]);
-updateOutbound('OneDrive', ["Direct", "Global"]);
-updateOutbound('PikPak', ["Direct", "Global"]);
-updateOutbound('Anytype', ["Direct", "Global"]);
-updateOutbound('Speedtest', ["Direct", "HK", "JP", "US", "SG", "TW", "Other", "AmyTelecom", "PaopaoDog"]);
+updateOutbound('VPS', ["Direct", "Global", "HK", "JP", "US", "SG", "TW", "UN"]);
+updateOutbound('AI', ["US", "JP", "SG", "TW"]);
+updateOutbound('Telegram', ["Global", "HK", "JP", "US", "SG", "TW"]);
+updateOutbound('GitHub', ["Global", "HK", "JP", "US", "SG", "TW", "Direct"]);
+updateOutbound('Oracle', ["UN", "Global", "Direct"]);
+updateOutbound('Speedtest', ["Direct", "HK", "JP", "US", "SG", "TW", "UN", "AmyTelecom", "PaopaoDog"]);
 const speedtestOutbound = config.outbounds.find(o => o.tag === 'Speedtest');
 const speedtestProxyIndex = speedtestOutbound.outbounds.findIndex(out => out === 'Proxy');
 if (speedtestProxyIndex !== -1) {
   speedtestOutbound.outbounds.splice(speedtestProxyIndex, 0, 'Vmess');
 };
-updateOutbound('Guard', ["Block", "Direct", "Global"]);
-let guardOutbound = config.outbounds.find(o => o.tag === 'Guard');
-guardOutbound.outbounds.unshift('Block');
-updateOutbound('Final', ["Global", "Direct"]);
+updateOutbound('Final', ["Direct", "Global", "Block"]);
 
 config.outbounds = config.outbounds.concat(outservers.filter(outbound => outbound !== null));
 config.outbounds = config.outbounds.concat(additionalOutbound);
