@@ -45,6 +45,10 @@
       },
       {
         "rule_set": "BlockHttpDNS",
+        "server": "blockDns",
+        "disable_cache": true
+      },
+      {
         "rule_set": "Advertising",
         "server": "blockDns",
         "disable_cache": true
@@ -52,7 +56,9 @@
       {
         "domain": [
           "update.code.visualstudio.com",
-          "px.effirst.com",
+          "px.effirst.com"
+        ],
+        "domain_suffix": [
           "msecnd.net",
           "rztcd.com",
           "bendibao.com",
@@ -62,42 +68,24 @@
           "opencat.app",
           "splashtop.com"
         ],
-        "domain_suffix": [
-          ".msecnd.net",
-          ".rztcd.com",
-          ".bendibao.com",
-          ".cdrcbank.com",
-          ".fileball.app",
-          ".okaapps.com",
-          ".opencat.app",
-          ".splashtop.com"
-        ],
         "server": "localDns"
       },
       {
-        "domain": [
+        "domain_suffix": [
           "toolpad.org",
           "anytype.io",
           "anyclub.org"
         ],
-        "domain_suffix": [
-          ".toolpad.org",
-          ".anytype.io",
-          ".anyclub.org"
-        ],
         "server": "localDns"
       },
       {
-        "domain": [
-          "proton.me"
-        ],
         "domain_suffix": [
-          ".proton.me"
+          "proton.me"
         ],
         "server": "globalDns"
       },
       {
-        "domain": [
+        "domain_suffix": [
           "allinhub.top",
           "yppan.com",
           "yckceo.com",
@@ -106,28 +94,17 @@
           "88iepl.com",
           "fishport.org"
         ],
-        "domain_suffix": [
-          ".allinhub.top",
-          ".yppan.com",
-          ".yckceo.com",
-          ".incldglobal.com",
-          ".amysecure.com",
-          ".88iepl.com",
-          ".fishport.org"
-        ],
         "server": "globalDns"
       },
       {
         "domain_suffix": [
-          ".coze.com",
-          ".poe.com"
+          "coze.com",
+          "poe.com"
         ],
         "domain": [
           "gemini.google.com",
           "ai.google.dev",
-          "aistudio.google.com",
-          "coze.com",
-          "poe.com"
+          "aistudio.google.com"
         ],
         "server": "globalDns"
       },
@@ -137,7 +114,7 @@
         "rules": [
           {
             "domain_suffix": [
-              ".google.com"
+              "google.com"
             ]
           },
           {
@@ -163,13 +140,29 @@
       },
       {
         "rule_set": "Anthropic",
+        "server": "globalDns"
+      },
+      {
         "rule_set": "OpenAI",
         "server": "globalDns"
       },
       {
+        "rule_set": "Lan",
+        "server": "localDns"
+      },
+      {
         "rule_set": "Bing",
+        "server": "localDns"
+      },
+      {
         "rule_set": "Apple",
+        "server": "localDns"
+      },
+      {
         "rule_set": "OneDrive",
+        "server": "localDns"
+      },
+      {
         "rule_set": "PikPak",
         "server": "localDns"
       },
@@ -179,6 +172,9 @@
       },
       {
         "rule_set": "Binance",
+        "server": "globalDns"
+      },
+      {
         "rule_set": "OKX",
         "server": "globalDns"
       },
@@ -239,13 +235,18 @@
       },
       {
         "rule_set": "BlockHttpDNS",
+        "outbound": "Block"
+      },
+      {
         "rule_set": "Advertising",
         "outbound": "Block"
       },
       {
         "domain": [
           "update.code.visualstudio.com",
-          "px.effirst.com",
+          "px.effirst.com"
+        ],
+        "domain_suffix": [
           "msecnd.net",
           "rztcd.com",
           "bendibao.com",
@@ -255,42 +256,24 @@
           "opencat.app",
           "splashtop.com"
         ],
-        "domain_suffix": [
-          ".msecnd.net",
-          ".rztcd.com",
-          ".bendibao.com",
-          ".cdrcbank.com",
-          ".fileball.app",
-          ".okaapps.com",
-          ".opencat.app",
-          ".splashtop.com"
-        ],
         "outbound": "Direct"
       },
       {
-        "domain": [
+        "domain_suffix": [
           "toolpad.org",
           "anytype.io",
           "anyclub.org"
         ],
-        "domain_suffix": [
-          ".toolpad.org",
-          ".anytype.io",
-          ".anyclub.org"
-        ],
         "outbound": "Direct"
       },
       {
-        "domain": [
-          "proton.me"
-        ],
         "domain_suffix": [
-          ".proton.me"
+          "proton.me"
         ],
         "outbound": "US"
       },
       {
-        "domain": [
+        "domain_suffix": [
           "allinhub.top",
           "yppan.com",
           "yckceo.com",
@@ -298,15 +281,6 @@
           "amysecure.com",
           "88iepl.com",
           "fishport.org"
-        ],
-        "domain_suffix": [
-          ".allinhub.top",
-          ".yppan.com",
-          ".yckceo.com",
-          ".incldglobal.com",
-          ".amysecure.com",
-          ".88iepl.com",
-          ".fishport.org"
         ],
         "outbound": "Global"
       },
@@ -319,15 +293,13 @@
       },
       {
         "domain_suffix": [
-          ".coze.com",
-          ".poe.com"
+          "coze.com",
+          "poe.com"
         ],
         "domain": [
           "gemini.google.com",
           "ai.google.dev",
-          "aistudio.google.com",
-          "coze.com",
-          "poe.com"
+          "aistudio.google.com"
         ],
         "outbound": "AI"
       },
@@ -337,7 +309,7 @@
         "rules": [
           {
             "domain_suffix": [
-              ".google.com"
+              "google.com"
             ]
           },
           {
@@ -363,15 +335,37 @@
       },
       {
         "rule_set": "Anthropic",
+        "outbound": "AI"
+      },
+      {
         "rule_set": "OpenAI",
         "outbound": "AI"
       },
       {
+        "ip_is_private": true,
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "Lan",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "Direct_fix",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "Bing",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "Apple",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "OneDrive",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "PikPak",
         "outbound": "Direct"
       },
@@ -381,6 +375,9 @@
       },
       {
         "rule_set": "Binance",
+        "outbound": "HK"
+      },
+      {
         "rule_set": "OKX",
         "outbound": "HK"
       },
@@ -398,6 +395,9 @@
       },
       {
         "rule_set": "China",
+        "outbound": "Direct"
+      },
+      {
         "rule_set": "ChinaIPs",
         "outbound": "Direct"
       },
