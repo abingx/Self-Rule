@@ -70,8 +70,7 @@ proxies2.forEach(proxy => {
 function updateOutbound(tag, defaultTags) {
   let outbound = config.outbounds.find(o => o.tag === tag);
   if (outbound) {
-    outbound.outbounds = defaultTags
-      .filter(t => t === 'Direct' || t === 'Global' || filtered[t]);
+    outbound.outbounds = defaultTags;
   }
 }
 
