@@ -71,27 +71,17 @@ function updateOutbound(tag, defaultTags) {
   let outbound = config.outbounds.find(o => o.tag === tag);
   if (outbound) {
     outbound.outbounds = defaultTags
-      .filter(t => t === 'Direct' || t === 'Global' || (filtered[t] && filtered[t].length > 0));
+      .filter(t => t === 'Direct' || t === 'Global' || filtered[t]);
   }
 }
 
-updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "UN", "Direct", "AmyTelecom", "PaopaoDog", "FishChips"]);
-const globalOutbound = config.outbounds.find(o => o.tag === 'Global');
-const proxyIndex = globalOutbound.outbounds.findIndex(out => out === 'Proxy');
-if (proxyIndex !== -1) {
-  globalOutbound.outbounds.splice(proxyIndex, 0, 'Vmess');
-};
+updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "UN", "Direct", "Vmess", "AmyTelecom", "PaopaoDog", "FishChips"]);
 updateOutbound('VPS', ["Direct", "Global", "HK", "JP", "US", "SG", "TW", "UN"]);
 updateOutbound('AI', ["US", "JP", "SG", "TW"]);
 updateOutbound('Telegram', ["Global", "HK", "JP", "US", "SG", "TW"]);
 updateOutbound('GitHub', ["Global", "HK", "JP", "US", "SG", "TW", "Direct"]);
 updateOutbound('Oracle', ["UN", "Global", "Direct"]);
-updateOutbound('Speedtest', ["Direct", "HK", "JP", "US", "SG", "TW", "UN", "AmyTelecom", "PaopaoDog"]);
-const speedtestOutbound = config.outbounds.find(o => o.tag === 'Speedtest');
-const speedtestProxyIndex = speedtestOutbound.outbounds.findIndex(out => out === 'Proxy');
-if (speedtestProxyIndex !== -1) {
-  speedtestOutbound.outbounds.splice(speedtestProxyIndex, 0, 'Vmess');
-};
+updateOutbound('Speedtest', ["Direct", "HK", "JP", "US", "SG", "TW", "UN", "Vmess", "AmyTelecom", "PaopaoDog"]);
 updateOutbound('Final', ["Direct", "Global", "Block"]);
 
 config.outbounds = config.outbounds.concat(outservers.filter(outbound => outbound !== null));

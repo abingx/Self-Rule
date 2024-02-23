@@ -1,588 +1,641 @@
 {
-    "log": {
-        "disabled": false,
-        "level": "info",
-        "timestamp": true
-    },
-    "dns": {
-        "servers": [
-            {
-                "tag": "globalDns",
-                "address": "https://8.8.8.8/dns-query",
-                "detour": "Global"
-            },
-            {
-                "tag": "localDns",
-                "address": "https://223.5.5.5/dns-query",
-                "detour": "Direct"
-            },
-            {
-                "tag": "blockDns",
-                "address": "rcode://success"
-            },
-            {
-                "tag": "fakeipDns",
-                "address": "fakeip"
-            }
-        ],
-        "rules": [
-            {
-                "outbound": "any",
-                "server": "localDns",
-                "disable_cache": true
-            },
-            {
-                "clash_mode": "Direct",
-                "server": "localDns"
-            },
-            {
-                "clash_mode": "Global",
-                "server": "globalDns"
-            },
-            {
-                "domain": [
-                    "update.code.visualstudio.com",
-                    "px.effirst.com"
-                ],
-                "domain_suffix": [
-                    "msecnd.net",
-                    "rztcd.com",
-                    "bendibao.com",
-                    "cdrcbank.com",
-                    "fileball.app",
-                    "okaapps.com",
-                    "opencat.app",
-                    "splashtop.com"
-                ],
-                "server": "localDns"
-            },
-            {
-                "domain_suffix": [
-                    "toolpad.org",
-                    "anytype.io",
-                    "anyclub.org"
-                ],
-                "server": "localDns"
-            },
-            {
-                "domain_suffix": [
-                    "proton.me"
-                ],
-                "server": "globalDns"
-            },
-            {
-                "domain_suffix": [
-                    "allinhub.top",
-                    "yppan.com",
-                    "yckceo.com",
-                    "incldglobal.com",
-                    "amysecure.com",
-                    "88iepl.com",
-                    "fishport.org"
-                ],
-                "server": "globalDns"
-            },
-            {
-                "domain_suffix": [
-                    "coze.com",
-                    "poe.com"
-                ],
-                "domain": [
-                    "gemini.google.com",
-                    "ai.google.dev",
-                    "aistudio.google.com"
-                ],
-                "server": "globalDns"
-            },
-            {
-                "type": "logical",
-                "mode": "and",
-                "rules": [
-                    {
-                        "domain_suffix": [
-                            "google.com"
-                        ]
-                    },
-                    {
-                        "type": "logical",
-                        "mode": "and",
-                        "rules": [
-                            {
-                                "domain_keyword": [
-                                    "alkali"
-                                ]
-                            },
-                            {
-                                "domain_keyword": [
-                                    "makersuite-pa",
-                                    "core-pa",
-                                    "metricsink-pa"
-                                ]
-                            }
-                        ]
-                    }
-                ],
-                "server": "globalDns"
-            },
-            {
-                "rule_set": [
-                    "Anthropic",
-                    "OpenAI"
-                ],
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "Bing",
-                "server": "localDns"
-            },
-            {
-                "rule_set": "Apple",
-                "server": "localDns"
-            },
-            {
-                "rule_set": "OneDrive",
-                "server": "localDns"
-            },
-            {
-                "rule_set": "PikPak",
-                "server": "localDns"
-            },
-            {
-                "rule_set": "GitHub",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "Binance",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "OKX",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "Oracle",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "Telegram_domain",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "Speedtest",
-                "server": "globalDns"
-            },
-            {
-                "rule_set": "geolocation-cn",
-                "server": "localDns"
-            },
-            {
-                "rule_set": "geolocation-!cn",
-                "server": "globalDns"
-            }
-        ],
-        "final": "localDns",
-        "strategy": "ipv4_only",
-        "independent_cache": true,
-        "fakeip": {
-            "enabled": true,
-            "inet4_range": "198.18.0.0/15"
-        }
-    },
-    "route": {
-        "rules": [
-            {
-                "inbound": [
-                    "tun-in"
-                ],
-                "port": 53,
-                "network": [
-                    "udp"
-                ],
-                "outbound": "Dns-Out"
-            },
-            {
-                "clash_mode": "Direct",
-                "outbound": "Direct"
-            },
-            {
-                "clash_mode": "Global",
-                "outbound": "Global"
-            },
-            {
-                "ip_cidr": [
-                    "0.0.0.0/32"
-                ],
-                "outbound": "Block"
-            },
-            {
-                "ip_is_private": true,
-                "outbound": "Direct"
-            },
-            {
-                "domain": [
-                    "update.code.visualstudio.com",
-                    "px.effirst.com"
-                ],
-                "domain_suffix": [
-                    "msecnd.net",
-                    "rztcd.com",
-                    "bendibao.com",
-                    "cdrcbank.com",
-                    "fileball.app",
-                    "okaapps.com",
-                    "opencat.app",
-                    "splashtop.com"
-                ],
-                "outbound": "Direct"
-            },
-            {
-                "domain_suffix": [
-                    "toolpad.org",
-                    "anytype.io",
-                    "anyclub.org"
-                ],
-                "outbound": "Direct"
-            },
-            {
-                "domain_suffix": [
-                    "proton.me"
-                ],
-                "outbound": "US"
-            },
-            {
-                "domain_suffix": [
-                    "allinhub.top",
-                    "yppan.com",
-                    "yckceo.com",
-                    "incldglobal.com",
-                    "amysecure.com",
-                    "88iepl.com",
-                    "fishport.org"
-                ],
-                "outbound": "Global"
-            },
-            {
-                "ip_cidr": [
-                    "130.162.152.102/32",
-                    "129.154.216.73/32"
-                ],
-                "outbound": "VPS"
-            },
-            {
-                "domain_suffix": [
-                    "coze.com",
-                    "poe.com"
-                ],
-                "domain": [
-                    "gemini.google.com",
-                    "ai.google.dev",
-                    "aistudio.google.com"
-                ],
-                "outbound": "AI"
-            },
-            {
-                "type": "logical",
-                "mode": "and",
-                "rules": [
-                    {
-                        "domain_suffix": [
-                            "google.com"
-                        ]
-                    },
-                    {
-                        "type": "logical",
-                        "mode": "and",
-                        "rules": [
-                            {
-                                "domain_keyword": [
-                                    "alkali"
-                                ]
-                            },
-                            {
-                                "domain_keyword": [
-                                    "makersuite-pa",
-                                    "core-pa",
-                                    "metricsink-pa"
-                                ]
-                            }
-                        ]
-                    }
-                ],
-                "outbound": "AI"
-            },
-            {
-                "rule_set": [
-                    "Anthropic",
-                    "OpenAI"
-                ],
-                "outbound": "AI"
-            },
-            {
-                "rule_set": "Bing",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "Apple",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "OneDrive",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "PikPak",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "GitHub",
-                "outbound": "GitHub"
-            },
-            {
-                "rule_set": "Binance",
-                "outbound": "HK"
-            },
-            {
-                "rule_set": "OKX",
-                "outbound": "HK"
-            },
-            {
-                "rule_set": "Oracle",
-                "outbound": "Oracle"
-            },
-            {
-                "rule_set": "Telegram_domain",
-                "outbound": "Telegram"
-            },
-            {
-                "rule_set": "Telegram_ip",
-                "outbound": "Telegram"
-            },
-            {
-                "rule_set": "Speedtest",
-                "outbound": "Speedtest"
-            },
-            {
-                "rule_set": "geolocation-cn",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "geoip-cn",
-                "outbound": "Direct"
-            },
-            {
-                "rule_set": "geolocation-!cn",
-                "outbound": "Global"
-            }
-        ],
-        "rule_set": [
-            {
-                "tag": "Anthropic",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/anthropic.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "OpenAI",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/openai.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Bing",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/bing.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Apple",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/apple@cn.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "OneDrive",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/onedrive.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "PikPak",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/pikpak.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "GitHub",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geo/geosite/github.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Binance",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/binance.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "OKX",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/okx.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Oracle",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/oracle.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Telegram_domain",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/telegram.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Telegram_ip",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/telegram.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "Speedtest",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/speedtest.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "geolocation-cn",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-cn.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "geoip-cn",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.json",
-                "download_detour": "Direct"
-            },
-            {
-                "tag": "geolocation-!cn",
-                "type": "remote",
-                "format": "source",
-                "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.json",
-                "download_detour": "Direct"
-            }
-        ],
-        "final": "Final",
-        "auto_detect_interface": true,
-        "override_android_vpn": false
-    },
-    "experimental": {
-        "cache_file": {
-            "enabled": true,
-            "path": "",
-            "store_fakeip": true
-        },
-        "clash_api": {
-            "external_controller": "127.0.0.1:9090",
-            "external_ui": "ui",
-            "external_ui_download_url": "",
-            "external_ui_download_detour": "",
-            "secret": "schroe",
-            "default_mode": "rule"
-        }
-    },
-    "inbounds": [
-        {
-            "tag": "tun-in",
-            "type": "tun",
-            "inet4_address": "172.19.0.1/30",
-            "auto_route": true,
-            "strict_route": true,
-            "inet4_route_address": [
-                "192.168.1.12/32"
-            ],
-            "inet4_route_exclude_address": [
-                "10.0.0.0/8",
-                "172.16.0.0/12",
-                "192.168.0.0/16",
-                "255.255.255.255/32",
-                "100.64.0.0/10",
-                "127.0.0.0/8",
-                "169.254.0.0/16",
-                "192.0.0.0/24",
-                "192.0.2.0/24",
-                "192.88.99.0/24",
-                "198.51.100.0/24",
-                "203.0.113.0/24",
-                "224.0.0.0/4",
-                "239.255.255.250/32"
-            ],
-            "stack": "gVisor",
-            "sniff": true,
-            "sniff_override_destination": true,
-            "domain_strategy": "ipv4_only"
-        }
+  "log": {
+    "disabled": false,
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "globalDns",
+        "address": "https://8.8.8.8/dns-query",
+        "detour": "Global"
+      },
+      {
+        "tag": "localDns",
+        "address": "https://223.5.5.5/dns-query",
+        "detour": "Direct"
+      },
+      {
+        "tag": "blockDns",
+        "address": "rcode://success"
+      },
+      {
+        "tag": "refusedDns",
+        "address": "rcode://refused"
+      },
+      {
+        "tag": "fakeipDns",
+        "address": "fakeip"
+      }
     ],
-    "outbounds": [
-        {
-            "tag": "Direct",
-            "type": "direct"
-        },
-        {
-            "tag": "Block",
-            "type": "block"
-        },
-        {
-            "tag": "Dns-Out",
-            "type": "dns"
-        },
-        {
-            "tag": "Global",
-            "type": "selector"
-        },
-        {
-            "tag": "VPS",
-            "type": "selector"
-        },
-        {
-            "tag": "AI",
-            "type": "selector"
-        },
-        {
-            "tag": "Telegram",
-            "type": "selector"
-        },
-        {
-            "tag": "GitHub",
-            "type": "selector"
-        },
-        {
-            "tag": "Oracle",
-            "type": "selector"
-        },
-        {
-            "tag": "Speedtest",
-            "type": "selector"
-        },
-        {
-            "tag": "Final",
-            "type": "selector"
-        }
-    ]
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "localDns",
+        "disable_cache": true
+      },
+      {
+        "clash_mode": "Direct",
+        "server": "localDns"
+      },
+      {
+        "clash_mode": "Global",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "BlockHttpDNS",
+        "rule_set": "Advertising",
+        "server": "blockDns",
+        "disable_cache": true
+      },
+      {
+        "domain": [
+          "update.code.visualstudio.com",
+          "px.effirst.com",
+          "msecnd.net",
+          "rztcd.com",
+          "bendibao.com",
+          "cdrcbank.com",
+          "fileball.app",
+          "okaapps.com",
+          "opencat.app",
+          "splashtop.com"
+        ],
+        "domain_suffix": [
+          ".msecnd.net",
+          ".rztcd.com",
+          ".bendibao.com",
+          ".cdrcbank.com",
+          ".fileball.app",
+          ".okaapps.com",
+          ".opencat.app",
+          ".splashtop.com"
+        ],
+        "server": "localDns"
+      },
+      {
+        "domain": [
+          "toolpad.org",
+          "anytype.io",
+          "anyclub.org"
+        ],
+        "domain_suffix": [
+          ".toolpad.org",
+          ".anytype.io",
+          ".anyclub.org"
+        ],
+        "server": "localDns"
+      },
+      {
+        "domain": [
+          "proton.me"
+        ],
+        "domain_suffix": [
+          ".proton.me"
+        ],
+        "server": "globalDns"
+      },
+      {
+        "domain": [
+          "allinhub.top",
+          "yppan.com",
+          "yckceo.com",
+          "incldglobal.com",
+          "amysecure.com",
+          "88iepl.com",
+          "fishport.org"
+        ],
+        "domain_suffix": [
+          ".allinhub.top",
+          ".yppan.com",
+          ".yckceo.com",
+          ".incldglobal.com",
+          ".amysecure.com",
+          ".88iepl.com",
+          ".fishport.org"
+        ],
+        "server": "globalDns"
+      },
+      {
+        "domain_suffix": [
+          ".coze.com",
+          ".poe.com"
+        ],
+        "domain": [
+          "gemini.google.com",
+          "ai.google.dev",
+          "aistudio.google.com",
+          "coze.com",
+          "poe.com"
+        ],
+        "server": "globalDns"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "domain_suffix": [
+              ".google.com"
+            ]
+          },
+          {
+            "type": "logical",
+            "mode": "and",
+            "rules": [
+              {
+                "domain_keyword": [
+                  "alkali"
+                ]
+              },
+              {
+                "domain_keyword": [
+                  "makersuite-pa",
+                  "core-pa",
+                  "metricsink-pa"
+                ]
+              }
+            ]
+          }
+        ],
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Anthropic",
+        "rule_set": "OpenAI",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Bing",
+        "rule_set": "Apple",
+        "rule_set": "OneDrive",
+        "rule_set": "PikPak",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "GitHub",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Binance",
+        "rule_set": "OKX",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Oracle",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Telegram",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Speedtest",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "China",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "Global",
+        "server": "globalDns"
+      }
+    ],
+    "final": "localDns",
+    "strategy": "ipv4_only",
+    "independent_cache": true,
+    "fakeip": {
+      "enabled": true,
+      "inet4_range": "198.18.0.0/15"
+    }
+  },
+  "route": {
+    "rules": [
+      {
+        "inbound": [
+          "tun-in"
+        ],
+        "port": 53,
+        "network": [
+          "udp"
+        ],
+        "outbound": "Dns-Out"
+      },
+      {
+        "clash_mode": "Direct",
+        "outbound": "Direct"
+      },
+      {
+        "clash_mode": "Global",
+        "outbound": "Global"
+      },
+      {
+        "ip_cidr": [
+          "0.0.0.0/32"
+        ],
+        "outbound": "Block"
+      },
+      {
+        "rule_set": "BlockHttpDNS",
+        "rule_set": "Advertising",
+        "outbound": "Block"
+      },
+      {
+        "domain": [
+          "update.code.visualstudio.com",
+          "px.effirst.com",
+          "msecnd.net",
+          "rztcd.com",
+          "bendibao.com",
+          "cdrcbank.com",
+          "fileball.app",
+          "okaapps.com",
+          "opencat.app",
+          "splashtop.com"
+        ],
+        "domain_suffix": [
+          ".msecnd.net",
+          ".rztcd.com",
+          ".bendibao.com",
+          ".cdrcbank.com",
+          ".fileball.app",
+          ".okaapps.com",
+          ".opencat.app",
+          ".splashtop.com"
+        ],
+        "outbound": "Direct"
+      },
+      {
+        "domain": [
+          "toolpad.org",
+          "anytype.io",
+          "anyclub.org"
+        ],
+        "domain_suffix": [
+          ".toolpad.org",
+          ".anytype.io",
+          ".anyclub.org"
+        ],
+        "outbound": "Direct"
+      },
+      {
+        "domain": [
+          "proton.me"
+        ],
+        "domain_suffix": [
+          ".proton.me"
+        ],
+        "outbound": "US"
+      },
+      {
+        "domain": [
+          "allinhub.top",
+          "yppan.com",
+          "yckceo.com",
+          "incldglobal.com",
+          "amysecure.com",
+          "88iepl.com",
+          "fishport.org"
+        ],
+        "domain_suffix": [
+          ".allinhub.top",
+          ".yppan.com",
+          ".yckceo.com",
+          ".incldglobal.com",
+          ".amysecure.com",
+          ".88iepl.com",
+          ".fishport.org"
+        ],
+        "outbound": "Global"
+      },
+      {
+        "ip_cidr": [
+          "130.162.152.102/32",
+          "129.154.216.73/32"
+        ],
+        "outbound": "VPS"
+      },
+      {
+        "domain_suffix": [
+          ".coze.com",
+          ".poe.com"
+        ],
+        "domain": [
+          "gemini.google.com",
+          "ai.google.dev",
+          "aistudio.google.com",
+          "coze.com",
+          "poe.com"
+        ],
+        "outbound": "AI"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "domain_suffix": [
+              ".google.com"
+            ]
+          },
+          {
+            "type": "logical",
+            "mode": "and",
+            "rules": [
+              {
+                "domain_keyword": [
+                  "alkali"
+                ]
+              },
+              {
+                "domain_keyword": [
+                  "makersuite-pa",
+                  "core-pa",
+                  "metricsink-pa"
+                ]
+              }
+            ]
+          }
+        ],
+        "outbound": "AI"
+      },
+      {
+        "rule_set": "Anthropic",
+        "rule_set": "OpenAI",
+        "outbound": "AI"
+      },
+      {
+        "rule_set": "Lan",
+        "rule_set": "Direct_fix",
+        "rule_set": "Bing",
+        "rule_set": "Apple",
+        "rule_set": "OneDrive",
+        "rule_set": "PikPak",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "GitHub",
+        "outbound": "GitHub"
+      },
+      {
+        "rule_set": "Binance",
+        "rule_set": "OKX",
+        "outbound": "HK"
+      },
+      {
+        "rule_set": "Oracle",
+        "outbound": "Oracle"
+      },
+      {
+        "rule_set": "Telegram",
+        "outbound": "Telegram"
+      },
+      {
+        "rule_set": "Speedtest",
+        "outbound": "Speedtest"
+      },
+      {
+        "rule_set": "China",
+        "rule_set": "ChinaIPs",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "Global",
+        "outbound": "Global"
+      }
+    ],
+    "rule_set": [
+      {
+        "tag": "BlockHttpDNS",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/BlockHttpDNS.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Advertising",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Advertising.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Anthropic",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Anthropic.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "OpenAI",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/OpenAI.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Lan",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Lan.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Direct_fix",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Direct.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Bing",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Bing.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Apple",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Apple.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "OneDrive",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/OneDrive.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "PikPak",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/PikPak.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "GitHub",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/GitHub.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Binance",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Binance.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "OKX",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/OKX.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Oracle",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Oracle.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Telegram",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Telegram.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Speedtest",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Speedtest.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "China",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/ChinaMax.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "ChinaIPs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/ChinaIPs.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "Global",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Global.srs",
+        "download_detour": "Direct"
+      }
+    ],
+    "final": "Final",
+    "auto_detect_interface": true,
+    "override_android_vpn": false
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "",
+      "store_fakeip": true
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "external_ui": "ui",
+      "external_ui_download_url": "",
+      "external_ui_download_detour": "",
+      "secret": "schroe",
+      "default_mode": "rule"
+    }
+  },
+  "inbounds": [
+    {
+      "tag": "tun-in",
+      "type": "tun",
+      "inet4_address": "172.19.0.1/30",
+      "auto_route": true,
+      "strict_route": true,
+      "inet4_route_address": [
+        "192.168.1.12/32"
+      ],
+      "inet4_route_exclude_address": [
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "255.255.255.255/32",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "192.0.0.0/24",
+        "192.0.2.0/24",
+        "192.88.99.0/24",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "224.0.0.0/4",
+        "239.255.255.250/32"
+      ],
+      "stack": "system",
+      "sniff": true,
+      "sniff_override_destination": true,
+      "domain_strategy": "ipv4_only"
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "Direct",
+      "type": "direct"
+    },
+    {
+      "tag": "Block",
+      "type": "block"
+    },
+    {
+      "tag": "Dns-Out",
+      "type": "dns"
+    },
+    {
+      "tag": "Global",
+      "type": "selector"
+    },
+    {
+      "tag": "VPS",
+      "type": "selector"
+    },
+    {
+      "tag": "AI",
+      "type": "selector"
+    },
+    {
+      "tag": "Telegram",
+      "type": "selector"
+    },
+    {
+      "tag": "GitHub",
+      "type": "selector"
+    },
+    {
+      "tag": "Oracle",
+      "type": "selector"
+    },
+    {
+      "tag": "Speedtest",
+      "type": "selector"
+    },
+    {
+      "tag": "Final",
+      "type": "selector"
+    }
+  ]
 }
