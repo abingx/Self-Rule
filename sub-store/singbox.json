@@ -44,13 +44,12 @@
         "server": "globalDns"
       },
       {
-        "rule_set": [
-          "BlockHttpDNS",
-          "Advertising"
-        ],
-        "query_type": [
-          "CNAME"
-        ],
+        "rule_set": "BlockHttpDNS",
+        "server": "blockDns",
+        "disable_cache": true
+      },
+      {
+        "rule_set": "Advertising",
         "server": "blockDns",
         "disable_cache": true
       },
@@ -140,89 +139,72 @@
         "server": "globalDns"
       },
       {
-        "rule_set": [
-          "Anthropic",
-          "OpenAI"
-        ],
-        "query_type": [
-          "CNAME"
-        ],
+        "rule_set": "Anthropic",
         "server": "globalDns"
       },
       {
-        "rule_set": [
-          "Lan",
-          "Direct_fix",
-          "Bing",
-          "Apple",
-          "OneDrive",
-          "PikPak"
-        ],
-        "query_type": [
-          "CNAME"
-        ],
+        "rule_set": "OpenAI",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "Lan",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "Bing",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "Apple",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "OneDrive",
+        "server": "localDns"
+      },
+      {
+        "rule_set": "PikPak",
         "server": "localDns"
       },
       {
         "rule_set": "GitHub",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "globalDns"
       },
       {
-        "rule_set": [
-          "Binance",
-          "OKX"
-        ],
-        "query_type": [
-          "CNAME"
-        ],
+        "rule_set": "Binance",
+        "server": "globalDns"
+      },
+      {
+        "rule_set": "OKX",
         "server": "globalDns"
       },
       {
         "rule_set": "Oracle",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "globalDns"
       },
       {
         "rule_set": "Telegram",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "globalDns"
       },
       {
         "rule_set": "Speedtest",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "globalDns"
       },
       {
         "rule_set": "China",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "localDns"
       },
       {
         "rule_set": "Global",
-        "query_type": [
-          "CNAME"
-        ],
         "server": "globalDns"
       }
     ],
     "final": "localDns",
-    "strategy": "prefer_ipv4",
+    "strategy": "ipv4_only",
     "independent_cache": true,
     "fakeip": {
       "enabled": true,
-      "inet4_range": "198.18.0.0/15",
-      "inet6_range": "fc00::/18"
+      "inet4_range": "198.18.0.0/15"
     }
   },
   "route": {
@@ -247,16 +229,16 @@
       },
       {
         "ip_cidr": [
-          "0.0.0.0/32",
-          "::/128"
+          "0.0.0.0/32"
         ],
         "outbound": "Block"
       },
       {
-        "rule_set": [
-          "BlockHttpDNS",
-          "Advertising"
-        ],
+        "rule_set": "BlockHttpDNS",
+        "outbound": "Block"
+      },
+      {
+        "rule_set": "Advertising",
         "outbound": "Block"
       },
       {
@@ -352,10 +334,11 @@
         "outbound": "AI"
       },
       {
-        "rule_set": [
-          "Anthropic",
-          "OpenAI"
-        ],
+        "rule_set": "Anthropic",
+        "outbound": "AI"
+      },
+      {
+        "rule_set": "OpenAI",
         "outbound": "AI"
       },
       {
@@ -363,14 +346,27 @@
         "outbound": "Direct"
       },
       {
-        "rule_set": [
-          "Lan",
-          "Direct_fix",
-          "Bing",
-          "Apple",
-          "OneDrive",
-          "PikPak"
-        ],
+        "rule_set": "Lan",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "Direct_fix",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "Bing",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "Apple",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "OneDrive",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "PikPak",
         "outbound": "Direct"
       },
       {
@@ -378,10 +374,11 @@
         "outbound": "GitHub"
       },
       {
-        "rule_set": [
-          "Binance",
-          "OKX"
-        ],
+        "rule_set": "Binance",
+        "outbound": "HK"
+      },
+      {
+        "rule_set": "OKX",
         "outbound": "HK"
       },
       {
@@ -397,10 +394,11 @@
         "outbound": "Speedtest"
       },
       {
-        "rule_set": [
-          "China",
-          "ChinaIPs"
-        ],
+        "rule_set": "China",
+        "outbound": "Direct"
+      },
+      {
+        "rule_set": "ChinaIPs",
         "outbound": "Direct"
       },
       {
@@ -567,7 +565,6 @@
       "tag": "tun-in",
       "type": "tun",
       "inet4_address": "172.19.0.1/30",
-      "inet6_address": "fdfe:dcba:9876::1/126",
       "auto_route": true,
       "strict_route": true,
       "inet4_route_address": [
@@ -592,7 +589,7 @@
       "stack": "system",
       "sniff": true,
       "sniff_override_destination": true,
-      "domain_strategy": "prefer_ipv4"
+      "domain_strategy": "ipv4_only"
     }
   ],
   "outbounds": [
