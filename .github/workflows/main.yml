@@ -39,7 +39,7 @@ jobs:
           git add Surge/module/SystemOTA.sgmodule
           git commit -m "Update SystemOTA.sgmodule"
           git push
-          curl "https://api.day.app/PKKQR7z3wzqfg5k39tgXNC/Github%20Actions/SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0?group=Github%20Actions&sound=glass"
+          curl "https://api.day.app/dzvjx4SKAHvRReFXheZEhU/Github%20Actions/SystemOTA.sgmodule%E5%B7%B2%E6%9B%B4%E6%96%B0?group=Github%20Actions&sound=glass"
         else
           echo "No changes in SystemOTA.sgmodule."
         fi
