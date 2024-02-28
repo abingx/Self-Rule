@@ -21,7 +21,7 @@
       },
       {
         "tag": "localDns",
-        "address": "https://doh.apad.pro/dns-query",
+        "address": "https://dns.alidns.com/dns-query",
         "address_resolver": "resolverDns",
         "detour": "Direct"
       },
