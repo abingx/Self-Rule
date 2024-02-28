@@ -196,10 +196,11 @@
       }
     ],
     "final": "localDns",
-    "strategy": "ipv4_only",
+    "strategy": "prefer_ipv4",
     "fakeip": {
       "enabled": true,
-      "inet4_range": "198.18.0.0/15"
+      "inet4_range": "198.18.0.0/15",
+      "inet6_range": "fc00::/18"
     }
   },
   "route": {
@@ -218,7 +219,8 @@
       },
       {
         "ip_cidr": [
-          "0.0.0.0/32"
+          "0.0.0.0/32",
+          "::/128"
         ],
         "outbound": "Block"
       },
@@ -524,6 +526,7 @@
       "tag": "tun-in",
       "type": "tun",
       "inet4_address": "172.19.0.1/30",
+      "inet6_address": "fdfe:dcba:9876::1/126",
       "auto_route": true,
       "strict_route": true,
       "inet4_route_address": [
