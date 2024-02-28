@@ -1,16 +1,19 @@
-# 自定义直连
-DOMAIN,update.code.visualstudio.com,DIRECT // VSCode更新
-DOMAIN-SUFFIX,msecnd.net,DIRECT // VSCode更新
-DOMAIN-SUFFIX,logitech.com,DIRECT
-DOMAIN-SUFFIX,rztcd.com,DIRECT // 蓉政通
-DOMAIN-SUFFIX,bendibao.com,DIRECT // 成都本地宝
-DOMAIN-SUFFIX,cdrcbank.com,DIRECT // 农商银行
-DOMAIN-SUFFIX,fileball.app,DIRECT // Fileball高级订阅
-DOMAIN-SUFFIX,okaapps.com,DIRECT // VidHub官网
-DOMAIN-SUFFIX,opencat.app,DIRECT // Opencat高级订阅
-DOMAIN-SUFFIX,splashtop.com,DIRECT // Splashtop
-# DEST-PORT 端口规则
-# > 邮件服务默认端口
-OR,((DEST-PORT,25), (DEST-PORT,110), (DEST-PORT,143), (DEST-PORT,465), (DEST-PORT,587)),DIRECT
-# > NTP服务默认端口
-AND,((OR,((DOMAIN,time-ios.apple.com), (DOMAIN,time.apple.com), (DOMAIN-SUFFIX,pool.ntp.org))), (DEST-PORT,123)),DIRECT
+# > DIRECT
+# VSCode更新
+DOMAIN,update.code.visualstudio.com
+DOMAIN-SUFFIX,msecnd.net
+# 蓉政通
+DOMAIN-SUFFIX,rztcd.com
+DOMAIN,px.effirst.com
+# 成都本地宝
+DOMAIN-SUFFIX,bendibao.com
+# 成都农商银行
+DOMAIN-SUFFIX,cdrcbank.com
+# Fileball官网
+DOMAIN-SUFFIX,fileball.app
+# VidHub官网
+DOMAIN-SUFFIX,okaapps.com
+# Opencat官网
+DOMAIN-SUFFIX,opencat.app
+# Splashtop
+DOMAIN-SUFFIX,splashtop.com

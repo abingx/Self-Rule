@@ -1,7 +1,17 @@
-DOMAIN-SUFFIX,allinhub.top,Global // 个人网址
-DOMAIN-SUFFIX,yppan.com,Global // 阿里云盘资源搜索
-DOMAIN-SUFFIX,yckceo.com,Global // 源仓库
-DOMAIN-SUFFIX,incldglobal.com,Global // Erots商店
-DOMAIN-SUFFIX,amysecure.com,Global // AmyTelecom官网
-DOMAIN-SUFFIX,88iepl.com,Global // 泡泡狗官网
-DOMAIN-SUFFIX,fishport.org,Global // FishChips官网
+# > GLOBAL
+# 个人网址
+DOMAIN-SUFFIX,allinhub.top
+# 阿里云盘资源搜索
+DOMAIN-SUFFIX,yppan.com
+# 源仓库
+DOMAIN-SUFFIX,yckceo.com
+# Erots商店
+DOMAIN-SUFFIX,incldglobal.com
+# AmyTelecom官网
+DOMAIN-SUFFIX,amysecure.com
+# 泡泡狗官网
+DOMAIN-SUFFIX,88iepl.com
+# FishChips官网
+DOMAIN-SUFFIX,fishport.org
+# 俄罗斯crash网站
+DOMAIN-SUFFIX,rutracker.org

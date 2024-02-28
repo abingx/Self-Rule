@@ -1,8 +1,10 @@
+# Coze
 DOMAIN-SUFFIX,coze.com
+# Poe
 DOMAIN-SUFFIX,poe.com
-# Gemini Pro
+# Gemini
 DOMAIN,gemini.google.com
-DOMAIN,makersuite.google.com
+# Google Al Studio
 DOMAIN,ai.google.dev
-AND,((OR,((DOMAIN-KEYWORD,developerprofiles-pa), (DOMAIN-KEYWORD,generativelanguage))), (DOMAIN-SUFFIX,googleapis.com))
+DOMAIN,aistudio.google.com
 AND,((AND,((OR,((DOMAIN-KEYWORD,makersuite-pa), (DOMAIN-KEYWORD,core-pa), (DOMAIN-KEYWORD,metricsink-pa))), (DOMAIN-KEYWORD,alkali))), (DOMAIN-SUFFIX,google.com))
