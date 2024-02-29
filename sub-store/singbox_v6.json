@@ -529,9 +529,6 @@
       "inet6_address": "fdfe:dcba:9876::1/126",
       "auto_route": true,
       "strict_route": true,
-      "inet4_route_address": [
-        "192.168.1.12/32"
-      ],
       "inet4_route_exclude_address": [
         "10.0.0.0/8",
         "172.16.0.0/12",
