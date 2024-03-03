@@ -217,9 +217,8 @@
         "outbound": "Global"
       },
       {
-        "ip_cidr": [
-          "0.0.0.0/32"
-        ],
+        "network": "udp",
+        "port": 443,
         "outbound": "Block"
       },
       {
