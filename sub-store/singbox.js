@@ -1,4 +1,3 @@
-const v6 = $arguments;
 let config = JSON.parse($files[0]);
 let proxies = JSON.parse(await produceArtifact({
   type: 'subscription',
@@ -86,10 +85,5 @@ updateOutbound('Final', ["Direct", "Global", "Block"]);
 
 config.outbounds = config.outbounds.concat(outservers.filter(outbound => outbound !== null));
 config.outbounds = config.outbounds.concat(additionalOutbound);
-if(v6){
-  config.dns.strategy = "prefer_ipv4";
-  config.dns.fakeip.inet6_range = "fc00::/18";
-  config.inbounds[0].inet6_address = "fdfe:dcba:9876::1/126";
-}
 
 $content = JSON.stringify(config, null, 2);
