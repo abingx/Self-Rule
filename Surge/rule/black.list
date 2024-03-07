@@ -1,8 +1,6 @@
 # > GLOBAL
 # 个人网址
 DOMAIN-SUFFIX,allinhub.top
-# 阿里云盘资源搜索
-DOMAIN-SUFFIX,yppan.com
 # 源仓库
 DOMAIN-SUFFIX,yckceo.com
 # Erots商店
@@ -15,3 +13,5 @@ DOMAIN-SUFFIX,88iepl.com
 DOMAIN-SUFFIX,fishport.org
 # 俄罗斯crash网站
 DOMAIN-SUFFIX,rutracker.org
+# 秦始皇论坛
+DOMAIN-SUFFIX,linux.do

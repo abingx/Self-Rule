@@ -93,13 +93,13 @@
       },
       {
         "domain_suffix": [
-          "allinhub.top",
-          "yppan.com",
           "yckceo.com",
           "incldglobal.com",
           "amysecure.com",
           "88iepl.com",
-          "fishport.org"
+          "fishport.org",
+          "rutracker.org",
+          "linux.do"
         ],
         "server": "globalDns"
       },
@@ -108,47 +108,14 @@
           "coze.com",
           "poe.com"
         ],
-        "domain": [
-          "gemini.google.com",
-          "ai.google.dev",
-          "aistudio.google.com"
-        ],
-        "server": "globalDns"
-      },
-      {
-        "type": "logical",
-        "mode": "and",
-        "rules": [
-          {
-            "domain_suffix": [
-              "google.com"
-            ]
-          },
-          {
-            "type": "logical",
-            "mode": "and",
-            "rules": [
-              {
-                "domain_keyword": [
-                  "alkali"
-                ]
-              },
-              {
-                "domain_keyword": [
-                  "makersuite-pa",
-                  "core-pa",
-                  "metricsink-pa"
-                ]
-              }
-            ]
-          }
-        ],
         "server": "globalDns"
       },
       {
         "rule_set": [
+          "BardAI",
           "Anthropic",
-          "OpenAI"
+          "OpenAI",
+          "Copilot"
         ],
         "server": "globalDns"
       },
@@ -187,11 +154,17 @@
         "server": "globalDns"
       },
       {
-        "rule_set": "ChinaMax",
+        "rule_set": [
+          "IPTVMainland",
+          "ChinaMax"
+        ],
         "server": "localDns"
       },
       {
-        "rule_set": "Global",
+        "rule_set": [
+          "IPTVOther",
+          "Global"
+        ],
         "server": "globalDns"
       }
     ],
@@ -262,13 +235,13 @@
       },
       {
         "domain_suffix": [
-          "allinhub.top",
-          "yppan.com",
           "yckceo.com",
           "incldglobal.com",
           "amysecure.com",
           "88iepl.com",
-          "fishport.org"
+          "fishport.org",
+          "rutracker.org",
+          "linux.do"
         ],
         "outbound": "Global"
       },
@@ -284,47 +257,15 @@
           "coze.com",
           "poe.com"
         ],
-        "domain": [
-          "gemini.google.com",
-          "ai.google.dev",
-          "aistudio.google.com"
-        ],
         "outbound": "AI"
       },
-      {
-        "type": "logical",
-        "mode": "and",
-        "rules": [
-          {
-            "domain_suffix": [
-              "google.com"
-            ]
-          },
-          {
-            "type": "logical",
-            "mode": "and",
-            "rules": [
-              {
-                "domain_keyword": [
-                  "alkali"
-                ]
-              },
-              {
-                "domain_keyword": [
-                  "makersuite-pa",
-                  "core-pa",
-                  "metricsink-pa"
-                ]
-              }
-            ]
-          }
-        ],
-        "outbound": "AI"
-      },
+
       {
         "rule_set": [
+          "BardAI",
           "Anthropic",
-          "OpenAI"
+          "OpenAI",
+          "Copilot"
         ],
         "outbound": "AI"
       },
@@ -367,11 +308,17 @@
         "outbound": "Speedtest"
       },
       {
-        "rule_set": "ChinaMax",
+        "rule_set": [
+          "IPTVMainland",
+          "ChinaMax"
+        ],
         "outbound": "Direct"
       },
       {
-        "rule_set": "Global",
+        "rule_set": [
+          "IPTVOther",
+          "Global"
+        ],
         "outbound": "Global"
       }
     ],
@@ -391,6 +338,13 @@
         "download_detour": "Direct"
       },
       {
+        "tag": "BardAI",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/BardAI.srs",
+        "download_detour": "Direct"
+      },     
+      {
         "tag": "Anthropic",
         "type": "remote",
         "format": "binary",
@@ -404,6 +358,13 @@
         "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/OpenAI.srs",
         "download_detour": "Direct"
       },
+      {
+        "tag": "Copilot",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/Copilot.srs",
+        "download_detour": "Direct"
+      },      
       {
         "tag": "Lan",
         "type": "remote",
@@ -489,10 +450,24 @@
         "download_detour": "Direct"
       },
       {
+        "tag": "IPTVMainland",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/IPTVMainland.srs",
+        "download_detour": "Direct"
+      },
+      {
         "tag": "ChinaMax",
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/ChinaMax.srs",
+        "download_detour": "Direct"
+      },
+      {
+        "tag": "IPTVOther",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.allinhub.top/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/bm7/IPTVOther.srs",
         "download_detour": "Direct"
       },
       {

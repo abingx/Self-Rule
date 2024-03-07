@@ -2,9 +2,3 @@
 DOMAIN-SUFFIX,coze.com
 # Poe
 DOMAIN-SUFFIX,poe.com
-# Gemini
-DOMAIN,gemini.google.com
-# Google Al Studio
-DOMAIN,ai.google.dev
-DOMAIN,aistudio.google.com
-AND,((AND,((OR,((DOMAIN-KEYWORD,makersuite-pa), (DOMAIN-KEYWORD,core-pa), (DOMAIN-KEYWORD,metricsink-pa))), (DOMAIN-KEYWORD,alkali))), (DOMAIN-SUFFIX,google.com))
