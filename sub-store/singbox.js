@@ -11,12 +11,6 @@ let proxies1 = JSON.parse(await produceArtifact({
   platform: 'sing-box'
 }));
 
-let proxies2 = JSON.parse(await produceArtifact({
-  type: 'subscription',
-  name: 'FishChips',
-  platform: 'sing-box'
-}));
-
 let additionalOutbound = JSON.parse(await produceArtifact({
   type: 'subscription',
   name: 'Vmess',
@@ -35,23 +29,20 @@ const regexes = {
   SG: /新加坡/,
   TW: /台湾/,
   AmyTelecom: /.*/,
-  PaopaoDog: /.*/,
-  FishChips: /.*/
+  PaopaoDog: /.*/
 };
 
 let filtered = {};
 Object.keys(regexes).forEach(key => {
   if (key === 'UN' || key === 'PaopaoDog') {
     filtered[key] = filterAndMap(proxies1, regexes[key]);
-  } else if (key === 'FishChips') {
-    filtered[key] = filterAndMap(proxies2, regexes[key]);
   } else {
     filtered[key] = filterAndMap(proxies, regexes[key]);
   }
 });
 
 function createOutbound(tag) {
-  let type = tag === 'AmyTelecom' || tag === 'PaopaoDog' || tag === 'FishChips' || tag === 'UN' ? 'selector' : 'urltest';
+  let type = tag === 'AmyTelecom' || tag === 'PaopaoDog' || tag === 'UN' ? 'selector' : 'urltest';
   return filtered[tag].length > 0 ? { "outbounds": filtered[tag], "tag": tag, "type": type } : null;
 }
 
@@ -63,9 +54,6 @@ proxies.forEach(proxy => {
 proxies1.forEach(proxy => {
   outservers.push(proxy);
 });
-proxies2.forEach(proxy => {
-  outservers.push(proxy);
-});
 
 function updateOutbound(tag, defaultTags) {
   let outbound = config.outbounds.find(o => o.tag === tag);
@@ -74,7 +62,7 @@ function updateOutbound(tag, defaultTags) {
   }
 }
 
-updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "UN", "Direct", "Vmess", "AmyTelecom", "PaopaoDog", "FishChips"]);
+updateOutbound('Global', ["HK", "JP", "US", "SG", "TW", "UN", "Direct", "Vmess", "AmyTelecom", "PaopaoDog"]);
 updateOutbound('VPS', ["Direct", "Global", "HK", "JP", "US", "SG", "TW", "UN"]);
 updateOutbound('AI', ["US", "JP", "SG", "TW"]);
 updateOutbound('Telegram', ["Global", "HK", "JP", "US", "SG", "TW"]);
