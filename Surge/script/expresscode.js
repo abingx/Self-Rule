@@ -22,4 +22,5 @@ results.forEach(jsonObj => {
 });
 
 console.log(selectedData);
+$persistentStore.write(selectedData, "expresscode")
 $done({});
