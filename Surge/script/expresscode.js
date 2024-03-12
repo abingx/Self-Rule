@@ -20,8 +20,7 @@ results.forEach(jsonObj => {
         }
     }
 });
-let output = JSON.stringify(selectedData, null, 2)
 
-console.log(output);
-$persistentStore.write(output, "expresscode")
+console.log(selectedData);
+$persistentStore.write(selectedData, "expresscode")
 $done({});
