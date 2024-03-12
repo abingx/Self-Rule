@@ -1,6 +1,6 @@
 /*
 [Script]
-test = type=http-response,pattern=^https\:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.cainiao\.lpc\.packageservice\.querypackagelist\.lightapp\.get.*,requires-body=1,max-size=0,script-path=expresscode.js
+expresscode = type=http-response,pattern=^https\:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.cainiao\.lpc\.packageservice\.querypackagelist\.lightapp\.get.*,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/main/Surge/script/expresscode.js
 
 [MITM]
 hostname = %APPEND% taobao.com
