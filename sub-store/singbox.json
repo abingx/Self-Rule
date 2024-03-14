@@ -15,7 +15,7 @@
     "servers": [
       {
         "tag": "globalDns",
-        "address": "https://1.1.1.1/dns-query",
+        "address": "https://8.8.8.8/dns-query",
         "address_resolver": "resolverDns",
         "detour": "Global"
       },
