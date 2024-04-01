@@ -1,0 +1,600 @@
+#wiki:https://wiki.metacubex.one/
+port: 7890
+socks-port: 7891
+redir-port: 7892
+tproxy-port: 7893
+mixed-port: 7894
+
+unified-delay: false
+geodata-mode: true
+tcp-concurrent: false
+find-process-mode: strict
+global-client-fingerprint: chrome
+
+allow-lan: true
+mode: rule
+log-level: info
+ipv6: true
+
+external-controller: 0.0.0.0:9090
+#external-ui: ui
+secret: hyperapp
+
+geox-url:
+  geoip: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  mmdb: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+  asn: "https://github.com/xishang0128/geoip/releases/download/latest/GeoLite2-ASN.mmdb"
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+sniffer:
+  enable: false
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: false
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  force-domain:
+    - +.v2ex.com
+  skip-domain:
+    - Mijia Cloud
+
+proxy-providers:
+  AmyTelecom:
+    type: http
+    path: ./proxy/AmyTelecom.yaml
+    url: #
+    interval: 3600
+    health-check:
+      enable: true
+      interval: 600
+      url: https://cp.cloudflare.com/generate_204
+  PaopaoDog:
+    type: http
+    path: ./proxy/PaopaoDog.yaml
+    url: #
+    interval: 3600
+    health-check:
+      enable: true
+      interval: 600
+      url: https://cp.cloudflare.com/generate_204
+  Vmess:
+    type: http
+    path: ./proxy/Vmess.yaml
+    url: #
+    interval: 3600
+    health-check:
+      enable: true
+      interval: 600
+      url: https://cp.cloudflare.com/generate_204
+
+proxy-groups:
+  - name: Global
+    type: select
+    use: 
+      - Vmess
+    proxies:
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - UN
+      - DIRECT
+      - AmyTelecom
+      - PaopaoDog
+  - name: VPS
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - UN
+  - name: AI
+    type: select
+    proxies:
+      - US
+      - JP
+      - SG
+      - TW
+  - name: Telegram
+    type: select
+    proxies:
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: Github
+    type: select
+    proxies:
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - DIRECT
+  - name: Oracle
+    type: select
+    proxies:
+      - UN
+      - Global
+      - DIRECT
+  - name: Apple
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+  - name: Speedtest
+    type: select
+    use: 
+      - Vmess
+    proxies:
+      - DIRECT
+      - HK
+      - JP
+      - US
+      - SG
+      - TW
+      - UN
+      - AmyTelecom
+      - PaopaoDog
+  - name: Final
+    type: select
+    proxies:
+      - DIRECT
+      - Global
+      - REJECT
+  - name: "UN"
+    type: select
+    filter: '^(?!.*(香港|日本|新加坡|美国|台湾))'
+    use:
+      - PaopaoDog
+  - name: "HK"
+    type: url-test
+    filter: '香港'
+    use:
+      - AmyTelecom
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "JP"
+    type: url-test
+    filter: '日本'
+    use:
+      - AmyTelecom
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "US"
+    type: url-test
+    filter: '美国'
+    use:
+      - AmyTelecom
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "SG"
+    type: url-test
+    filter: '新加坡'
+    use:
+      - AmyTelecom
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "TW"
+    type: url-test
+    filter: '台湾'
+    use:
+      - AmyTelecom
+    url: 'http://www.gstatic.com/generate_204'
+    interval: 600
+  - name: "AmyTelecom"
+    type: select
+    use:
+      - AmyTelecom
+  - name: "PaopaoDog"
+    type: select
+    use:
+      - PaopaoDog
+
+rule-providers:
+  BardAI:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/BardAI/BardAI_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/BardAI_No_Resolve.yaml
+  Anthropic:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Anthropic/Anthropic_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Anthropic_No_Resolve.yaml
+  OpenAI:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/OpenAI_No_Resolve.yaml
+  Copilot:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Copilot/Copilot_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Copilot_No_Resolve.yaml
+  Lan:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Lan/Lan_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Lan_No_Resolve.yaml
+  Direct_fix:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Direct/Direct_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Direct_No_Resolve.yaml
+  Bing:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bing/Bing_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Bing_No_Resolve.yaml
+  Apple:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple_Classical_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Apple_Classical_No_Resolve.yaml
+  OneDrive:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/OneDrive_No_Resolve.yaml
+  PikPak:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/PikPak/PikPak_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/PikPak_No_Resolve.yaml
+  GitHub:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/GitHub_No_Resolve.yaml
+  Binance:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Binance/Binance_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Binance_No_Resolve.yaml
+  Oracle:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Oracle/Oracle_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Oracle_No_Resolve.yaml
+  Telegram:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Telegram_No_Resolve.yaml
+  Speedtest:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Speedtest/Speedtest_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Speedtest_No_Resolve.yaml
+  IPTVMainland:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/IPTVMainland/IPTVMainland_Classical_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/IPTVMainland_Classical_No_Resolve.yaml
+  ChinaMax:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax_Classical_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/ChinaMax_Classical_No_Resolve.yaml
+  IPTVOther:
+    behavior: ipcidr
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/IPTVOther/IPTVOther_Classical_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/IPTVOther_Classical_No_Resolve.yaml
+  Global:
+    behavior: classical
+    type: http
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global_Classical_No_Resolve.yaml
+    format: yaml
+    interval: 604800
+    path: ./ruleset/Global_Classical_No_Resolve.yaml
+
+rules:
+  # 白名单
+  - DOMAIN,update.code.visualstudio.com,DIRECT
+  - DOMAIN-SUFFIX,msecnd.net,DIRECT
+  - DOMAIN-SUFFIX,rztcd.com,DIRECT
+  - DOMAIN,px.effirst.com,DIRECT
+  - DOMAIN-SUFFIX,bendibao.com,DIRECT
+  - DOMAIN-SUFFIX,cdrcbank.com,DIRECT
+  - DOMAIN-SUFFIX,fileball.app,DIRECT
+  - DOMAIN-SUFFIX,okaapps.com,DIRECT
+  - DOMAIN-SUFFIX,opencat.app,DIRECT
+  - DOMAIN-SUFFIX,splashtop.com,DIRECT
+  # > Anytype
+  - DOMAIN-SUFFIX,toolpad.org,DIRECT
+  - DOMAIN-SUFFIX,anyclub.org,DIRECT
+  - DOMAIN-SUFFIX,anytype.io,DIRECT
+  # 黑名单
+  - DOMAIN-SUFFIX,proton.me,US
+  - DOMAIN-SUFFIX,allinhub.top,Global
+  - DOMAIN-SUFFIX,yckceo.com,Global
+  - DOMAIN-SUFFIX,incldglobal.com,Global
+  - DOMAIN-SUFFIX,amysecure.com,Global
+  - DOMAIN-SUFFIX,88iepl.com,Global
+  - DOMAIN-SUFFIX,rutracker.org,Global
+  - DOMAIN-SUFFIX,linux.do,Global
+  # > VPS
+  - IP-CIDR,130.162.152.102/32,VPS,no-resolve
+  - IP-CIDR,129.154.216.73/32,VPS,no-resolve
+  # > AI
+  - DOMAIN-SUFFIX,groq.com,AI
+  - DOMAIN-SUFFIX,coze.com,AI
+  - DOMAIN-SUFFIX,poe.com,AI
+  - RULE-SET,BardAI,AI
+  - RULE-SET,Anthropic,AI
+  - RULE-SET,OpenAI,AI
+  - RULE-SET,Copilot,AI
+  # 局域网
+  - RULE-SET,Lan,DIRECT
+  # 后续规则修正
+  - RULE-SET,Direct_fix,DIRECT
+  # Bing
+  - RULE-SET,Bing,DIRECT
+  # Apple
+  - RULE-SET,Apple,DIRECT
+  # Onedrive
+  - RULE-SET,OneDrive,DIRECT
+  # PikPak
+  - RULE-SET,PikPak,DIRECT
+  # Github
+  - RULE-SET,GitHub,Github
+  # 加密货币
+  - RULE-SET,Binance,HK
+  # Oracle
+  - RULE-SET,Oracle,Oracle
+  # Telegram
+  - RULE-SET,Telegram,Telegram
+  # Speedtest
+  - RULE-SET,Speedtest,Speedtest
+  # China
+  - RULE-SET,IPTVMainland,DIRECT
+  - RULE-SET,ChinaMax,DIRECT
+  # Global
+  - RULE-SET,IPTVOther,Global
+  - RULE-SET,Global,Global
+  - MATCH,Final
+
+tun:
+  enable: true
+  stack: mixed
+  dns-hijack:
+    - 'any:53'
+  auto-route: true
+  auto-detect-interface: true
+
+dns:
+  enable: true
+  prefer-h3: true
+  listen: 0.0.0.0:1053  
+  ipv6: true
+  default-nameserver:
+    - system
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: true
+  nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  fallback:
+    - tls://8.8.4.4
+    - tls://1.1.1.1
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+      - gfw
+    ipcidr:
+      - 240.0.0.0/4
+    domain:
+      - +.amazonaws.com
+      - +.amazon
+      - +.astrill.com
+      - +.asn247.net
+      - +.astrill.org
+      - +.facebook.com
+      - +.cdninstagram.com
+      - +.fb.com
+      - +.fb.me
+      - +.fbaddins.com
+      - +.fbcdn.net
+      - +.fbsbx.com
+      - +.fbworkmail.com
+      - +.instagram.com
+      - +.m.me
+      - +.messenger.com
+      - +.oculus.com
+      - +.oculuscdn.com
+      - +.rocksdb.org
+      - +.whatsapp.com
+      - +.whatsapp.net
+      - +.gitbook.io
+      - +.gitbook.com
+      - +.github.io
+      - +.github.com
+      - +.githubusercontent.com
+      - +.githubassets.com
+      - +.githubapp.com
+      - +.ampproject.org
+      - +.appspot.com
+      - +.blogger.com
+      - +.google.com
+      - +.google.cn
+      - +.googleusercontent.com
+      - +.googleapis.com
+      - +.googleapis.cn
+      - +.gstatic.com
+      - +.ggpht.com
+      - +.gmail.com
+      - +.gvt1.com
+      - +.gvt2.com
+      - +.youtu.be
+      - +.yt.be
+      - +.ytimg.com
+      - +.googlevideo.com
+      - +.youtube.com
+      - +.mega.co.nz
+      - +.mega.nz
+      - +.protonmail.ch
+      - +.protonmail.com
+      - +.protonstatus.com
+      - +.recruitee.com
+      - +.w.org
+      - +.rfa.org
+      - +.twitter.com
+      - +.pscp.tv
+      - +.periscope.tv
+      - +.t.co
+      - +.twimg.co
+      - +.twimg.com
+      - +.twitpic.com
+      - +.vine.co
+      - +.whoer.net
+      - +.whrq.net
+      - +.wikimapia.org
+      - +.wikimedia.org
+      - +.wikipedia.org
+      - +.wikiquote.org
+      - +.wikiwand.com
+  fake-ip-filter:
+    - "*.lan"
+    - amplifi.lan
+    - router.synology.com
+    - sila.razer.com
+    - router.asus.com
+    - routerlogin.net
+    - orbilogin.com
+    - www.LinksysSmartWiFi.com
+    - LinksysSmartWiFi.com
+    - myrouter.local
+    - www.miwifi.com
+    - miwifi.com
+    - mediarouter.home
+    - tplogin.cn
+    - tplinklogin.net
+    - melogin.cn
+    - falogin.cn
+    - swscan.apple.com
+    - mesu.apple.com
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
+    - time.*.com
+    - time.*.gov
+    - time.*.edu.cn
+    - time.*.apple.com
+    - time1.*.com
+    - time2.*.com
+    - time3.*.com
+    - time4.*.com
+    - time5.*.com
+    - time6.*.com
+    - time7.*.com
+    - ntp.*.com
+    - ntp.*.com
+    - ntp1.*.com
+    - ntp2.*.com
+    - ntp3.*.com
+    - ntp4.*.com
+    - ntp5.*.com
+    - ntp6.*.com
+    - ntp7.*.com
+    - "*.time.edu.cn"
+    - "*.ntp.org.cn"
+    - +.pool.ntp.org
+    - time1.cloud.tencent.com
+    - time.pool.aliyun.com
+    - +.music.163.com
+    - "*.126.net"
+    - musicapi.taihe.com
+    - music.taihe.com
+    - songsearch.kugou.com
+    - trackercdn.kugou.com
+    - "*.kuwo.cn"
+    - api-jooxtt.sanook.com
+    - api.joox.com
+    - joox.com
+    - +.y.qq.com
+    - +.music.tc.qq.com
+    - aqqmusic.tc.qq.com
+    - +.stream.qqmusic.qq.com
+    - "*.xiami.com"
+    - +.music.migu.cn
+    - +.srv.nintendo.net
+    - +.stun.playstation.net
+    - xbox.*.microsoft.com
+    - +.xboxlive.com
+    - "*.battlenet.com.cn"
+    - "*.battlenet.com"
+    - "*.blzstatic.cn"
+    - "*.battle.net"
+    - localhost.ptlogin2.qq.com
+    - localhost.sec.qq.com
+    - proxy.golang.org
+    - lens.l.google.com
+    - +.stun.*.*
+    - +.stun.*.*.*
+    - +.stun.*.*.*.*
+    - +.stun.*.*.*.*.*
+    - "*.mcdn.bilivideo.cn"
