@@ -367,6 +367,8 @@ rules:
   - DOMAIN-SUFFIX,anytype.io,DIRECT
   # 黑名单
   - DOMAIN-SUFFIX,proton.me,US
+  - DOMAIN,connect.garmin.com,Global
+  - DOMAIN,sso.garmin.com,Global
   - DOMAIN-SUFFIX,allinhub.top,Global
   - DOMAIN-SUFFIX,yckceo.com,Global
   - DOMAIN-SUFFIX,incldglobal.com,Global
