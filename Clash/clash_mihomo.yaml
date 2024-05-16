@@ -351,6 +351,7 @@ rule-providers:
 
 rules:
   # 白名单
+  - DOMAIN-SUFFIX,cddyjy.com,DIRECT
   - DOMAIN,update.code.visualstudio.com,DIRECT
   - DOMAIN-SUFFIX,msecnd.net,DIRECT
   - DOMAIN-SUFFIX,rztcd.com,DIRECT
