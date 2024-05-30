@@ -1,5 +1,5 @@
 #!name=Any-Search
-#!desc=需要把Safari的搜索引擎设置为：DuckDuckGo或自定义搜索引擎为https://duckduckgo.com/?q=%s。命令+空格+关键词,快速指定搜索引擎搜索。
+#!desc=命令+空格+关键词,快速指定搜索引擎搜索。需要把Safari的搜索引擎设置为：DuckDuckGo或自定义搜索引擎为https://duckduckgo.com/?q=%s。
 
 [URL Rewrite]
 # (Google图片)gm 
