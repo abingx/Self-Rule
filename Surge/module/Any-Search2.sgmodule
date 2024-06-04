@@ -7,7 +7,7 @@
 # (GitHub)gh
 ^https:\/\/duckduckgo.com\/\?q=([^&]+)\+gh https://github.com/search?q=$1 302
 # (Google 搜索 TestFlight)tf
-^https:\/\/duckduckgo.com\/\?q=tf(\+|%20)([^&]+) https://www.google.com/search?as_q=$2&as_sitesearch=testflight.apple.com 302
+^https:\/\/duckduckgo.com\/\?q=([^&]+)(\+|%20)tf https://www.google.com/search?as_q=$1&as_sitesearch=testflight.apple.com 302
 # (微博)wb
 ^https:\/\/duckduckgo.com\/\?q=([^&]+)\+wb https://s.weibo.com/weibo/$1 302
 # (微信)wx
