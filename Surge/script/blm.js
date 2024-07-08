@@ -1,3 +1,13 @@
+/*
+#!name=便了么会员
+#!desc=非一次性解锁，先开启规则，在进入软件登录即可！如果没有解锁重新打开APP即可。
+
+[Script]
+blm = type=http-response,pattern=^https?:\/\/pebblefan\.com\/papi\/get_users?,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/blm.js
+
+[MITM]
+hostname = %APPEND% pebblefan.com
+*/
 let obj = JSON.parse($response.body);
 obj.user_infos[0].vip = true;
 $done({body: JSON.stringify(obj)});
