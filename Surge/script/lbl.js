@@ -9,8 +9,8 @@ lbl = type=http-response,pattern=^https\:\/\/helper\.2bulu\.com\/tokenLogin\?psi
 hostname = %APPEND% helper.2bulu.com
 */
 let obj = JSON.parse($response.body);
-obj.UserInfoHttp.vipLevel = "MQ==";
-obj.vipExpireTime = "MTk5NDgwMzIwMA==";
+//obj.UserInfoHttp.vipLevel = "MQ==";
+//obj.vipExpireTime = "MTk5NDgwMzIwMA==";
 $done({body: JSON.stringify(obj)});
 
 
