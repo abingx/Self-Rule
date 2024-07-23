@@ -1,4 +1,11 @@
 # > GLOBAL
+# 安妮的档案
+DOMAIN-SUFFIX,annas-archive.org
+# 开源财务系统
+DOMAIN-SUFFIX,firefly-iii.org
+# 佳明国际账号
+DOMAIN,connect.garmin.com
+DOMAIN,sso.garmin.com
 # 个人网址
 DOMAIN-SUFFIX,allinhub.top
 # 源仓库
@@ -9,8 +16,6 @@ DOMAIN-SUFFIX,incldglobal.com
 DOMAIN-SUFFIX,amysecure.com
 # 泡泡狗官网
 DOMAIN-SUFFIX,88iepl.com
-# FishChips官网
-DOMAIN-SUFFIX,fishport.org
 # 俄罗斯crash网站
 DOMAIN-SUFFIX,rutracker.org
 # 秦始皇论坛

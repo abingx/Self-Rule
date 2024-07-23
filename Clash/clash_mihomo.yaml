@@ -67,21 +67,10 @@ proxy-providers:
       enable: true
       interval: 600
       url: https://cp.cloudflare.com/generate_204
-  Vmess:
-    type: http
-    path: ./proxy/Vmess.yaml
-    url: #
-    interval: 3600
-    health-check:
-      enable: true
-      interval: 600
-      url: https://cp.cloudflare.com/generate_204
 
 proxy-groups:
   - name: Global
     type: select
-    use: 
-      - Vmess
     proxies:
       - HK
       - JP
@@ -147,8 +136,6 @@ proxy-groups:
       - TW
   - name: Speedtest
     type: select
-    use: 
-      - Vmess
     proxies:
       - DIRECT
       - HK
@@ -367,7 +354,11 @@ rules:
   - DOMAIN-SUFFIX,anyclub.org,DIRECT
   - DOMAIN-SUFFIX,anytype.io,DIRECT
   # 黑名单
+  - DOMAIN-SUFFIX,koyeb.com,US
+  - DOMAIN-SUFFIX,koyeb.app,US
   - DOMAIN-SUFFIX,proton.me,US
+  - DOMAIN-SUFFIX,annas-archive.org,GLOBAL
+  - DOMAIN-SUFFIX,firefly-iii.org,GLOBAL
   - DOMAIN,connect.garmin.com,Global
   - DOMAIN,sso.garmin.com,Global
   - DOMAIN-SUFFIX,allinhub.top,Global
@@ -378,8 +369,8 @@ rules:
   - DOMAIN-SUFFIX,rutracker.org,Global
   - DOMAIN-SUFFIX,linux.do,Global
   # > VPS
-  - IP-CIDR,130.162.152.102/32,VPS,no-resolve
-  - IP-CIDR,129.154.216.73/32,VPS,no-resolve
+  - IP-CIDR,132.226.171.32/32,VPS,no-resolve
+  - IP-CIDR,64.110.77.95/32,VPS,no-resolve
   # > AI
   - DOMAIN-SUFFIX,groq.com,AI
   - DOMAIN-SUFFIX,coze.com,AI
