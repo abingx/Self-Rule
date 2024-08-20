@@ -369,8 +369,7 @@ rules:
   - DOMAIN-SUFFIX,rutracker.org,Global
   - DOMAIN-SUFFIX,linux.do,Global
   # > VPS
-  - IP-CIDR,132.226.171.32/32,VPS,no-resolve
-  - IP-CIDR,64.110.77.95/32,VPS,no-resolve
+  - IP-CIDR,129.154.198.31/32,VPS,no-resolve
   # > AI
   - DOMAIN-SUFFIX,groq.com,AI
   - DOMAIN-SUFFIX,coze.com,AI
