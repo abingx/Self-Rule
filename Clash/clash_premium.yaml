@@ -268,8 +268,7 @@ rules:
   - DOMAIN-SUFFIX,toolpad.org,Anytype
   - DOMAIN-SUFFIX,anyclub.org,Anytype
   - DOMAIN-SUFFIX,anytype.io,Anytype
-  - IP-CIDR,130.162.152.102/32,VPS,no-resolve
-  - IP-CIDR,129.154.216.73/32,VPS,no-resolve
+  - IP-CIDR,130.162.131.186/32,VPS,no-resolve
   - RULE-SET,Binance,Crypto
   - RULE-SET,OKX,Crypto
   - RULE-SET,Oracle,Oracle

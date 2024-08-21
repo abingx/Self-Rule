@@ -300,8 +300,7 @@ rules:
   - DOMAIN-SUFFIX,paopao.dog,Global
   - DOMAIN-SUFFIX,splashtop.com,DIRECT
   - DOMAIN-SUFFIX,allinhub.top,Global
-  - IP-CIDR,132.145.93.220/32,VPS,no-resolve
-  - IP-CIDR,146.56.161.117/32,VPS,no-resolve
+  - IP-CIDR,130.162.131.186/32,VPS,no-resolve
   - RULE-SET,Direct_Fix,DIRECT
   - RULE-SET,Lan,DIRECT
   - RULE-SET,Download,DIRECT
