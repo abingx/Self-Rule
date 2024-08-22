@@ -67,91 +67,48 @@ proxy-providers:
       enable: true
       interval: 600
       url: https://cp.cloudflare.com/generate_204
+  SS+TLS:
+    type: http
+    path: ./proxy/SS+TLS.yaml
+    url: #
+    interval: 3600
+    health-check:
+      enable: true
+      interval: 600
+      url: https://cp.cloudflare.com/generate_204
 
 proxy-groups:
   - name: Global
     type: select
-    proxies:
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
-      - UN
-      - DIRECT
-      - AmyTelecom
-      - PaopaoDog
+    proxies: [HK, JP, US, SG, TW, UN, DIRECT, AmyTelecom, PaopaoDog]
+    use: 
+      - SS+TLS
   - name: VPS
     type: select
-    proxies:
-      - DIRECT
-      - Global
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
-      - UN
+    proxies: [DIRECT, Global, HK, JP, US, SG, TW, UN]
   - name: AI
     type: select
-    proxies:
-      - US
-      - JP
-      - SG
-      - TW
+    proxies: [US, JP, SG, TW]
   - name: Telegram
     type: select
-    proxies:
-      - Global
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
+    proxies: [Global, HK, JP, US, SG, TW]
   - name: Github
     type: select
-    proxies:
-      - Global
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
-      - DIRECT
+    proxies: [Global, HK, JP, US, SG, TW, DIRECT]
   - name: Oracle
     type: select
-    proxies:
-      - UN
-      - Global
-      - DIRECT
+    proxies: [UN, Global, DIRECT]
   - name: Apple
     type: select
-    proxies:
-      - DIRECT
-      - Global
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
+    proxies: [DIRECT, Global, HK, JP, US, SG, TW]
   - name: Speedtest
     type: select
-    proxies:
-      - DIRECT
-      - HK
-      - JP
-      - US
-      - SG
-      - TW
-      - UN
-      - AmyTelecom
-      - PaopaoDog
+    proxies: [DIRECT, HK, JP, US, SG, TW, UN, AmyTelecom, PaopaoDog]
+    use: 
+      - SS+TLS
   - name: Final
     type: select
-    proxies:
-      - DIRECT
-      - Global
-      - REJECT
+    proxies: [DIRECT, Global, REJECT]
   - name: "UN"
     type: select
     filter: '^(?!.*(香港|日本|新加坡|美国|台湾))'
