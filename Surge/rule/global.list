@@ -1,4 +1,6 @@
 # > GLOBAL
+# mihomo网站
+DOMAIN-SUFFIX,metacubex.one
 # 安妮的档案
 DOMAIN-SUFFIX,annas-archive.org
 # 开源财务系统

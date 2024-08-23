@@ -314,6 +314,7 @@ rules:
   - DOMAIN-SUFFIX,koyeb.com,US
   - DOMAIN-SUFFIX,koyeb.app,US
   - DOMAIN-SUFFIX,proton.me,US
+  - DOMAIN-SUFFIX,metacubex.one,GLOBAL
   - DOMAIN-SUFFIX,annas-archive.org,GLOBAL
   - DOMAIN-SUFFIX,firefly-iii.org,GLOBAL
   - DOMAIN,connect.garmin.com,Global
