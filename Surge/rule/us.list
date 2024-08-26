@@ -1,4 +1,6 @@
 # > US
+# RssHub
+DOMAIN-SUFFIX,rsshub.app
 # docker网页部署
 DOMAIN-SUFFIX,koyeb.com
 DOMAIN-SUFFIX,koyeb.app
