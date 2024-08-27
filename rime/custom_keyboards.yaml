@@ -1,0 +1,455 @@
+customKeyStyles:
+  commands_Light: &cl
+    name: commands_Light
+    buttonBackgroundColor: "0xCCBBAFA9" #按键背景色
+    pressedButtonBackgroundColor: "0xCCBBAFA9" #按下背景色
+    buttonForegroundColor: "0x000000" #按键字体颜色
+    pressedButtonForegroundColor: "0x000000" #按下字体颜色
+    swipeForegroundColor: "0x000000" #滑动字体颜色
+    pressedSwipeForegroundColor: "0x000000" #按下滑动字体颜色
+    #cornerRadius: 5 #按键圆角
+    #borderSize: 0 #边框粗细
+    #borderColor: "0x000000" #边框颜色
+    #lowerEdgeColor: "0xCC868281" #下边框颜色
+    #shadowColor: "0x000000" #阴影颜色
+    #shadowSize: 0 #阴影粗细
+    fontSize: 16 #按键字体大小
+    swipeFontSize: 8 #按键滑动字体大小
+  commands_Black: &cb
+    name: commands_Black
+    buttonBackgroundColor: "0xCC474747"
+    pressedButtonBackgroundColor: "0xCC474747"
+    buttonForegroundColor: "0xFFFFFF"
+    pressedButtonForegroundColor: "0xFFFFFF"
+    swipeForegroundColor: "0xFFFFFF"
+    pressedSwipeForegroundColor: "0xFFFFFF"
+    fontSize: 16
+    swipeFontSize: 8
+  space_Llack: &sl
+    name: space_Llack
+    buttonBackgroundColor: "0xCCFFFFFF"
+    pressedButtonBackgroundColor: "0xCCFFFFFF"
+    buttonForegroundColor: "0x000000" 
+    pressedButtonForegroundColor: "0x000000" 
+    swipeForegroundColor: "0x000000" 
+    pressedSwipeForegroundColor: "0x000000" 
+    fontSize: 16
+    swipeFontSize: 8
+  space_Black: &sb
+    name: space_Black
+    buttonBackgroundColor: "0xCC707070"
+    pressedButtonBackgroundColor: "0xCC707070"
+    buttonForegroundColor: "0xFFFFFF"
+    pressedButtonForegroundColor: "0xFFFFFF"
+    swipeForegroundColor: "0xFFFFFF"
+    pressedSwipeForegroundColor: "0xFFFFFF"
+    fontSize: 16
+    swipeFontSize: 8
+  keyboards_Light: &kl
+    name: keyboards_Light
+    buttonBackgroundColor: "0xCCFFFFFF"
+    pressedButtonBackgroundColor: "0xCCFFFFFF"
+    buttonForegroundColor: "0x000000" 
+    pressedButtonForegroundColor: "0x000000" 
+    swipeForegroundColor: "0x000000" 
+    pressedSwipeForegroundColor: "0x000000" 
+    fontSize: 19
+    swipeFontSize: 9
+  keyboards_Black: &kb
+    name: keyboards_Black
+    buttonBackgroundColor: "0xCC707070"
+    pressedButtonBackgroundColor: "0xCC707070"
+    buttonForegroundColor: "0xFFFFFF"
+    pressedButtonForegroundColor: "0xFFFFFF"
+    swipeForegroundColor: "0xFFFFFF"
+    pressedSwipeForegroundColor: "0xFFFFFF"
+    fontSize: 19
+    swipeFontSize: 9
+keyboards:
+  - name: 原生中文
+    isPrimary: true
+    rows:
+      - keys:
+        - action: { character: { char: "q" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "1" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "`" } }
+              processByRIME: true
+        - action: { character: { char: "w" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "2" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "@" } }
+              processByRIME: true
+        - action: { character: { char: "e" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "3" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "#" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ē } }
+            - action: { character: { char: é } }
+            - action: { character: { char: ě } }
+            - action: { character: { char: è } }
+        - action: { character: { char: "r" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "4" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "$" } }
+              processByRIME: true
+        - action: { character: { char: "t" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "5" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "%" } }
+              processByRIME: true
+        - action: { character: { char: "y" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "6" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "^" } }
+              processByRIME: true
+        - action: { character: { char: "u" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "7" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "&" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ū } }
+            - action: { character: { char: ú } }
+            - action: { character: { char: ǔ } }
+            - action: { character: { char: ù } }
+        - action: { character: { char: "i" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "8" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "*" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ī } }
+            - action: { character: { char: í } }
+            - action: { character: { char: ǐ } }
+            - action: { character: { char: ì } }
+        - action: { character: { char: "o" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "9" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "|" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ō } }
+            - action: { character: { char: ó } }
+            - action: { character: { char: ǒ } }
+            - action: { character: { char: ò } }
+        - action: { character: { char: "p" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "0" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "\\" } }
+              processByRIME: true
+      - keys:
+        - action: { characterMargin: { char: "a" } }
+          width: available
+          processByRIME: true
+        - action: { character: { char: "a" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "!" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "！" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ā } }
+            - action: { character: { char: á } }
+            - action: { character: { char: ǎ } }
+            - action: { character: { char: à } }
+        - action: { character: { char: "s" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "-" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "_" } }
+              processByRIME: true
+        - action: { character: { char: "d" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: '""' } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "“”" } }
+              processByRIME: true
+        - action: { character: { char: "f" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "''" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "‘’" } }
+              processByRIME: true
+        - action: { character: { char: "g" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "=" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "+" } }
+              processByRIME: true
+        - action: { character: { char: "h" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "()" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "（）" } }
+              processByRIME: true
+        - action: { character: { char: "j" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "<" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "《》" } }
+              processByRIME: true
+        - action: { character: { char: "k" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: ">" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "{}" } }
+              processByRIME: true
+        - action: { character: { char: "l" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "[]" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "〔〕" } }
+              processByRIME: true
+        - action: { characterMargin: { char: "l" } }
+          width: available
+          processByRIME: true
+      - keys:
+        - action: shift
+          width:  { percentage: 0.13 }
+          swipe:
+            - direction: up
+              action: tab
+              processByRIME: true
+            - direction: down
+              action: tab
+              processByRIME: true
+          lightModeStyle: *cl
+          darkModeStyle: *cb
+          processByRIME: true
+        - action: none
+          width: available
+        - action: { character: { char: "z" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "—" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "···" } }
+              processByRIME: true
+            - direction: left
+              action: { shortcutCommand: "#左手模式" }
+              processByRIME: true
+        - action: { character: { char: "x" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "?" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "？" } }
+              processByRIME: true
+        - action: { character: { char: "c" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: ":" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "：" } }
+              processByRIME: true
+        - action: { character: { char: "v" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: ";" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "；" } }
+              processByRIME: true
+          callout:
+            - action: { character: { char: ü } }
+            - action: { character: { char: ǖ } }
+            - action: { character: { char: ǘ } }
+            - action: { character: { char: ǚ } }
+            - action: { character: { char: ǜ } }
+        - action: { character: { char: "b" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { symbol: { char: "." } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "。" } }
+              processByRIME: true
+        - action: { character: { char: "n" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { symbol: { char: "," } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "，" } }
+              processByRIME: true
+        - action: { character: { char: "m" } }
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { character: { char: "/" } }
+              processByRIME: true
+            - direction: down
+              action: { character: { char: "、" } }
+              processByRIME: true
+            - direction: right
+              action: { shortcutCommand: "#右手模式" }
+              processByRIME: true
+        - action: none
+          width: available
+        - action: backspace
+          width: { percentage: 0.13 }
+          lightModeStyle: *cl
+          darkModeStyle: *cb
+          processByRIME: true
+          swipe:
+            - direction: up
+              action: { shortcutCommand: "#中英切换" }
+              processByRIME: true
+            - direction: down
+              action: { shortcutCommand: "#RimeSwitcher" }
+              processByRIME: true
+      - keys:
+        - action: { keyboardType: classifySymbolic }
+          width: { percentage: 0.13 }
+          lightModeStyle: *cl
+          darkModeStyle: *cb
+          processByRIME: true
+        - action: { keyboardType: numericNineGrid }
+          width: { percentage: 0.13 }
+          lightModeStyle: *cl
+          darkModeStyle: *cb
+          processByRIME: true
+        - action: space
+          lightModeStyle: *sl
+          darkModeStyle: *sb
+          processByRIME: true
+          width: available
+          label:
+            text: "空格"
+            loadingText: "Hamster雾凇"
+        - action: enter
+          width: { percentage: 0.26 }
+          lightModeStyle: *cl
+          darkModeStyle: *cb
+          processByRIME: true
