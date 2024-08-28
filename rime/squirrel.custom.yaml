@@ -1,4 +1,5 @@
 patch:
+  # 鼠须管设置
   # 皮肤列表
   preset_color_schemes/purity_of_form_custom/candidate_list_layout: linear   # 候选项排列方向 stacked(默认) | linear
   # 预设选项。如果皮肤没写，则使用这些属性；如果皮肤写了，使用皮肤的。

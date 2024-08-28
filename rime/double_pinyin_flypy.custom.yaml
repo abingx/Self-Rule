@@ -1,4 +1,5 @@
 patch:
+  # 雾凇拼音-小鹤输入法配置
   # Lua 配置: 日期、时间、星期、ISO 8601、时间戳的触发关键字
   date_translator/timestamp: stamp   # 时间戳： 1669716794
   # 主翻译器，拼音

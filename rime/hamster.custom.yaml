@@ -1,4 +1,5 @@
 patch:
+  # 仓输入法配置
   # 通用配置
   # 是否开启icloud同步
   general/enableAppleCloud: true

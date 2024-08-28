@@ -1,4 +1,5 @@
 patch:
+  # 雾凇拼音设置
   # 方案列表
   schema_list: 
     - schema: double_pinyin_flypy                  # 小鹤双拼
