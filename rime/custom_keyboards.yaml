@@ -316,9 +316,12 @@ keyboards:
           width:  { percentage: 0.13 }
           swipe:
             - direction: up
-              action: tab
+              action: { shortcutCommand: "#中英切换" }
               processByRIME: true
             - direction: down
+              action: { shortcutCommand: "#RimeSwitcher" }
+              processByRIME: true
+            - direction: right
               action: tab
               processByRIME: true
           lightModeStyle: *cl
@@ -422,13 +425,6 @@ keyboards:
           lightModeStyle: *cl
           darkModeStyle: *cb
           processByRIME: true
-          swipe:
-            - direction: up
-              action: { shortcutCommand: "#中英切换" }
-              processByRIME: true
-            - direction: down
-              action: { shortcutCommand: "#RimeSwitcher" }
-              processByRIME: true
       - keys:
         - action: { keyboardType: classifySymbolic }
           width: { percentage: 0.13 }
