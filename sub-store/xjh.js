@@ -1,7 +1,7 @@
 let config = $files[0];
 let proxies = await produceArtifact({
   type: 'subscription',
-  name: 'Vmess',
+  name: 'SS+TLS',
   platform: 'QX'
 });
 
