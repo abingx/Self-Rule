@@ -80,7 +80,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "`" } }
-              processByRIME: true
         - action: { character: { char: "w" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -91,7 +90,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "@" } }
-              processByRIME: true
         - action: { character: { char: "e" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -102,7 +100,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "#" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ē } }
             - action: { character: { char: é } }
@@ -118,7 +115,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "$" } }
-              processByRIME: true
         - action: { character: { char: "t" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -129,7 +125,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "%" } }
-              processByRIME: true
         - action: { character: { char: "y" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -140,7 +135,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "^" } }
-              processByRIME: true
         - action: { character: { char: "u" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -151,7 +145,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "&" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ū } }
             - action: { character: { char: ú } }
@@ -167,7 +160,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "*" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ī } }
             - action: { character: { char: í } }
@@ -183,7 +175,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "|" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ō } }
             - action: { character: { char: ó } }
@@ -199,7 +190,6 @@ keyboards:
               processByRIME: true
             - direction: down
               action: { character: { char: "\\" } }
-              processByRIME: true
       - keys:
         - action: { characterMargin: { char: "a" } }
           width: available
@@ -211,10 +201,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "!" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "！" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ā } }
             - action: { character: { char: á } }
@@ -227,10 +215,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "-" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "_" } }
-              processByRIME: true
         - action: { character: { char: "d" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -238,10 +224,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: '""' } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "“”" } }
-              processByRIME: true
         - action: { character: { char: "f" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -249,10 +233,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "''" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "‘’" } }
-              processByRIME: true
         - action: { character: { char: "g" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -260,10 +242,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "=" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "+" } }
-              processByRIME: true
         - action: { character: { char: "h" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -271,10 +251,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "()" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "（）" } }
-              processByRIME: true
         - action: { character: { char: "j" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -282,10 +260,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "<" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "《》" } }
-              processByRIME: true
         - action: { character: { char: "k" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -293,10 +269,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: ">" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "{}" } }
-              processByRIME: true
         - action: { character: { char: "l" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -304,10 +278,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "[]" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "〔〕" } }
-              processByRIME: true
         - action: { characterMargin: { char: "l" } }
           width: available
           processByRIME: true
@@ -336,10 +308,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "—" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "···" } }
-              processByRIME: true
             - direction: left
               action: { shortcutCommand: "#左手模式" }
               processByRIME: true
@@ -350,10 +320,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "?" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "？" } }
-              processByRIME: true
         - action: { character: { char: "c" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -361,10 +329,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: ":" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "：" } }
-              processByRIME: true
         - action: { character: { char: "v" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -372,10 +338,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: ";" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "；" } }
-              processByRIME: true
           callout:
             - action: { character: { char: ü } }
             - action: { character: { char: ǖ } }
@@ -389,10 +353,8 @@ keyboards:
           swipe:
             - direction: up
               action: { symbol: { char: "." } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "。" } }
-              processByRIME: true
         - action: { character: { char: "n" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -400,10 +362,8 @@ keyboards:
           swipe:
             - direction: up
               action: { symbol: { char: "," } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "，" } }
-              processByRIME: true
         - action: { character: { char: "m" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
@@ -411,10 +371,8 @@ keyboards:
           swipe:
             - direction: up
               action: { character: { char: "/" } }
-              processByRIME: true
             - direction: down
               action: { character: { char: "、" } }
-              processByRIME: true
             - direction: right
               action: { shortcutCommand: "#右手模式" }
               processByRIME: true
