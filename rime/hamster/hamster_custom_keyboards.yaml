@@ -1,4 +1,110 @@
-customKeyStyles:
+keyboard:
+  colorSchemas:
+    - schemaName: iOS_Light
+      name: iOS原生浅色
+      author: Sit
+      back_color: "0xAAD8D2CF"
+      button_back_color: "0xAAFFFFFF"
+      button_pressed_back_color: "0xAADEDEDE"
+      #button_bubble_back_color: "0x01DEDEDE"
+      button_foreground_color: "0x000000"
+      button_pressed_foreground_color: "0x000000"
+      button_swipe_foreground_color: "0x000000"
+      font_size: 20
+      swipe_font_size: 8
+      corner_radius: 5
+      border_color: "0x01000000"
+      text_color: "0x000000"
+      lower_edge_color: "0xAA868281"
+      shadow_color: "0x000000"
+      shadow_size: 0
+      hilited_candidate_back_color: "0x01FFFFFF"
+      hilited_candidate_text_color: "0x000000"
+      hilited_candidate_label_color: "0x000000"
+      hilited_comment_text_color: "0x000000"
+      candidate_text_color: "0x000000"
+      comment_text_color: "0x000000"
+      label_color: "0x000000"
+      hilited_callout_back_color: "0xFFFFFF"
+      hilited_callout_foreground_color: "0x000000"
+    - schemaName: iOS_Black
+      name: iOS原生深色
+      author: Sit
+      back_color: "0xAA2D2C2C"
+      button_back_color: "0xAA6D6D6D"
+      button_pressed_back_color: "0xAA6D6D6D"
+      #button_bubble_back_color: "0x016D6D6D"
+      button_foreground_color: "0xFFFFFF"
+      button_pressed_foreground_color: "0xFFFFFF"
+      button_swipe_foreground_color: "0xFFFFFF"
+      font_size: 20
+      swipe_font_size: 8
+      corner_radius: 5
+      border_color: "0x01000000"
+      text_color: "0xFFFFFF"
+      lower_edge_color: "0xAA1B1B1E"
+      shadow_color: "0xFFFFFF"
+      shadow_size: 0
+      hilited_candidate_back_color: "0x01000000"
+      hilited_candidate_text_color: "0xFFFFFF"
+      hilited_candidate_label_color: "0xFFFFFF"
+      hilited_comment_text_color: "0xFFFFFF"
+      candidate_text_color: "0xFFFFFF"
+      comment_text_color: "0xFFFFFF"
+      label_color: "0xFFFFFF"
+      hilited_callout_back_color: "0x000000"
+      hilited_callout_foreground_color: "0xFFFFFF"
+    - schemaName: wechat_light
+      name: 微信键盘浅色
+      author: 古罗
+      back_color: "0x01D8D3D0"
+      button_back_color: "0xFEFCFC"
+      button_pressed_back_color: "0xEBEBEB"
+      button_bubble_back_color: "0xD0D0D0"
+      button_foreground_color: "0x000000"
+      button_pressed_foreground_color: "0x000000"
+      button_swipe_foreground_color: "0x000000"
+      corner_radius: 6
+      border_color: "0x01000000"
+      text_color: "0x444444"
+      lower_edge_color: "0x000000"
+      shadow_color: "0x000000"
+      shadow_size: 0
+      hilited_candidate_back_color: "0xFBFAF9"
+      hilited_candidate_text_color: "0x66AC18"
+      hilited_candidate_label_color: "0x66AC18"
+      hilited_comment_text_color: "0x66AC18"
+      candidate_text_color: "0x424242"
+      comment_text_color: "0x999999"
+      label_color: "0x000000"
+      hilited_callout_back_color: "0xFBFAF9"
+      hilited_callout_foreground_color: "0x66AC18"
+    - schemaName: wechat_dark
+      name: 微信键盘深色
+      author: 古罗
+      back_color: "0x012C2C2C"
+      button_back_color: "0x656565"
+      button_pressed_back_color: "0x707070"
+      button_bubble_back_color: "0xD0D0D0"
+      button_foreground_color: "0xFDFDFD"
+      button_pressed_foreground_color: "0xFFFFFF"
+      button_swipe_foreground_color: "0xFFFFFF"
+      corner_radius: 8
+      border_color: "0x01000000"
+      text_color: "0x7A7A7A"
+      lower_edge_color: "0x000000"
+      shadow_color: "0x000000"
+      shadow_size: 0
+      hilited_candidate_back_color: "0x676767"
+      hilited_candidate_text_color: "0x8EE600"
+      hilited_candidate_label_color: "0x8EE600"
+      hilited_comment_text_color: "0x8EE600"
+      candidate_text_color: "0xFEFEFE"
+      comment_text_color: "0xAEAEAE"
+      label_color: "0xFEFEFE"
+      hilited_callout_back_color: "0x676767"
+      hilited_callout_foreground_color: "0x8EE600"
+keyStyle:
   commands_Light: &cl
     name: commands_Light
     buttonBackgroundColor: "0xCCBBAFA9" #按键背景色
@@ -65,6 +171,26 @@ customKeyStyles:
     pressedSwipeForegroundColor: "0xFFFFFF"
     fontSize: 19
     swipeFontSize: 9
+  translate_Light: &tl
+    name: commands_Light
+    buttonBackgroundColor: "0xCCBBAFA9"
+    pressedButtonBackgroundColor: "0xCCBBAFA9"
+    buttonForegroundColor: "0x000000"
+    pressedButtonForegroundColor: "0x000000"
+    swipeForegroundColor: "0x000000"
+    pressedSwipeForegroundColor: "0x000000"
+    fontSize: 18
+    swipeFontSize: 8
+  translate_Black: &tb
+    name: commands_Black
+    buttonBackgroundColor: "0xCC474747"
+    pressedButtonBackgroundColor: "0xCC474747"
+    buttonForegroundColor: "0xFFFFFF"
+    pressedButtonForegroundColor: "0xFFFFFF"
+    swipeForegroundColor: "0xFFFFFF"
+    pressedSwipeForegroundColor: "0xFFFFFF"
+    fontSize: 18
+    swipeFontSize: 8
 keyboards:
   - name: 原生中文
     isPrimary: true
@@ -223,7 +349,7 @@ keyboards:
           processByRIME: true
           swipe:
             - direction: up
-              action: { character: { char: '""' } }
+              action: { character: { char: '"' } }
             - direction: down
               action: { character: { char: "“”" } }
         - action: { character: { char: "f" } }
@@ -232,7 +358,7 @@ keyboards:
           processByRIME: true
           swipe:
             - direction: up
-              action: { character: { char: "''" } }
+              action: { character: { char: "'" } }
             - direction: down
               action: { character: { char: "‘’" } }
         - action: { character: { char: "g" } }
@@ -288,13 +414,8 @@ keyboards:
           width:  { percentage: 0.13 }
           swipe:
             - direction: up
-              action: { shortcutCommand: "#中英切换" }
-              processByRIME: true
-            - direction: down
-              action: { shortcutCommand: "#RimeSwitcher" }
-              processByRIME: true
-            - direction: right
               action: tab
+              label: "→"
               processByRIME: true
           lightModeStyle: *cl
           darkModeStyle: *cb
@@ -384,16 +505,32 @@ keyboards:
           darkModeStyle: *cb
           processByRIME: true
       - keys:
-        - action: { keyboardType: classifySymbolic }
-          width: { percentage: 0.13 }
-          lightModeStyle: *cl
-          darkModeStyle: *cb
-          processByRIME: true
         - action: { keyboardType: numericNineGrid }
           width: { percentage: 0.13 }
           lightModeStyle: *cl
           darkModeStyle: *cb
           processByRIME: true
+          swipe:
+            - direction: up
+              action: { keyboardType: emojis }
+              label: "😀"
+              processByRIME: true
+            - direction: down
+              action: { keyboardType: classifySymbolic } 
+              label: "!?#"
+              processByRIME: true
+        - action: { shortcutCommand: "#中英切换" }
+          label:
+            text: ""
+            # systemImageName: characters.lowercase
+          width: { percentage: 0.13 }
+          lightModeStyle: *tl
+          darkModeStyle: *tb
+          processByRIME: true
+          callout:
+            - action: { shortcutCommand: "#RimeSwitcher" }
+              label: "Switcher"
+              processByRIME: true
         - action: space
           lightModeStyle: *sl
           darkModeStyle: *sb

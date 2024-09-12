@@ -4,18 +4,20 @@ patch:
   # 是否开启icloud同步
   general/enableAppleCloud: true
   # icloud同步过滤规则
-  general/regexOnCopyFile: 
-    - ^.*[.]userdb.*$
-    - ^.*build.*$
+  regexOnCopyFile:
     - ^.*SharedSupport.*$
-    - ^.*[.]bin$
-    - installation\.yaml
+    - ^.*[.]userdb.*$
+    - ^.*[.]keyboard[.]yaml$
+    # - ^.*build.*$
+    # - ^.*[.]bin$
   # 工具栏
   # 不显示键盘 icon 按钮
   toolbar/displayAppIconButton: false
   # 工具栏总高度
   toolbar/heightOfToolbar: 40
   # 键盘相关配置
+  # 使用键盘类型:
+  keyboard/useKeyboardType: 原生中文
   # 上下显示划动文本规则布局
   keyboard/swipeLabelUpAndDownLayout: true
   # 禁用按键声
@@ -32,9 +34,7 @@ patch:
   keyboard/enableEmbeddedInputMode: true
   # 设置符号光标居中
   keyboard/symbolsOfCursorBack:
-    - '""'
     - "“”"
-    - "''"
     - "‘’" 
     - "()"
     - "（）"
@@ -45,20 +45,25 @@ patch:
   # 成对上屏的符号
   keyboard/pairsOfSymbols: 
     - ""
+    # - '""'
+    # - "''"
+  # 双击空格键输入空格
+  keyboard/enableInputPeriodBySpaceDoubleTap: false
   # 中文26键显示大写字符
   keyboard/showUppercasedCharacterOnChineseKeyboard: false
   # 字体样式
   # 字体放在Fonts文件夹内，不是注解中的Font文件夹。name引用系统字体
   keyboard/style/fontFace:
     - name: "PingFangSC-Regular"
-    - url: "LXGWWenKai-Regular.ttf"   
+    - url: "icomoon.ttf"
+    - url: "LXGWWenKai-Regular.ttf"
   # 配色方案
   keyboard/colorSchemas:
-    __include: custom_color_schemas:/keyboard/colorSchemas
+    __include: hamster_custom_keyboards:/keyboard/colorSchemas
   # 如果使用自造词，需要改为 false, 否则部署时会覆盖键盘自造词文件
   rime/overrideDictFiles: false
   #自定义键盘
   customKeyStyles:
-    __include: custom_keyboards:/customKeyStyles
+    __include: hamster_custom_keyboards:/keyStyle
   keyboards:
-    __include: custom_keyboards:/keyboards
+    __include: hamster_custom_keyboards:/keyboards
