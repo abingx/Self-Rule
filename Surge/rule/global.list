@@ -1,4 +1,7 @@
 # > GLOBAL
+# Follow
+DOMAIN-SUFFIX,posthog.com,GLOBAL
+DOMAIN-SUFFIX,follow.is,GLOBAL
 #  GitHub加速，已被屏蔽
 DOMAIN-SUFFIX,jsdelivr.net,GLOBAL
 # mihomo网站
