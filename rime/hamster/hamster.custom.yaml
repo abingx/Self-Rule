@@ -11,8 +11,6 @@ patch:
     # - ^.*build.*$
     # - ^.*[.]bin$
   # 工具栏
-  # 不显示键盘 icon 按钮
-  toolbar/displayAppIconButton: false
   # 工具栏总高度
   toolbar/heightOfToolbar: 40
   # 键盘相关配置
@@ -24,8 +22,6 @@ patch:
   keyboard/enableKeySounds: false
   # 启用触控反馈
   keyboard/enableHapticFeedback: true
-  # 启用分类符号按键
-  keyboard/displayClassifySymbolButton: true
   # 数字九宫格键盘：数字键是否由 RIME 处理
   keyboard/numberKeyProcessByRimeOnNineGridOfNumericKeyboard: true
   # Shift状态锁定
@@ -49,8 +45,10 @@ patch:
     # - "''"
   # 双击空格键输入空格
   keyboard/enableInputPeriodBySpaceDoubleTap: false
-  # 中文26键显示大写字符
-  keyboard/showUppercasedCharacterOnChineseKeyboard: false
+  # 系统剪贴板监听
+  keyboard/enableSystemClipboardListener: true
+  # 剪贴板历史最大数量。注意：此数值会影响性能
+  keyboard/clipboardHistoryMaximum: 30
   # 字体样式
   # 字体放在Fonts文件夹内，不是注解中的Font文件夹。name引用系统字体
   keyboard/style/fontFace:

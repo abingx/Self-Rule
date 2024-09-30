@@ -54,59 +54,9 @@ keyboard:
       label_color: "0xFFFFFF"
       hilited_callout_back_color: "0x000000"
       hilited_callout_foreground_color: "0xFFFFFF"
-    - schemaName: wechat_light
-      name: 微信键盘浅色
-      author: 古罗
-      back_color: "0x01D8D3D0"
-      button_back_color: "0xFEFCFC"
-      button_pressed_back_color: "0xEBEBEB"
-      button_bubble_back_color: "0xD0D0D0"
-      button_foreground_color: "0x000000"
-      button_pressed_foreground_color: "0x000000"
-      button_swipe_foreground_color: "0x000000"
-      corner_radius: 6
-      border_color: "0x01000000"
-      text_color: "0x444444"
-      lower_edge_color: "0x000000"
-      shadow_color: "0x000000"
-      shadow_size: 0
-      hilited_candidate_back_color: "0xFBFAF9"
-      hilited_candidate_text_color: "0x66AC18"
-      hilited_candidate_label_color: "0x66AC18"
-      hilited_comment_text_color: "0x66AC18"
-      candidate_text_color: "0x424242"
-      comment_text_color: "0x999999"
-      label_color: "0x000000"
-      hilited_callout_back_color: "0xFBFAF9"
-      hilited_callout_foreground_color: "0x66AC18"
-    - schemaName: wechat_dark
-      name: 微信键盘深色
-      author: 古罗
-      back_color: "0x012C2C2C"
-      button_back_color: "0x656565"
-      button_pressed_back_color: "0x707070"
-      button_bubble_back_color: "0xD0D0D0"
-      button_foreground_color: "0xFDFDFD"
-      button_pressed_foreground_color: "0xFFFFFF"
-      button_swipe_foreground_color: "0xFFFFFF"
-      corner_radius: 8
-      border_color: "0x01000000"
-      text_color: "0x7A7A7A"
-      lower_edge_color: "0x000000"
-      shadow_color: "0x000000"
-      shadow_size: 0
-      hilited_candidate_back_color: "0x676767"
-      hilited_candidate_text_color: "0x8EE600"
-      hilited_candidate_label_color: "0x8EE600"
-      hilited_comment_text_color: "0x8EE600"
-      candidate_text_color: "0xFEFEFE"
-      comment_text_color: "0xAEAEAE"
-      label_color: "0xFEFEFE"
-      hilited_callout_back_color: "0x676767"
-      hilited_callout_foreground_color: "0x8EE600"
 keyStyle:
-  commands_Light: &cl
-    name: commands_Light
+  command_Light: &cl
+    name: command_Light
     buttonBackgroundColor: "0xCCBBAFA9" #按键背景色
     pressedButtonBackgroundColor: "0xCCBBAFA9" #按下背景色
     buttonForegroundColor: "0x000000" #按键字体颜色
@@ -121,8 +71,8 @@ keyStyle:
     #shadowSize: 0 #阴影粗细
     fontSize: 16 #按键字体大小
     swipeFontSize: 8 #按键滑动字体大小
-  commands_Black: &cb
-    name: commands_Black
+  command_Black: &cb
+    name: command_Black
     buttonBackgroundColor: "0xCC474747"
     pressedButtonBackgroundColor: "0xCC474747"
     buttonForegroundColor: "0xFFFFFF"
@@ -131,8 +81,8 @@ keyStyle:
     pressedSwipeForegroundColor: "0xFFFFFF"
     fontSize: 16
     swipeFontSize: 8
-  space_Llack: &sl
-    name: space_Llack
+  space_Light: &sl
+    name: space_Light
     buttonBackgroundColor: "0xCCFFFFFF"
     pressedButtonBackgroundColor: "0xCCFFFFFF"
     buttonForegroundColor: "0x000000" 
@@ -151,8 +101,8 @@ keyStyle:
     pressedSwipeForegroundColor: "0xFFFFFF"
     fontSize: 16
     swipeFontSize: 8
-  keyboards_Light: &kl
-    name: keyboards_Light
+  keyboard_Light: &kl
+    name: keyboard_Light
     buttonBackgroundColor: "0xCCFFFFFF"
     pressedButtonBackgroundColor: "0xCCFFFFFF"
     buttonForegroundColor: "0x000000" 
@@ -161,8 +111,8 @@ keyStyle:
     pressedSwipeForegroundColor: "0x000000" 
     fontSize: 19
     swipeFontSize: 9
-  keyboards_Black: &kb
-    name: keyboards_Black
+  keyboard_Black: &kb
+    name: keyboard_Black
     buttonBackgroundColor: "0xCC707070"
     pressedButtonBackgroundColor: "0xCC707070"
     buttonForegroundColor: "0xFFFFFF"
@@ -172,7 +122,7 @@ keyStyle:
     fontSize: 19
     swipeFontSize: 9
   translate_Light: &tl
-    name: commands_Light
+    name: translate_Light
     buttonBackgroundColor: "0xCCBBAFA9"
     pressedButtonBackgroundColor: "0xCCBBAFA9"
     buttonForegroundColor: "0x000000"
@@ -182,7 +132,7 @@ keyStyle:
     fontSize: 18
     swipeFontSize: 8
   translate_Black: &tb
-    name: commands_Black
+    name: translate_Black
     buttonBackgroundColor: "0xCC474747"
     pressedButtonBackgroundColor: "0xCC474747"
     buttonForegroundColor: "0xFFFFFF"
@@ -197,29 +147,26 @@ keyboards:
     rows:
       - keys:
         - action: { character: { char: "q" } }
-          lightModeStyle: *kl
-          darkModeStyle: *kb
-          processByRIME: true
           swipe:
             - direction: up
               action: { character: { char: "1" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "`" } }
-        - action: { character: { char: "w" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "w" } }
           swipe:
             - direction: up
               action: { character: { char: "2" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "@" } }
-        - action: { character: { char: "e" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "e" } }
           swipe:
             - direction: up
               action: { character: { char: "3" } }
@@ -231,40 +178,40 @@ keyboards:
             - action: { character: { char: é } }
             - action: { character: { char: ě } }
             - action: { character: { char: è } }
-        - action: { character: { char: "r" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "r" } }
           swipe:
             - direction: up
               action: { character: { char: "4" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "$" } }
-        - action: { character: { char: "t" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "t" } }
           swipe:
             - direction: up
               action: { character: { char: "5" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "%" } }
-        - action: { character: { char: "y" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "y" } }
           swipe:
             - direction: up
               action: { character: { char: "6" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "^" } }
-        - action: { character: { char: "u" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "u" } }
           swipe:
             - direction: up
               action: { character: { char: "7" } }
@@ -276,10 +223,10 @@ keyboards:
             - action: { character: { char: ú } }
             - action: { character: { char: ǔ } }
             - action: { character: { char: ù } }
-        - action: { character: { char: "i" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "i" } }
           swipe:
             - direction: up
               action: { character: { char: "8" } }
@@ -291,10 +238,10 @@ keyboards:
             - action: { character: { char: í } }
             - action: { character: { char: ǐ } }
             - action: { character: { char: ì } }
-        - action: { character: { char: "o" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "o" } }
           swipe:
             - direction: up
               action: { character: { char: "9" } }
@@ -306,24 +253,24 @@ keyboards:
             - action: { character: { char: ó } }
             - action: { character: { char: ǒ } }
             - action: { character: { char: ò } }
-        - action: { character: { char: "p" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "p" } }
           swipe:
             - direction: up
               action: { character: { char: "0" } }
               processByRIME: true
             - direction: down
               action: { character: { char: "\\" } }
-      - keys:
-        - action: { characterMargin: { char: "a" } }
-          width: available
           processByRIME: true
-        - action: { character: { char: "a" } }
           lightModeStyle: *kl
           darkModeStyle: *kb
+      - keys:
+        - action: { characterMargin: { char: "a" } }
           processByRIME: true
+          width: available
+        - action: { character: { char: "a" } }
           swipe:
             - direction: up
               action: { character: { char: "!" } }
@@ -334,128 +281,128 @@ keyboards:
             - action: { character: { char: á } }
             - action: { character: { char: ǎ } }
             - action: { character: { char: à } }
-        - action: { character: { char: "s" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "s" } }
           swipe:
             - direction: up
               action: { character: { char: "-" } }
             - direction: down
               action: { character: { char: "_" } }
-        - action: { character: { char: "d" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "d" } }
           swipe:
             - direction: up
               action: { character: { char: '"' } }
             - direction: down
               action: { character: { char: "“”" } }
-        - action: { character: { char: "f" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "f" } }
           swipe:
             - direction: up
               action: { character: { char: "'" } }
             - direction: down
               action: { character: { char: "‘’" } }
-        - action: { character: { char: "g" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "g" } }
           swipe:
             - direction: up
               action: { character: { char: "=" } }
             - direction: down
               action: { character: { char: "+" } }
-        - action: { character: { char: "h" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "h" } }
           swipe:
             - direction: up
               action: { character: { char: "()" } }
             - direction: down
               action: { character: { char: "（）" } }
-        - action: { character: { char: "j" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "j" } }
           swipe:
             - direction: up
               action: { character: { char: "<" } }
             - direction: down
               action: { character: { char: "《》" } }
-        - action: { character: { char: "k" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "k" } }
           swipe:
             - direction: up
               action: { character: { char: ">" } }
             - direction: down
               action: { character: { char: "{}" } }
-        - action: { character: { char: "l" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "l" } }
           swipe:
             - direction: up
               action: { character: { char: "[]" } }
             - direction: down
               action: { character: { char: "〔〕" } }
-        - action: { characterMargin: { char: "l" } }
-          width: available
           processByRIME: true
+          lightModeStyle: *kl
+          darkModeStyle: *kb
+        - action: { characterMargin: { char: "l" } }
+          processByRIME: true
+          width: available
       - keys:
         - action: shift
-          width:  { percentage: 0.13 }
           swipe:
             - direction: up
               action: tab
               label: "→"
               processByRIME: true
+          processByRIME: true
+          width:  { percentage: 0.13 }
           lightModeStyle: *cl
           darkModeStyle: *cb
-          processByRIME: true
         - action: none
           width: available
         - action: { character: { char: "z" } }
-          lightModeStyle: *kl
-          darkModeStyle: *kb
-          processByRIME: true
           swipe:
             - direction: up
-              action: { character: { char: "—" } }
+              action: { character: { char: "~" } }
             - direction: down
               action: { character: { char: "···" } }
             - direction: left
               action: { shortcutCommand: "#左手模式" }
               processByRIME: true
-        - action: { character: { char: "x" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "x" } }
           swipe:
             - direction: up
               action: { character: { char: "?" } }
             - direction: down
               action: { character: { char: "？" } }
-        - action: { character: { char: "c" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "c" } }
           swipe:
             - direction: up
               action: { character: { char: ":" } }
             - direction: down
               action: { character: { char: "：" } }
-        - action: { character: { char: "v" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "v" } }
           swipe:
             - direction: up
               action: { character: { char: ";" } }
@@ -467,28 +414,28 @@ keyboards:
             - action: { character: { char: ǘ } }
             - action: { character: { char: ǚ } }
             - action: { character: { char: ǜ } }
-        - action: { character: { char: "b" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "b" } }
           swipe:
             - direction: up
               action: { symbol: { char: "." } }
             - direction: down
               action: { character: { char: "。" } }
-        - action: { character: { char: "n" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "n" } }
           swipe:
             - direction: up
               action: { symbol: { char: "," } }
             - direction: down
               action: { character: { char: "，" } }
-        - action: { character: { char: "m" } }
+          processByRIME: true
           lightModeStyle: *kl
           darkModeStyle: *kb
-          processByRIME: true
+        - action: { character: { char: "m" } }
           swipe:
             - direction: up
               action: { character: { char: "/" } }
@@ -497,19 +444,18 @@ keyboards:
             - direction: right
               action: { shortcutCommand: "#右手模式" }
               processByRIME: true
+          processByRIME: true
+          lightModeStyle: *kl
+          darkModeStyle: *kb
         - action: none
           width: available
         - action: backspace
+          processByRIME: true
           width: { percentage: 0.13 }
           lightModeStyle: *cl
           darkModeStyle: *cb
-          processByRIME: true
       - keys:
         - action: { keyboardType: numericNineGrid }
-          width: { percentage: 0.13 }
-          lightModeStyle: *cl
-          darkModeStyle: *cb
-          processByRIME: true
           swipe:
             - direction: up
               action: { keyboardType: emojis }
@@ -519,28 +465,31 @@ keyboards:
               action: { keyboardType: classifySymbolic } 
               label: "!?#"
               processByRIME: true
+          processByRIME: true
+          width: { percentage: 0.13 }
+          lightModeStyle: *cl
+          darkModeStyle: *cb
         - action: { shortcutCommand: "#中英切换" }
           label:
             text: ""
-            # systemImageName: characters.lowercase
-          width: { percentage: 0.13 }
-          lightModeStyle: *tl
-          darkModeStyle: *tb
-          processByRIME: true
           callout:
             - action: { shortcutCommand: "#RimeSwitcher" }
               label: "Switcher"
               processByRIME: true
-        - action: space
-          lightModeStyle: *sl
-          darkModeStyle: *sb
           processByRIME: true
-          width: available
+          width: { percentage: 0.13 }
+          lightModeStyle: *tl
+          darkModeStyle: *tb
+        - action: space
           label:
             text: "空格"
             loadingText: "Hamster雾凇"
+          processByRIME: true
+          width: available
+          lightModeStyle: *sl
+          darkModeStyle: *sb
         - action: enter
+          processByRIME: true
           width: { percentage: 0.26 }
           lightModeStyle: *cl
           darkModeStyle: *cb
-          processByRIME: true
