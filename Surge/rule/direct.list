@@ -1,12 +1,11 @@
 # > DIRECT
+# 蓉政通
+PROCESS-NAME,蓉政通*
 # 蓉城先锋
 DOMAIN-SUFFIX,cddyjy.com
 # VSCode更新
 DOMAIN,update.code.visualstudio.com
 DOMAIN-SUFFIX,msecnd.net
-# 蓉政通
-DOMAIN-SUFFIX,rztcd.com
-DOMAIN,px.effirst.com
 # 成都本地宝
 DOMAIN-SUFFIX,bendibao.com
 # 成都农商银行
