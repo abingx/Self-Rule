@@ -1,4 +1,4 @@
-#!name=Localapi
+#!name=LocalAPI
 #!desc=在Mac局域网中将网络web2api切换为本地web2api，加快访问速度
 
 [Script]
