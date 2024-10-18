@@ -1,0 +1,10 @@
+#!name=Localapi
+#!desc=在Mac局域网中将网络web2api切换为本地web2api，加快访问速度
+
+[Script]
+qwen = type=http-request,pattern=^https?:\/\/qwen\.allinhub\.top\/.*,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/localapi.js
+metaso = type=http-request,pattern=^https?:\/\/metaso\.allinhub\.top\/.*,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/localapi.js
+kimi = type=http-request,pattern=^https?:\/\/kimi\.allinhub\.top\/.*,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/localapi.js
+
+[MITM]
+hostname = %APPEND% qwen.allinhub.top, kimi.allinhub.top, metaso.allinhub.top
