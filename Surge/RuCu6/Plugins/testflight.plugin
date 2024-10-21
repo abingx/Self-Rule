@@ -1,7 +1,7 @@
 #!name = TestFlight
 #!desc = 解除TestFlight的区域限制，支持tvOS。
 #!author = 可莉🅥[https://gitlab.com/lodepuly/vpn_tool]
-#!icon = https://raw.githubusercontent.com/RuCu6/Loon/main/Icons/app/testflight.png
+#!icon = https://raw.githubusercontent.com/abingx/Self-Rule/main/Surge/RuCu6/Icons/app/testflight.png
 #!date = 2024-08-07 16:25:33
 
 [General]
