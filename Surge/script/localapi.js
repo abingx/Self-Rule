@@ -1,4 +1,4 @@
-if ($network.wifi.ssid.includes("shzlk")) {
+if ($network && $network.wifi.ssid && $network.wifi.ssid.includes("shzlk")) {
     let url = $request.url;
     let headers = JSON.parse(JSON.stringify($request.headers));
     let body = $request.body;
