@@ -12,9 +12,9 @@ http-request ^https?:\/\/cdnfile\.sspai\.com\/.+\.(jpg|jpeg|gif|png|webp) header
 http-request ^https?:\/\/.+\.sinaimg\.cn\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-del Referer
 http-request ^https?:\/\/.+\.sinaimg\.cn\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Referer https://weibo.com/
 
-# 微博视频
-#http-request ^https?:\/\/.+\.video\.weibocdn\.com\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Host f.video.weibocdn.com
-#http-request ^https?:\/\/.+\.video\.weibocdn\.com\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Referer https://h5.video.weibo.com/
+# 微博视频（rsshub捕获后有效期只有1小时，微博反爬有Expires和ssig验证，ssig暂不清楚获取规则）
+http-request ^https?:\/\/.+\.video\.weibocdn\.com\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Host f.video.weibocdn.com
+http-request ^https?:\/\/.+\.video\.weibocdn\.com\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Referer https://h5.video.weibo.com/
 
 [MITM]
 hostname = %APPEND% cdnfile.sspai.com, *.sinaimg.cn, *.video.weibocdn.com
