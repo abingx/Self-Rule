@@ -1,9 +1,11 @@
 # > GLOBAL
+# 可莉插件
+DOMAIN-SUFFIX,kelee.one
 # Follow
-DOMAIN-SUFFIX,posthog.com,GLOBAL
-DOMAIN-SUFFIX,follow.is,GLOBAL
+#DOMAIN-SUFFIX,posthog.com
+#DOMAIN-SUFFIX,follow.is
 #  GitHub加速，已被屏蔽
-DOMAIN-SUFFIX,jsdelivr.net,GLOBAL
+DOMAIN-SUFFIX,jsdelivr.net
 # mihomo网站
 DOMAIN-SUFFIX,metacubex.one
 # 安妮的档案
