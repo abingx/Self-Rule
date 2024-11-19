@@ -40,11 +40,15 @@ $httpClient.post({
             const parsedData = JSON.parse(data);
             if (parsedData.message && !parsedData.message.includes('openResult=True')) {
                 // 如果 message 不包含 openResult=True，弹出通知
-                $notification.post('芝麻开门', 'access-token失效，需重新获取', '点击打开微信', {
+                $notification.post('芝麻开门', '', 'access-token失效，点击后需重新获', {
                     "action": "open-url",
                     "url": "wechat://"  // 你想跳转的 URL
                 });
-            }
+            } else {
+				$notification.post('芝麻开门', '', '开门成功🎉', {
+					"auto-dismiss": 5  
+				});
+			}
         } catch (e) {
             console.log('Error parsing response data:', e);
         }

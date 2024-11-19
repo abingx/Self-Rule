@@ -13,11 +13,16 @@ if (responseObj && responseObj.data && responseObj.data.access_token) {
     const token = responseObj.data.access_token;
     // 将 token 存储在持久化存储中，键名为 'doortoken'
     $persistentStore.write(token, 'doortoken');
-    
+    $notification.post('芝麻开门', '', 'access-token获取成功🎉', {
+		"auto-dismiss": 5  
+	});
     // 输出日志
     console.log(`doortoken recorded: ${token}`);
 } else {
-    // 如果没有找到 token，输出日志
+    $notification.post('芝麻开门', '', 'access-token获取未成功💀', {
+		"auto-dismiss": 5  
+	});    
+	// 如果没有找到 token，输出日志
     console.log('No doortoken found in response body.');
 }
 // 完成脚本执行
