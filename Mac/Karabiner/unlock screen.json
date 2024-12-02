@@ -1,0 +1,23 @@
+{
+    "description": "command+eject to unlock screen",
+    "manipulators": [
+        {
+            "from": {
+                "key_code": "eject",
+                "modifiers": { "mandatory": ["command"] }
+            },
+            "to": [
+                { "key_code": "p" },
+                { "key_code": "a" },
+                { "key_code": "s" },
+                { "key_code": "s" },
+                { "key_code": "w" },
+                { "key_code": "o" },
+				{ "key_code": "r" },
+				{ "key_code": "d" },
+                { "key_code": "return_or_enter" }
+            ],
+            "type": "basic"
+        }
+    ]
+}

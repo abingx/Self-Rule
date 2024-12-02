@@ -1,0 +1,15 @@
+{
+    "description": "eject to lock screen",
+    "manipulators": [
+        {
+            "from": { "consumer_key_code": "eject" },
+            "to": [
+                {
+                    "key_code": "q",
+                    "modifiers": ["left_control", "left_command"]
+                }
+            ],
+            "type": "basic"
+        } 
+    ]
+}
