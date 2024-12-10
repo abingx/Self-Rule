@@ -7,6 +7,11 @@
                 "modifiers": { "mandatory": ["command"] }
             },
             "to": [
+                {
+                    "key_code": "a",
+                    "modifiers": ["command"]
+                },
+                { "key_code": "delete_or_backspace" },
                 { "key_code": "p" },
                 { "key_code": "a" },
                 { "key_code": "s" },
