@@ -1,0 +1,11 @@
+#!name=肥羊影音限制在局域网运行
+#!desc=肥羊影音限制在shzlk和H&B_Family中运行
+
+[Rule]
+DOMAIN,Mac-mini.local,DIRECT
+
+[Script]
+feiyang = type=http-request,pattern=^http:\/\/feiyang\.allinone\/(.*),requires-body=1,max-size=0,debug=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/feiyang.js
+
+[MITM]
+hostname = %APPEND% feiyang.allinone
