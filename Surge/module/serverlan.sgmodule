@@ -3,7 +3,7 @@
 
 [Rule]
 DOMAIN,mac-mini.local,DIRECT
-DOMAIN,xueiMac.local,DIRECT
+DOMAIN,xueimac.local,DIRECT
 
 [Script]
 feiyang = type=http-request,pattern=^https:\/\/feiyang\.allinhub\.top\/.*,requires-body=1,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/feiyang.js
