@@ -1,6 +1,7 @@
 const wifiName = $network.wifi.ssid;
 let url = $request.url;
 let headers = JSON.parse(JSON.stringify($request.headers));
+let body = $request.body;
 let path = url.match(/^http:\/\/feiyang\.allinone\/(.*)$/)[1];
 let newUrl;
 if (wifiName) {
@@ -18,4 +19,4 @@ if (wifiName) {
 	newUrl = `https://feiyang.allinhub.top/${path}`;
 	headers.Host = 'feiyang.allinhub.top';
 }
-$done({ url: newUrl, headers: headers });
+$done({ url: newUrl, headers: headers, body: body });
