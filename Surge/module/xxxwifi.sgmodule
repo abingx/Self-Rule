@@ -1,0 +1,14 @@
+#!name=局域网服务主机调整（XX）
+#!desc=alist、web2api、肥羊在shzlk和H&B_Family及其他网络环境中运行，选择不同服务主机
+
+[Rule]
+DOMAIN,mac-mini.local,DIRECT
+DOMAIN,xueimac.local,DIRECT
+
+[Script]
+feiyang = type=http-request,pattern=^https:\/\/feiyang\.allinhub\.top\/.*,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/feiyang.js,argument=wifiNow="shzlk"&lanHost="mac-mini.local"
+localapi = type=http-request,pattern=^https:\/\/(qwen|metaso|kimi)\.allinhub\.top\/.*,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/localapi.js,argument=wifiNow="shzlk"&lanHost="mac-mini.local"
+alist = type=http-request,pattern=^https:\/\/alist\.allinhub\.top\/.*,script-path=https://raw.githubusercontent.com/abingx/Self-Rule/master/Surge/script/alist.js,argument=wifiNow="shzlk"&lanHost="mac-mini.local"
+
+[MITM]
+hostname = %APPEND% feiyang.allinhub.top, qwen.allinhub.top, kimi.allinhub.top, metaso.allinhub.top, alist.allinhub.top

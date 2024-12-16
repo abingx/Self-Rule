@@ -16,8 +16,17 @@ console.log(wifiNow);
 console.log(lanHost);
 
 if (wifiName && wifiName.includes(wifiNow)) {
-	url = url.replace("https://feiyang.allinhub.top", `http://${lanHost}:35455`);
-	console.log(url);
+		url = url.replace("https://alist.allinhub.top", `http://${lanHost}:5244`);
+		console.log(url);
+		console.log(headers[':authority']);
+		if (headers[':authority']) {
+			headers[':authority'] = 'mac-mini.local';
+		}
+		console.log(headers.referer);
+		if (headers.referer) {
+			headers.referer = 'mac-mini.local';
+		}
+		console.log(headers.cookie);
 	$done({ url: url, headers: headers });
 } else {
 	console.log("Condition not met. Keeping original URL.");
