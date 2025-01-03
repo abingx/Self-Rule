@@ -17,11 +17,11 @@ console.log(lanHost);
 
 if (wifiName && wifiName.includes(wifiNow)) {
 		if (url.includes("https://qwen.allinhub.top")) {
-			url = url.replace("https://qwen.allinhub.top", `http://${lanHost}:8000`);
+			url = url.replace("https://qwen.allinhub.top", `http://${lanHost}:8011`);
 		} else if (url.includes("https://metaso.allinhub.top")) {
-			url = url.replace("https://metaso.allinhub.top", `http://${lanHost}:8001`);
+			url = url.replace("https://metaso.allinhub.top", `http://${lanHost}:8012`);
 		} else if (url.includes("https://kimi.allinhub.top")) {
-			url = url.replace("https://kimi.allinhub.top", `http://${lanHost}:8002`);
+			url = url.replace("https://kimi.allinhub.top", `http://${lanHost}:8013`);
 		}
 		if (headers['authorization']) {
 			headers['Authorization'] = headers['authorization'];
