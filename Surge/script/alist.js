@@ -16,7 +16,7 @@ console.log(wifiNow);
 console.log(lanHost);
 
 if (wifiName && wifiName.includes(wifiNow)) {
-		url = url.replace("https://alist.allinhub.top", `http://${lanHost}:5244`);
+		url = url.replace(/https:\/\/alist\.allinhub\.top(:\d+)?/, `http://${lanHost}:5244`);
 		console.log(url);
 		console.log(headers[':authority']);
 		if (headers[':authority']) {
