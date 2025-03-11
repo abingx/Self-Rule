@@ -16,7 +16,7 @@ console.log(wifiNow);
 console.log(lanHost);
 
 if (wifiName && wifiName.includes(wifiNow)) {
-	url = url.replace("https://feiyang.allinhub.top", `http://${lanHost}:35455`);
+	url = url.replace(/https:\/\/feiyang\.allinhub\.top(:\d+)?/, `http://${lanHost}:35455`);
 	console.log(url);
 	$done({ url: url, headers: headers });
 } else {
