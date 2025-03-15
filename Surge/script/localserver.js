@@ -12,7 +12,7 @@ console.log(url);
 function getHost(wifiName) {
     if (wifiName.includes("shzlk")) {
         return 'mac-mini.local';
-    } else if (wifiName.includes("alist")) {
+    } else if (wifiName.includes("H&B_Family")) {
         return 'xueimac.local';
     } else {
     return null;
