@@ -25,11 +25,11 @@ if (!lanHost) {
 }
 
 function getPort(url) {
-    if (url.includes("feiyang")) {
+    if (url.includes("feiyang.allinhub.top")) {
         return 35455;
-    } else if (url.includes("alist")) {
+    } else if (url.includes("alist.allinhub.top")) {
         return 5244;
-    } else if (url.includes("open-webui")) {
+    } else if (url.includes("open-webui.allinhub.top")) {
         return 3000;
     } else {
         return null;
@@ -50,7 +50,5 @@ if (headers.referer) {
 }
 
 console.log(url);
-console.log(headers[':authority']);
-console.log(headers.referer);
 
 $done({ url: url, headers: headers });
