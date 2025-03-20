@@ -28,6 +28,8 @@ function getPort(url) {
         return 35455;
     } else if (url.includes("alist")) {
         return 5244;
+    } else if (url.includes("open-webui")) {
+        return 3000;
     }
 }
 const lanPort = getPort(url);
