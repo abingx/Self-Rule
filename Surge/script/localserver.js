@@ -9,14 +9,17 @@ let headers = { ...$request.headers };
 console.log(wifiName);
 console.log(url);
 
+const hostConfig = {
+    'shzlk': 'mac-mini.local',
+    'H&B_Family': 'xueimac.local'
+};
 function getHost(wifiName) {
-    if (wifiName.includes("shzlk")) {
-        return 'mac-mini.local';
-    } else if (wifiName.includes("H&B_Family")) {
-        return 'xueimac.local';
-    } else {
-        return null;
+    for (const key in hostConfig) {
+        if (wifiName.includes(key)) {
+            return hostConfig[key];
+        }
     }
+    return null;
 }
 const lanHost = getHost(wifiName);
 if (!lanHost) {
@@ -24,16 +27,18 @@ if (!lanHost) {
     $done({});
 }
 
+const portConfig = {
+    'feiyang.allinhub.top': 35455,
+    'alist.allinhub.top': 5244,
+    'open-webui.allinhub.top': 3000
+};
 function getPort(url) {
-    if (url.includes("feiyang.allinhub.top")) {
-        return 35455;
-    } else if (url.includes("alist.allinhub.top")) {
-        return 5244;
-    } else if (url.includes("open-webui.allinhub.top")) {
-        return 3000;
-    } else {
-        return null;
+    for (const domain in portConfig) {
+        if (url.includes(domain)) { 
+            return portConfig[domain];
+        }
     }
+    return null;
 }
 const lanPort = getPort(url);
 if (!lanPort) {
@@ -43,12 +48,13 @@ if (!lanPort) {
 
 url = url.replace(/https:\/\/[^\/]+(:\d+)?/, `http://${lanHost}:${lanPort}`);
 if (headers[':authority']) {
-    headers[':authority'] = lanHost;
+    headers[':authority'] = `${lanHost}:${lanPort}`;
 }
-if (headers.referer) {
-    headers.referer = lanHost;
-}
+['referer', 'Referer'].forEach(key => {
+    if (headers[key]) {
+        headers[key] = `http://${lanHost}:${lanPort}`;
+    }
+});
 
 console.log(url);
-
 $done({ url: url, headers: headers });
