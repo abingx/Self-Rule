@@ -26,7 +26,23 @@ redir-port: 7893
 tproxy-port: 7894
 
 # 是否允许局域网其他设置访问，true / false，建议设置为 true
-allow-lan: false
+allow-lan: true
+
+# 允许连接的 IP 段
+lan-allowed-ips:
+  - 0.0.0.0/0
+  - ::/0
+
+# 禁止连接的 IP 段
+lan-disallowed-ips: []
+
+# 为http(s)、socks以及混合代理进行用户验证。
+authentication: 
+  - "schroe:hyperapp"
+
+# 允许跳过验证的 IP 段
+skip-auth-prefixes:
+  - 127.0.0.1/32
 
 # 绑定 IP 地址，当 allow-lan 为 true 时生效
 bind-address: "*"
@@ -191,7 +207,7 @@ dns:
 
   # DNS 处理模式，可选值 fake-ip / redir-host，默认 redir-host
   # 建议：如果想要兼容性好，选择 redir-host 会减少一些问题，如果想性能好一丢丢，可以选择 fake-ip
-  enhanced-mode: redir-host
+  enhanced-mode: fake-ip
 
   # fakeip 下的 IP 段设置，tun 的默认 IPV4 地址 也使用此值作为参考
   fake-ip-range: 198.18.0.1/16
@@ -213,18 +229,27 @@ dns:
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8
 
   # 代理节点域名解析服务器，仅用于解析代理节点的域名，如果不填则遵循nameserver-policy、nameserver和fallback的配置
   # 建议：设置国内的 UDP DNS 即可
   proxy-server-nameserver:
     - 223.5.5.5
     - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8
 
   # 默认的域名解析服务器
   # 建议：设置国内的 UDP DNS 即可
   nameserver:
     - 223.5.5.5
     - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8
 
   # 后备域名解析服务器，一般情况下使用境外 DNS, 保证结果可信，配置 fallback后默认启用 fallback-filter,geoip-code为 cn
   # 建议：设置国外的 UDP DNS 即可，如果想更安全一丢丢，可以使用 DoH / DoT
@@ -361,157 +386,3 @@ tun:
   # 排除 Android 应用包名，使其避免被 Tun 路由流量
   # exclude-package:
   #   - com.android.captiveportallogin
-
-# 锚点，用于简化配置
-# for proxy-providers
-pp: &pp {type: http, interval: 86400, proxy: DIRECT, "health-check": {enable: true, url: http://www.gstatic.com/generate_204, interval: 300}}
-
-# for proxy-groups 
-pg_fb: &pg_fb {type: fallback, url: http://www.gstatic.com/generate_204, tolerance: 20, interval: 300}
-pg_ut: &pg_ut {type: url-test, url: http://www.gstatic.com/generate_204, tolerance: 20, interval: 300}
-
-# for rule-providers
-ip_mrs: &ip_mrs {type: http, interval: 86400, behavior: ipcidr, format: mrs}
-domain_mrs: &domain_mrs {type: http, interval: 86400, behavior: domain, format: mrs}
-domain_yaml: &domain_yaml {type: http, interval: 86400, behavior: domain, format: yaml}
-class_yaml: &class_yaml {type: http, interval: 86400, behavior: classical, format: yaml}
-
-# 机场代理地址
-proxy-providers:  
-  AmyTelecom: {!!merge <<: *pp, url: "url"}
-  PaopaoDog: {!!merge <<: *pp, url: "url"}
-  Pokemon: {!!merge <<: *pp, url: "url"}
-  SS+TLS: {!!merge <<: *pp, url: "url"}
-
-# 机场代理策略组分组
-proxy-groups:
-  - {name: Global, type: select, proxies: [HK, JP, US, SG, TW, UN, DIRECT, AmyTelecom, PaopaoDog, Pokemon], use: [SS+TLS]}
-  - {name: Telegram, type: select, proxies: [Global, HK, JP, US, SG, TW]}
-  - {name: AI, type: select, proxies: [US, JP, SG, TW, Global]}
-  - {name: Github, type: select, proxies: [US, HK, JP, SG, TW, Global]}
-  - {name: Oracle, type: select, proxies: [UN, Global, DIRECT]}
-  - {name: VPS, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW, UN]}
-  - {name: Apple, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, Global]}
-  - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
-  - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, AmyTelecom, PaopaoDog, Pokemon], use: [SS+TLS]}
-  - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
-  - {name: UN, type: select, filter: "^(?!.*(香港|日本|新加坡|美国|台湾))", use: [PaopaoDog]}
-  - {name: HK, !!merge <<: *pg_ut, filter: "香港", use: [AmyTelecom]}
-  - {name: JP, !!merge <<: *pg_ut, filter: "日本", use: [AmyTelecom]}
-  - {name: US, !!merge <<: *pg_ut, filter: "美国", use: [AmyTelecom]}
-  - {name: SG, !!merge <<: *pg_ut, filter: "新加坡", use: [AmyTelecom]}
-  - {name: TW, !!merge <<: *pg_ut, filter: "台湾", use: [AmyTelecom]}
-  - {name: AmyTelecom, type: select, use: [AmyTelecom]} 
-  - {name: PaopaoDog, type: select, use: [PaopaoDog]}
-  - {name: Pokemon, type: select, use: [Pokemon]}
-
-  #- {name: HK手选, type: select, include-all: true, filter: "(?i)港|hk|hongkong|hong kong"}
-  #- {name: HK自选, !!merge <<: *pg_ut, include-all: true, filter: "(?=.*(港|HK|(?i)Hong))^((?!(台|日|韩|新|深|美)).)*$"}
-  #- {name: HK故转, !!merge <<: *pg_fb, include-all: true, filter: "(?=.*(港|HK|(?i)Hong))^((?!(台|日|韩|新|深|美)).)*$"}
-  #- {name: US手选, type: select, include-all: true, filter: "(?i)美|us|unitedstates|united states"}
-  #- {name: US自选, !!merge <<: *pg_ut, include-all: true, filter: "(?=.*(美|US|(?i)States|America))^((?!(港|台|日|韩|新)).)*$"}
-  #- {name: US故转, !!merge <<: *pg_fb, include-all: true, filter: "(?=.*(美|US|(?i)States|America))^((?!(港|台|日|韩|新)).)*$"}
-  #- {name: JP手选, type: select, include-all: true, filter: "(?i)日|jp|japan"}
-  #- {name: JP自选, !!merge <<: *pg_ut, include-all: true, filter: "(?=.*(日|JP|(?i)Japan))^((?!(港|台|韩|新|美)).)*$"}
-  #- {name: JP故转, !!merge <<: *pg_fb, include-all: true, filter: "(?=.*(日|JP|(?i)Japan))^((?!(港|台|韩|新|美)).)*$"}
-
-
-# 规则订阅
-rule-providers:
-  #private: {!!merge <<: *domain_mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"}
-  #geolocation-!cn: {!!merge <<: *domain_mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"}
-  #cn_site: {!!merge <<: *domain_mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"}
-  #cn_ip: {!!merge <<: *ip_mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"}
-  #AWAvenue: {!!merge <<: *domain_yaml, url: "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/refs/heads/main/Filters/AWAvenue-Ads-Rule-Clash.yaml"}
-  
-  OpenAI: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml"}
-  Copilot: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Copilot/Copilot_No_Resolve.yaml"}
-  Gemini: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Gemini/Gemini_No_Resolve.yaml"}
-  Claude: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Claude/Claude_No_Resolve.yaml"}
-  Lan: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Lan/Lan_No_Resolve.yaml"}
-  Fix: {!!merge <<: *class_yaml, url: "    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Direct/Direct_No_Resolve.yaml"}
-  Bing: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bing/Bing_No_Resolve.yaml"}
-  Apple: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple_Classical_No_Resolve.yaml"}
-  Github: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub_No_Resolve.yaml"}
-  OneDrive: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml"}
-  Binance: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Binance/Binance_No_Resolve.yaml"}
-  Discord: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Discord/Discord_No_Resolve.yaml"}
-  Oracle: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Oracle/Oracle_No_Resolve.yaml"}
-  Telegram: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram_No_Resolve.yaml"}
-  Speedtest: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Speedtest/Speedtest_No_Resolve.yaml"}
-  IPTVMainland: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/IPTVMainland/IPTVMainland_Classical_No_Resolve.yaml"}
-  ChinaMax: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax_Classical_No_Resolve.yaml"}
-  IPTVOther: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/IPTVOther/IPTVOther_Classical_No_Resolve.yaml"}
-  Global: {!!merge <<: *class_yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global_Classical_No_Resolve.yaml"}
-
-# 规则
-rules:
-  # Emby
-  - DOMAIN,v1.uhdnow.com,DIRECT
-  - DOMAIN,hxd.as174.de,DIRECT
-  - DOMAIN,cf.bili.rip,DIRECT
-  # 白名单
-  - DOMAIN,feiyang.allinhub.top,DIRECT
-  - PROCESS-NAME,.*蓉政通.*,DIRECT
-  - DOMAIN-SUFFIX,rztcd.com,DIRECT
-  - DOMAIN-SUFFIX,cddyjy.com,DIRECT
-  - DOMAIN,update.code.visualstudio.com,DIRECT
-  - DOMAIN-SUFFIX,msecnd.net,DIRECT
-  - DOMAIN-SUFFIX,bendibao.com,DIRECT
-  - DOMAIN-SUFFIX,cdrcbank.com,DIRECT
-  - DOMAIN-SUFFIX,splashtop.com,DIRECT
-  # 黑名单
-  - DOMAIN-SUFFIX,proton.me,US
-  - DOMAIN-SUFFIX,mcp.so,GLOBAL
-  - DOMAIN-SUFFIX,nsloon.app,GLOBAL
-  - DOMAIN-SUFFIX,kelee.one,GLOBAL
-  - DOMAIN-SUFFIX,jsdelivr.net,GLOBAL
-  - DOMAIN-SUFFIX,metacubex.one,GLOBAL
-  - DOMAIN-SUFFIX,annas-archive.org,GLOBAL
-  - DOMAIN-SUFFIX,firefly-iii.org,GLOBAL
-  - DOMAIN,connect.garmin.com,Global
-  - DOMAIN,sso.garmin.com,Global
-  - DOMAIN-SUFFIX,allinhub.top,Global
-  - DOMAIN-SUFFIX,yckceo.com,Global
-  - DOMAIN-SUFFIX,incldglobal.com,Global
-  - DOMAIN-SUFFIX,amysecure.com,Global
-  - DOMAIN-SUFFIX,paopao.dog,GLOBAL
-  - DOMAIN-SUFFIX,rutracker.org,Global
-  - DOMAIN-SUFFIX,linux.do,Global
-  # > VPS
-  - IP-CIDR,130.162.131.186/32,VPS,no-resolve
-  # > AI
-  - RULE-SET,OpenAI,AI
-  - RULE-SET,Copilot,AI
-  - RULE-SET,Gemini,AI
-  - RULE-SET,Claude,AI
-  # 局域网
-  - RULE-SET,Lan,DIRECT
-  # 后续规则修正
-  - RULE-SET,Fix,DIRECT
-  # Bing
-  - RULE-SET,Bing,DIRECT
-  # Apple
-  - RULE-SET,Apple,Apple
-  # Github
-  - RULE-SET,Github,Github
-  # Onedrive
-  - RULE-SET,OneDrive,OneDrive
-  # 加密货币
-  - RULE-SET,Binance,HK
-  # Discord
-  - RULE-SET,Discord,US
-  # Oracle
-  - RULE-SET,Oracle,Oracle
-  # Telegram
-  - RULE-SET,Telegram,Telegram
-  - OR,((PROCESS-NAME,Telegram), (IN-PORT,6153)),REJECT-DROP
-  # Speedtest
-  - RULE-SET,Speedtest,Speedtest
-  # China
-  - RULE-SET,IPTVMainland,DIRECT
-  - RULE-SET,ChinaMax,DIRECT
-  # Global
-  - RULE-SET,IPTVOther,Global
-  - RULE-SET,Global,Global
-  - MATCH,Final

@@ -1,9 +1,0 @@
-parsers:
-    - reg: https://.*
-      # file: "parsers.js路径"
-      remote:
-        url: https://raw.githubusercontent.com/abingx/Self-Rule/master/Clash/cfw_parsers.js
-      # code: |
-        # parsers.js内容，注意缩进
-// file、remote、code任选一种
-        
