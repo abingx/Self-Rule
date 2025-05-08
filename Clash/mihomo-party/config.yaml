@@ -103,6 +103,7 @@ rules:
   - DOMAIN-SUFFIX,splashtop.com,DIRECT
   # 黑名单
   - DOMAIN-SUFFIX,proton.me,US
+  - DOMAIN-SUFFIX,readest.com,GLOBAL
   - DOMAIN-SUFFIX,mcp.so,GLOBAL
   - DOMAIN-SUFFIX,nsloon.app,GLOBAL
   - DOMAIN-SUFFIX,kelee.one,GLOBAL
