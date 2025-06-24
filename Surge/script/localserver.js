@@ -29,7 +29,7 @@ if (!lanHost) {
 
 const portConfig = {
     'feiyang.allinhub.top': 35455,
-    'alist.allinhub.top': 5244,
+    'openlist.allinhub.top': 5244,
     'open-webui.allinhub.top': 3000
 };
 function getPort(url) {
