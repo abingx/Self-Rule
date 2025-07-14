@@ -1,0 +1,210 @@
+/* ========== 页面内嵌文件名样式 ========== */
+/* 编辑页面开头的文件名显示 */
+.inline-title {
+  font-size: 2em !important;
+  font-weight: bold !important;
+  color: #000000 !important;
+/*  text-align: center !important; */
+  padding: 0.5em 0 !important;
+  margin: 0.5em 0 1em 0 !important;
+  border-bottom: 3px double #000000 !important;
+  line-height: 1.2 !important;
+}
+
+/* ---------- H1–H6 样式：字体大小、颜色、下划线 + 行距调整 ---------- */
+/* ========== 预览模式样式 ========== */
+.markdown-preview-view h1 {
+  font-size: 1.8em;
+  color: #d12c2c;
+  border-bottom: 1px dashed currentColor;
+  padding-bottom: 0.2em;
+  margin-top: 1.8em;
+  margin-bottom: 0.8em;
+}
+
+.markdown-preview-view h2 {
+  font-size: 1.5em;
+  color: #2c6fd1;
+  border-bottom: 1px dashed currentColor;
+  padding-bottom: 0.2em;
+  margin-top: 1.5em;
+  margin-bottom: 0.7em;
+}
+
+.markdown-preview-view h3 {
+  font-size: 1.3em;
+  color: #2ca82c;
+  border-bottom: 1px dashed currentColor;
+  padding-bottom: 0.2em;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+.markdown-preview-view h4,
+.markdown-preview-view h5 {
+  font-size: 1em;
+  color: var(--text-normal);
+  border-bottom: 1px dashed currentColor;
+  padding-bottom: 0.2em;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-preview-view h6 {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  border-bottom: 1px dashed currentColor;
+  padding-bottom: 0.2em;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+}
+
+/* ========== 编辑模式样式 ========== */
+/* 只对标题文本本身应用样式，不影响行布局 */
+
+/* H1 编辑模式 */
+.cm-header-1 {
+  font-size: 1.8em !important;
+  color: #d12c2c !important;
+}
+
+/* H2 编辑模式 */
+.cm-header-2 {
+  font-size: 1.5em !important;
+  color: #2c6fd1 !important;
+}
+
+/* H3 编辑模式 */
+.cm-header-3 {
+  font-size: 1.3em !important;
+  color: #2ca82c !important;
+}
+
+/* H4-H5 编辑模式 */
+.cm-header-4,
+.cm-header-5 {
+  font-size: 1em !important;
+  color: var(--text-normal) !important;
+}
+
+/* H6 编辑模式 */
+.cm-header-6 {
+  font-size: 0.9em !important;
+  color: var(--text-muted) !important;
+}
+
+/* 下划线效果应用到整行而不是单个元素 */
+.cm-editor .cm-line:has(.cm-header-1) {
+  border-bottom: 1px dashed #d12c2c;
+  padding-bottom: 0.2em;
+}
+
+.cm-editor .cm-line:has(.cm-header-2) {
+  border-bottom: 1px dashed #2c6fd1;
+  padding-bottom: 0.2em;
+}
+
+.cm-editor .cm-line:has(.cm-header-3) {
+  border-bottom: 1px dashed #2ca82c;
+  padding-bottom: 0.2em;
+}
+
+.cm-editor .cm-line:has(.cm-header-4),
+.cm-editor .cm-line:has(.cm-header-5) {
+  border-bottom: 1px dashed var(--text-normal);
+  padding-bottom: 0.2em;
+}
+
+.cm-editor .cm-line:has(.cm-header-6) {
+  border-bottom: 1px dashed var(--text-muted);
+  padding-bottom: 0.2em;
+}
+
+/* ========== 编辑模式行距调整 ========== */
+/* 使用 padding 而不是 margin，并且只影响内容区域 */
+
+.cm-editor .cm-content .cm-line:has(.cm-header-1) {
+  padding-top: 0.9em !important;
+  padding-bottom: 0.4em !important;
+}
+
+.cm-editor .cm-content .cm-line:has(.cm-header-2) {
+  padding-top: 0.75em !important;
+  padding-bottom: 0.35em !important;
+}
+
+.cm-editor .cm-content .cm-line:has(.cm-header-3) {
+  padding-top: 0.6em !important;
+  padding-bottom: 0.3em !important;
+}
+
+.cm-editor .cm-content .cm-line:has(.cm-header-4),
+.cm-editor .cm-content .cm-line:has(.cm-header-5) {
+  padding-top: 0.5em !important;
+  padding-bottom: 0.25em !important;
+}
+
+.cm-editor .cm-content .cm-line:has(.cm-header-6) {
+  padding-top: 0.4em !important;
+  padding-bottom: 0.2em !important;
+}
+
+/* ========== 备用方案：如果 :has() 不支持 ========== */
+/* 使用属性选择器，需要手动检查是否有效 */
+
+/* 直接定位包含标题的行 */
+.cm-editor .cm-line[class*="cm-header-1"] {
+  padding-top: 0.9em !important;
+  padding-bottom: 0.4em !important;
+}
+
+.cm-editor .cm-line[class*="cm-header-2"] {
+  padding-top: 0.75em !important;
+  padding-bottom: 0.35em !important;
+}
+
+.cm-editor .cm-line[class*="cm-header-3"] {
+  padding-top: 0.6em !important;
+  padding-bottom: 0.3em !important;
+}
+
+.cm-editor .cm-line[class*="cm-header-4"],
+.cm-editor .cm-line[class*="cm-header-5"] {
+  padding-top: 0.5em !important;
+  padding-bottom: 0.25em !important;
+}
+
+.cm-editor .cm-line[class*="cm-header-6"] {
+  padding-top: 0.4em !important;
+  padding-bottom: 0.2em !important;
+}
+
+/* ========== 防止布局冲突的重置样式 ========== */
+/* 确保行号和内容保持对齐 */
+.cm-editor .cm-gutters {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+.cm-editor .cm-gutter {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0;
+}
+
+/* 确保行号与内容顶部对齐 */
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  padding-top: 0;
+  line-height: inherit;
+}
+
+/* 重置可能影响布局的样式 */
+.cm-editor .cm-content {
+  position: relative;
+}
+
+.cm-editor .cm-line {
+  position: relative;
+  box-sizing: border-box;
+}

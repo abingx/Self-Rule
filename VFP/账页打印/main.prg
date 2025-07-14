@@ -1,4 +1,0 @@
-SET SAFETY OFF
-DO FORM sjjs.scx
-READ EVENTS
- 

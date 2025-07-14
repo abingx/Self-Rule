@@ -1,5 +1,0 @@
-PUBLIC yhddl
-SQLSETPROP(0,'DispLogin',3)
-SET SAFETY OFF
-DO FORM yhddl.scx
-READ EVENTS

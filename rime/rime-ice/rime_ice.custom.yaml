@@ -1,4 +1,0 @@
-patch:
-  # 雾凇拼音（全拼）配置
-  # 主翻译器，拼音
-  translator/dictionary: my          # 挂载词库 my.dict.yaml
