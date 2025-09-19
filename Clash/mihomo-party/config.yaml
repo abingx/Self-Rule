@@ -92,7 +92,7 @@ rules:
   - DOMAIN,hxd.as174.de,DIRECT
   - DOMAIN,cf.bili.rip,DIRECT
   # 白名单
-  - DOMAIN,feiyang.allinhub.top,DIRECT
+  - DOMAIN,feiyang.allinhub.dpdns.org,DIRECT
   - PROCESS-NAME,蓉政通.*,DIRECT
   - DOMAIN-SUFFIX,rztcd.com,DIRECT
   - DOMAIN-SUFFIX,cddyjy.com,DIRECT
@@ -113,7 +113,7 @@ rules:
   - DOMAIN-SUFFIX,firefly-iii.org,GLOBAL
   - DOMAIN,connect.garmin.com,Global
   - DOMAIN,sso.garmin.com,Global
-  - DOMAIN-SUFFIX,allinhub.top,Global
+  - DOMAIN-SUFFIX,allinhub.dpdns.org,Global
   - DOMAIN-SUFFIX,yckceo.com,Global
   - DOMAIN-SUFFIX,incldglobal.com,Global
   - DOMAIN-SUFFIX,amysecure.com,Global
