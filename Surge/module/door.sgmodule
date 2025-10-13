@@ -1,0 +1,12 @@
+#!name=电瓶车车库开门
+#!desc=微信内打开http://www.jzznck.com/QRCode/Scann/d100187_123323073_1_1获取access_token，之后通过opendoor脚本开门
+#!system=ios
+
+[Script]
+opendoor = type=cron,cronexp=15 7 * * *,script-path=JS/opendoor.js
+dooropen = type=cron,cronexp=60 7 * * *,script-path=JS/dooropen.js
+
+doortoken = type=http-response,pattern=http:\/\/api\.jzznck\.com:8080\/api\/passport\/sso\/WeChatAuthorize,requires-body=1,script-path=JS/doortoken.js
+
+[MITM]
+hostname = %APPEND% api.jzznck.com:8080

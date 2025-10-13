@@ -1,0 +1,12 @@
+#!name=动态内网服务
+#!desc=openlist、肥羊在shzlk和H&B_Family及其他网络环境中运行，选择不同服务主机
+
+[Rule]
+DOMAIN,xueimac.local,DIRECT
+DOMAIN,mac-mini.local,DIRECT
+
+[Script]
+localserver = type=http-request,pattern=^https:\/\/(feiyang|openlist)\.allinhub\.dpdns\.org\/.*,script-path=JS/localserver.js
+
+[MITM]
+hostname = %APPEND% feiyang.allinhub.dpdns.org, openlist.allinhub.dpdns.org

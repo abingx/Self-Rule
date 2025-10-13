@@ -1,0 +1,8 @@
+#!name=网站简易鉴权
+#!desc=通过在Nginx中设置请求头X-Auth-Token字段值判断实现简易鉴权。客户端添加请求头字段值进行访问。
+
+[Header Rewrite]
+http-request ^https?:\/\/scripthub\.allinhub\.dpdns\.org\/.* header-add X-Auth-Token PxPXu923WY58x67Q1zT
+
+[MITM]
+hostname = %APPEND% scripthub.allinhub.dpdns.org

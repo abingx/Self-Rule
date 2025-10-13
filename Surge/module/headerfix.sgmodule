@@ -1,0 +1,28 @@
+#!name=请求头修复
+#!desc=修改各类请求头，确保正常访问
+
+[Header Rewrite]
+# 少数派图片CDN
+http-request ^https?:\/\/cdnfile\.sspai\.com\/.+\.(jpg|jpeg|gif|png|webp) header-del Referer
+http-request ^https?:\/\/cdnfile\.sspai\.com\/.+\.(jpg|jpeg|gif|png|webp) header-add Referer https://sspai.com/
+http-request ^https?:\/\/cdnfile\.sspai\.com\/.+\.(jpg|jpeg|gif|png|webp) header-del Dnt
+http-request ^https?:\/\/cdnfile\.sspai\.com\/.+\.(jpg|jpeg|gif|png|webp) header-add Dnt 1
+
+# 微博图片
+http-request ^https?:\/\/.+\.sinaimg\.cn\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-del Referer
+http-request ^https?:\/\/.+\.sinaimg\.cn\/.*(jpg|jpeg|gif|png|webp|mp4|mov).* header-add Referer https://weibo.com/
+
+# 可莉访问权限
+http-response ^https:\/\/(rule\.)?kelee\.one(\/.*)? header-add content-disposition inline
+http-response ^https:\/\/(rule\.)?kelee\.one(\/.*)? header-replace content-type "text/plain; charset=utf-8"
+http-request ^https:\/\/(rule\.)?kelee\.one(\/.*)? header-replace User-Agent "Surge iOS/3573"
+http-request ^https:\/\/(plugin)?hub\.kelee\.one(\/.*)? header-del content-disposition
+http-request ^https:\/\/(plugin)?hub\.kelee\.one(\/.*)? header-del if-none-match
+http-request ^https:\/\/(plugin)?hub\.kelee\.one(\/.*)? header-set cache-control no-cache
+
+[Body Rewrite]
+# 可莉插件中心取消跳转 Loon 安装
+http-response ^https:\/\/(plugin)?hub\.kelee\.one/list\.json "loon:\/\/import\?plugin=(https:\/\/kelee\.one\/Tool\/Loon\/Lpx\/([^\/]+))\.lpx" "https://scripthub.allinhub.dpdns.org/file/_start_/$1.lpx/_end_/$2.sgmodule?type=loon-plugin&target=surge-module&del=true&jqEnabled=true&category=iKelee"
+
+[MITM]
+hostname = %APPEND% cdnfile.sspai.com, *.sinaimg.cn, kelee.one, rule.kelee.one, hub.kelee.one, pluginhub.kelee.one

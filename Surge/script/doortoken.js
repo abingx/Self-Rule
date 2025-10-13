@@ -27,4 +27,3 @@ if (responseObj && responseObj.data && responseObj.data.access_token) {
 }
 // 完成脚本执行
 $done({});
-

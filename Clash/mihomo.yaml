@@ -1,3 +1,261 @@
+# 全局配置
+## 允许局域网
+allow-lan: true
+bind-address: "*"
+lan-allowed-ips:
+  - 0.0.0.0/0
+  - ::/0
+lan-disallowed-ips: []
+### 用户验证
+authentication:
+  - "schroe:hyperapp"
+skip-auth-prefixes:
+  - 127.0.0.1/32
+  - ::1/128
+## 运行模式
+mode: rule
+## 日志级别
+log-level: info
+## IPv6
+ipv6: true
+## TCP Keep Alive 设置
+keep-alive-interval: 30
+keep-alive-idle: 600
+disable-keep-alive: false
+## 进程匹配模式
+find-process-mode: strict
+## 外部控制 (API)
+external-controller: 0.0.0.0:9090
+#external-controller-cors:
+#  allow-origins:
+#    - '*'
+#  allow-private-network: true
+#external-controller-unix: mihomo.sock
+#external-controller-pipe: \\.\pipe\mihomo
+#external-controller-tls: 127.0.0.1:9443
+#external-doh-server: /dns-query
+secret: "hyperapp"
+## 外部用户界面
+external-ui: ui
+## 自定义外部用户界面名字
+external-ui-name: metacubexd
+## 自定义外部用户界面下载地址
+external-ui-url: https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip
+## 缓存
+profile:
+  store-selected: true
+  store-fake-ip: true
+## 统一延迟
+unified-delay: true
+## TCP 并发
+tcp-concurrent: true
+## 出站接口
+#interface-name: en0
+## 路由标记
+#routing-mark: 6666
+## TLS
+#tls:
+#  certificate: string # 证书 PEM 格式，或者 证书的路径
+#  private-key: string # 证书对应的私钥 PEM 格式，或者私钥路径
+#  ech-key: |-
+#    -----BEGIN ECH KEYS-----
+#    ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
+#    madSJjYQIf9o1N5GXjkW4DEEeb17qMxHdwMdNnwADAABAAEAAQACAAEAAwAIdGVz
+#    dC5jb20AAA==
+#    -----END ECH KEYS-----
+#  # ECH 密钥，如果填写则会启用 ECH
+## 全局客户端指纹
+global-client-fingerprint: chrome
+## GEOIP 数据模式
+geodata-mode: false
+## GEO 文件加载模式
+geodata-loader: standard
+## 自动更新 GEO
+geo-auto-update: true
+geo-update-interval: 24
+## 自定 GEO 下载地址
+geox-url:
+  geoip: https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat
+  geosite: https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat
+  mmdb: https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.metadb
+  asn: https://github.com/xishang0128/geoip/releases/download/latest/GeoLite2-ASN.mmdb
+## 自定全局 UA
+#global-ua: clash.meta
+## ETag 支持
+#etag-support: true
+
+# DNS
+dns:
+  enable: true
+  #cache-algorithm: lru
+  prefer-h3: false
+  listen: 0.0.0.0:7874
+  ipv6: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - +.lan
+    - +.local
+    - geosite:private
+    - geosite:cn
+  fake-ip-filter-mode: blacklist
+  use-hosts: false
+  use-system-hosts: false
+  #respect-rules: true #强烈不建议和 prefer-h3 一起使用
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8
+  nameserver-policy: {}
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8
+  direct-nameserver: []
+  #direct-nameserver-follow-policy: false
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - 114.114.114.144
+    - 180.76.76.76
+    - 1.2.4.8 
+  fallback:
+    - 8.8.8.8
+    - 8.8.4.4
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+    domain:
+      - +.google.com
+      - +.facebook.com
+      - +.youtube.com
+
+# hosts
+hosts:
+  "91.108.56.100": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.101": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.104": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.107": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.125": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.126": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.128": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "91.108.56.156": [91.108.56.147, 91.108.56.135, 91.108.56.130]
+  "iosapps.itunes.apple.com": iosapps.itunes.apple.com.download.ks-cdn.com
+  "updates.g.aaplimg.com": updates.cdn-apple.com.download.ks-cdn.com
+
+# 域名嗅探
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: false
+  sniff:
+    HTTP:
+      ports:
+        - 80
+        - 8080-8880
+      override-destination: true
+    TLS:
+      ports:
+        - 443
+        - 8443
+    QUIC:
+      ports:
+        - 443
+        - 8443
+  force-domain:
+    - +.v2ex.com
+  skip-domain:
+    - dlg.io.mi.com
+    - +.push.apple.com
+    - +.apple.com
+  skip-src-address: []
+  skip-dst-address:
+    - 91.105.192.0/23
+    - 91.108.4.0/22
+    - 91.108.8.0/21
+    - 91.108.16.0/21
+    - 91.108.56.0/22
+    - 95.161.64.0/20
+    - 149.154.160.0/20
+    - 185.76.151.0/24
+    - 2001:67c:4e8::/48
+    - 2001:b28:f23c::/47
+    - 2001:b28:f23f::/48
+    - 2a0a:f280:203::/48
+
+# 代理端口
+## http(s) 代理端口
+port: 7890
+## socks4/4a/5 代理端口
+socks-port: 7891
+## 混合端口
+mixed-port: 7892
+## 透明代理端口¶
+redir-port: 7893
+tproxy-port: 7894
+
+# Tun
+tun:
+  enable: true
+  stack: mixed
+  device: utun1500
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+  strict-route: true
+  mtu: 9000
+  #gso: true
+  #gso-max-size: 65536
+  #udp-timeout: 300
+  #iproute2-table-index: 2022
+  #iproute2-rule-index: 9000
+  #endpoint-independent-nat: false
+  #route-address-set:
+  #  - ruleset-1
+  #route-exclude-address-set:
+  #  - ruleset-2
+  #route-address:
+  #  - 0.0.0.0/1
+  #  - 128.0.0.0/1
+  #  - "::/1"
+  #  - "8000::/1"
+  #route-exclude-address:
+  #- 192.168.0.0/16
+  #- fc00::/7
+  #include-interface:
+  #- eth0
+  #exclude-interface:
+  #- eth1
+  #include-uid:
+  #- 0
+  #include-uid-range:
+  #- 1000:9999
+  #exclude-uid:
+  #- 1000
+  #exclude-uid-range:
+  #- 1000:9999
+  #include-android-user:
+  #- 0
+  #- 10
+  #include-package:
+  #- com.android.chrome
+  #exclude-package:
+  #- com.android.captiveportallogin
+
+
+## --------------------以上为核心配置-------------------- ##
+
 ## --------------------以下为个人配置-------------------- ##
 
 # 锚点，用于简化配置

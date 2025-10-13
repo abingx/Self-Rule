@@ -1,9 +1,0 @@
-#!name=便了么会员jq版
-#!desc=非一次性解锁，先开启规则，在进入软件登录即可！如果没有解锁重新打开APP。
-#!system=ios
-
-[Body Rewrite]
-http-response-jq ^https?:\/\/pebblefan\.com\/papi\/get_users? ".user_infos[0].vip = true"
-
-[MITM]
-hostname = %APPEND% pebblefan.com

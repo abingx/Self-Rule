@@ -1,6 +1,0 @@
-payload:
-  # Boxcryptor
-  - DOMAIN-SUFFIX,boxcryptor.com,DIRECT
-  # PikPak 
-  - DOMAIN,access.mypikpak.com,REJECT
-  - DOMAIN-SUFFIX,mypikpak.com,DIRECT
