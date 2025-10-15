@@ -280,12 +280,11 @@ proxy-groups:
   - {name: AI, type: select, proxies: [US, Global, HK, JP, SG, TW]}
   - {name: VPS, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW, UN]}
   - {name: Emby, type: select, proxies: [DIRECT, 实验线路0.2X, Global], use: [SS+TLS]}
-  - {name: Bing, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW]}
   - {name: Apple, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW]}
   - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
   - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, 高级线路, 标准线路, 实验线路0.2X, Proxies], use: [SS+TLS]}
   - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
-  - {name: UN, type: select, filter: "^(?!.*(香港|日本|新加坡|美国|台湾|实验))", use: [Proxies]}
+  - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [Proxies]}
   - {name: HK, <<: *pg_ut, filter: "香港", use: [Proxies]}
   - {name: JP, <<: *pg_ut, filter: "日本", use: [Proxies]}
   - {name: US, <<: *pg_ut, filter: "美国", use: [Proxies]}
@@ -371,7 +370,7 @@ rules:
   # 后续规则修正
   - RULE-SET, Fix, DIRECT
   # Bing
-  - RULE-SET, Bing, Bing
+  - RULE-SET, Bing, DIRECT
   # Apple
   - RULE-SET, Apple, Apple
   # Onedrive
