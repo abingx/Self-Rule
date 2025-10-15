@@ -306,7 +306,6 @@ rule-providers:
   Bing: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Bing.yaml"}
   Apple: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Apple.yaml"}
   OneDrive: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/OneDrive.yaml"}
-  Binance: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Binance.yaml"}
   GoogleVoice: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/GoogleVoice.yaml"}
   Telegram: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Telegram.yaml"}
   Speedtest: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Speedtest.yaml"}
@@ -377,8 +376,6 @@ rules:
   - RULE-SET, Apple, Apple
   # Onedrive
   - RULE-SET, OneDrive, OneDrive
-  # 加密货币
-  - RULE-SET, Binance, HK
   # GoogleVoice
   - RULE-SET, GoogleVoice, US
   # Telegram
