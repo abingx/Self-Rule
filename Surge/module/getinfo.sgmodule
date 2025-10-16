@@ -1,6 +1,0 @@
-#!name=每日机场流量通知
-#!desc=每日机场流量通知
-#!system=ios
-
-[Script]
-getinfo = type=cron,cronexp=58 16 * * *,script-path=JS/getinfo.js

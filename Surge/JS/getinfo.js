@@ -1,6 +1,6 @@
 let args = [
 	{
-		url: "",
+		url: "{url}",
 		title: "Amytelecom",
 		reset_day: 11
 	}
