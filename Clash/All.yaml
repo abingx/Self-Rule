@@ -1,5 +1,5 @@
 #Docs: https://wiki.metacubex.one/config/
-#Date: 2025.10.16
+#Date: 2025.10.22
 #Author: Sit
 
 # 全局配置
@@ -351,11 +351,11 @@ proxy-groups:
   - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, 高级线路, 标准线路, 实验线路0.2X, Proxies], use: [SS+TLS]}
   - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
   - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [Proxies]}
-  - {name: HK, <<: *pg_ut, filter: "香港", use: [Proxies]}
-  - {name: JP, <<: *pg_ut, filter: "日本", use: [Proxies]}
-  - {name: US, <<: *pg_ut, filter: "美国", use: [Proxies]}
-  - {name: SG, <<: *pg_ut, filter: "新加坡", use: [Proxies]}
-  - {name: TW, <<: *pg_ut, filter: "台湾", use: [Proxies]}
+  - {name: HK, <<: *pg_ut, filter: "(香港).*(高级)", use: [Proxies]}
+  - {name: JP, <<: *pg_ut, filter: "(日本).*(高级)", use: [Proxies]}
+  - {name: US, <<: *pg_ut, filter: "(美国).*(高级)", use: [Proxies]}
+  - {name: SG, <<: *pg_ut, filter: "(新加坡).*(高级)", use: [Proxies]}
+  - {name: TW, <<: *pg_ut, filter: "(台湾).*(高级)", use: [Proxies]}
   - {name: 高级线路, filter: "高级", type: select, use: [Proxies]} 
   - {name: 标准线路, filter: "标准", type: select, use: [Proxies]} 
   - {name: 实验线路0.2X, filter: "实验", type: select, use: [Proxies]} 
@@ -381,23 +381,8 @@ rule-providers:
   Global: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Global.yaml"}
 # 规则
 rules:
-  # JavBus
-  - DOMAIN-SUFFIX, dmm.co.jp, JP
-  - DOMAIN-SUFFIX, mgstage.com, JP
-  - DOMAIN-SUFFIX, javbus.com, Global
-  - DOMAIN-SUFFIX, javbus22.com, Global
-  - DOMAIN-SUFFIX, missav.com, Global
-  - DOMAIN-SUFFIX, eightcha.com, Global
-  - DOMAIN-SUFFIX, javdb.com, Global
-  - DOMAIN-SUFFIX, jable.tv, Global
-  - DOMAIN-SUFFIX, avgle.com, Global
-  - DOMAIN-SUFFIX, javlibrary.com, Global
-  - DOMAIN-SUFFIX, jav.guru, Global
-  - DOMAIN-SUFFIX, netflav.com, Global
-  - DOMAIN-SUFFIX, javday.tv, Global
-  # Emby
-  - DOMAIN-SUFFIX, uhdnow.com, Emby
   # 白名单
+  - DOMAIN,feiyang.allinhub.dpdns.org,DIRECT
   - DOMAIN, update.code.visualstudio.com, DIRECT
   - DOMAIN-SUFFIX, msecnd.net, DIRECT
   - DOMAIN-SUFFIX, rztcd.com, DIRECT
@@ -424,6 +409,22 @@ rules:
   - DOMAIN-SUFFIX, api-flowercloud.com, Global
   - DOMAIN-SUFFIX, rutracker.org, Global
   - DOMAIN-SUFFIX, linux.do, Global
+  # Emby
+  - DOMAIN-SUFFIX, uhdnow.com, Emby
+  # JavBus
+  - DOMAIN-SUFFIX, dmm.co.jp, JP
+  - DOMAIN-SUFFIX, mgstage.com, JP
+  - DOMAIN-SUFFIX, javbus.com, Global
+  - DOMAIN-SUFFIX, javbus22.com, Global
+  - DOMAIN-SUFFIX, missav.com, Global
+  - DOMAIN-SUFFIX, eightcha.com, Global
+  - DOMAIN-SUFFIX, javdb.com, Global
+  - DOMAIN-SUFFIX, jable.tv, Global
+  - DOMAIN-SUFFIX, avgle.com, Global
+  - DOMAIN-SUFFIX, javlibrary.com, Global
+  - DOMAIN-SUFFIX, jav.guru, Global
+  - DOMAIN-SUFFIX, netflav.com, Global
+  - DOMAIN-SUFFIX, javday.tv, Global
   # > VPS
   - IP-CIDR, 130.162.131.186/32, VPS, no-resolve
   # > AI

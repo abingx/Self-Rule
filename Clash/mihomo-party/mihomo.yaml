@@ -96,6 +96,53 @@ dns:
   fake-ip-filter:
     - +.lan
     - +.local
+    - localhost
+    - localhost.*.qq.com
+    - localhost.*.weixin.qq.com
+    - +.direct
+    - cable.auth.com
+    - +.msftconnecttest.com
+    - +.msftncsi.com
+    - detectportal.firefox.com
+    - network-test.debian.org
+    - resolver1.opendns.com
+    - injections.adguard.org
+    - local.adguard.org
+    - pool.ntp.org
+    - +.pool.ntp.org
+    - +.ntp.org.cn
+    - ntp.*.com
+    - ntp?.*.com
+    - time.*.com
+    - time?.*.com
+    - time.*.edu.cn
+    - time.*.gov
+    - stun.*
+    - global.stun.twilio.com
+    - global.turn.twilio.com
+    - PDC._msDCS.*.*
+    - DC._msDCS.*.*
+    - GC._msDCS.*.*
+    - +.cmpassport.com
+    - +.10099.com.cn
+    - id6.me
+    - open.e.189.cn
+    - mdn.open.wo.cn
+    - opencloud.wostore.cn
+    - auth.wosms.cn
+    - auth.wostore
+    - +.jegotrip.com.cn
+    - +.icitymobile.mobi
+    - +.cmbchina.com
+    - +.pingan.com.cn
+    - +.douyinvod.com
+    - +.douyinliving.com
+    - +.amemv.com
+    - +.douyincdn.com
+    - +.live.bilibili.com
+    - +.bilivideo.com
+    - +.bilivideo.cn
+    - +.mcdn.bilivideo.cn
     - geosite:private
     - geosite:cn
   fake-ip-filter-mode: blacklist
@@ -223,16 +270,31 @@ tun:
   #endpoint-independent-nat: false
   #route-address-set:
   #  - ruleset-1
-  route-exclude-address: []
   #  - ruleset-2
   #route-address:
   #  - 0.0.0.0/1
   #  - 128.0.0.0/1
   #  - "::/1"
   #  - "8000::/1"
-  #route-exclude-address:
-  #- 192.168.0.0/16
-  #- fc00::/7
+  route-exclude-address: 
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 255.255.255.255/32
+    - 100.64.0.0/10
+    - 127.0.0.0/8
+    - 169.254.0.0/16
+    - 192.0.0.0/24
+    - 192.0.2.0/24
+    - 192.88.99.0/24
+    - 198.51.100.0/24
+    - 203.0.113.0/24
+    - 224.0.0.0/4
+    - ::1/128
+    - fe80::/10
+    - fc00::/7
+    - fd00::/8
+    - ff00::/8
   #include-interface:
   #- eth0
   #exclude-interface:

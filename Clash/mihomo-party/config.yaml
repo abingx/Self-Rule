@@ -22,17 +22,16 @@ proxy-groups:
   - {name: AI, type: select, proxies: [US, Global, HK, JP, SG, TW]}
   - {name: VPS, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW, UN]}
   - {name: Emby, type: select, proxies: [DIRECT, 实验线路0.2X, Global], use: [SS+TLS]}
-  - {name: Bing, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW]}
   - {name: Apple, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW]}
   - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
   - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, 高级线路, 标准线路, 实验线路0.2X, Proxies], use: [SS+TLS]}
   - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
-  - {name: UN, type: select, filter: "^(?!.*(香港|日本|新加坡|美国|台湾|实验))", use: [Proxies]}
-  - {name: HK, <<: *pg_ut, filter: "香港", use: [Proxies]}
-  - {name: JP, <<: *pg_ut, filter: "日本", use: [Proxies]}
-  - {name: US, <<: *pg_ut, filter: "美国", use: [Proxies]}
-  - {name: SG, <<: *pg_ut, filter: "新加坡", use: [Proxies]}
-  - {name: TW, <<: *pg_ut, filter: "台湾", use: [Proxies]}
+  - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [Proxies]}
+  - {name: HK, <<: *pg_ut, filter: "(香港).*(高级)", use: [Proxies]}
+  - {name: JP, <<: *pg_ut, filter: "(日本).*(高级)", use: [Proxies]}
+  - {name: US, <<: *pg_ut, filter: "(美国).*(高级)", use: [Proxies]}
+  - {name: SG, <<: *pg_ut, filter: "(新加坡).*(高级)", use: [Proxies]}
+  - {name: TW, <<: *pg_ut, filter: "(台湾).*(高级)", use: [Proxies]}
   - {name: 高级线路, filter: "高级", type: select, use: [Proxies]} 
   - {name: 标准线路, filter: "标准", type: select, use: [Proxies]} 
   - {name: 实验线路0.2X, filter: "实验", type: select, use: [Proxies]} 
@@ -48,7 +47,6 @@ rule-providers:
   Bing: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Bing.yaml"}
   Apple: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Apple.yaml"}
   OneDrive: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/OneDrive.yaml"}
-  Binance: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Binance.yaml"}
   GoogleVoice: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/GoogleVoice.yaml"}
   Telegram: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Telegram.yaml"}
   Speedtest: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Speedtest.yaml"}
@@ -59,23 +57,8 @@ rule-providers:
   Global: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Global.yaml"}
 # 规则
 rules:
-  # JavBus
-  - DOMAIN-SUFFIX, dmm.co.jp, JP
-  - DOMAIN-SUFFIX, mgstage.com, JP
-  - DOMAIN-SUFFIX, javbus.com, Global
-  - DOMAIN-SUFFIX, javbus22.com, Global
-  - DOMAIN-SUFFIX, missav.com, Global
-  - DOMAIN-SUFFIX, eightcha.com, Global
-  - DOMAIN-SUFFIX, javdb.com, Global
-  - DOMAIN-SUFFIX, jable.tv, Global
-  - DOMAIN-SUFFIX, avgle.com, Global
-  - DOMAIN-SUFFIX, javlibrary.com, Global
-  - DOMAIN-SUFFIX, jav.guru, Global
-  - DOMAIN-SUFFIX, netflav.com, Global
-  - DOMAIN-SUFFIX, javday.tv, Global
-  # Emby
-  - DOMAIN-SUFFIX, uhdnow.com, Emby
   # 白名单
+  - DOMAIN,feiyang.allinhub.dpdns.org,DIRECT
   - DOMAIN, update.code.visualstudio.com, DIRECT
   - DOMAIN-SUFFIX, msecnd.net, DIRECT
   - DOMAIN-SUFFIX, rztcd.com, DIRECT
@@ -102,6 +85,22 @@ rules:
   - DOMAIN-SUFFIX, api-flowercloud.com, Global
   - DOMAIN-SUFFIX, rutracker.org, Global
   - DOMAIN-SUFFIX, linux.do, Global
+  # Emby
+  - DOMAIN-SUFFIX, uhdnow.com, Emby
+  # JavBus
+  - DOMAIN-SUFFIX, dmm.co.jp, JP
+  - DOMAIN-SUFFIX, mgstage.com, JP
+  - DOMAIN-SUFFIX, javbus.com, Global
+  - DOMAIN-SUFFIX, javbus22.com, Global
+  - DOMAIN-SUFFIX, missav.com, Global
+  - DOMAIN-SUFFIX, eightcha.com, Global
+  - DOMAIN-SUFFIX, javdb.com, Global
+  - DOMAIN-SUFFIX, jable.tv, Global
+  - DOMAIN-SUFFIX, avgle.com, Global
+  - DOMAIN-SUFFIX, javlibrary.com, Global
+  - DOMAIN-SUFFIX, jav.guru, Global
+  - DOMAIN-SUFFIX, netflav.com, Global
+  - DOMAIN-SUFFIX, javday.tv, Global
   # > VPS
   - IP-CIDR, 130.162.131.186/32, VPS, no-resolve
   # > AI
@@ -114,13 +113,11 @@ rules:
   # 后续规则修正
   - RULE-SET, Fix, DIRECT
   # Bing
-  - RULE-SET, Bing, Bing
+  - RULE-SET, Bing, DIRECT
   # Apple
   - RULE-SET, Apple, Apple
   # Onedrive
   - RULE-SET, OneDrive, OneDrive
-  # 加密货币
-  - RULE-SET, Binance, HK
   # GoogleVoice
   - RULE-SET, GoogleVoice, US
   # Telegram
