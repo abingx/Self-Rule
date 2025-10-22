@@ -58,7 +58,7 @@ rule-providers:
 # 规则
 rules:
   # 白名单
-  - DOMAIN,feiyang.allinhub.dpdns.org,DIRECT
+  - DOMAIN, feiyang.allinhub.dpdns.org, DIRECT
   - DOMAIN, update.code.visualstudio.com, DIRECT
   - DOMAIN-SUFFIX, msecnd.net, DIRECT
   - DOMAIN-SUFFIX, rztcd.com, DIRECT
@@ -67,6 +67,7 @@ rules:
   - DOMAIN-SUFFIX, cdrcbank.com, DIRECT
   - DOMAIN-SUFFIX, splashtop.com, DIRECT
   # 黑名单
+  - DOMAIN, img.noobzone.ru, GLOBAL
   - DOMAIN, connect.garmin.com, Global
   - DOMAIN, sso.garmin.com, Global
   - DOMAIN-SUFFIX, mailjet.com, Global
