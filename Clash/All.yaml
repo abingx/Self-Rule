@@ -410,6 +410,7 @@ rules:
   - DOMAIN-SUFFIX, api-flowercloud.com, Global
   - DOMAIN-SUFFIX, rutracker.org, Global
   - DOMAIN-SUFFIX, linux.do, Global
+  - DOMAIN-SUFFIX, imazing.com, GLOBAL
   # Emby
   - DOMAIN-SUFFIX, uhdnow.com, Emby
   # JavBus
