@@ -1,0 +1,29 @@
+{
+    "description": "Safari Bitwarden Shortcut",
+    "manipulators": [
+        {
+            "conditions": [
+                {
+                    "bundle_identifiers": [
+                        "^com\\.apple\\.Safari$"
+                    ],
+                    "type": "frontmost_application_if"
+                }
+            ],
+            "from": {
+                "key_code": "semicolon",
+                "modifiers": {
+                    "mandatory": ["command"],
+                    "optional": ["any"]
+                }
+            },
+            "to": [
+                {
+                    "key_code": "l",
+                    "modifiers": ["command", "shift"]
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

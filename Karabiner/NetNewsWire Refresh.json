@@ -1,0 +1,55 @@
+{
+    "description": "NetNewsWire Refresh",
+    "manipulators": [
+        {
+            "conditions": [
+                {
+                    "bundle_identifiers": [
+                        "^com\\.ranchero\\.NetNewsWire-Evergreen$"
+                    ],
+                    "type": "frontmost_application_if"
+                }
+            ],
+            "from": {
+                "key_code": "r",
+                "modifiers": {
+                    "mandatory": ["command", "shift"],
+                    "optional": []
+                }
+            },
+            "to_after_key_up": [
+                {
+                    "key_code": "quote",
+                    "modifiers": ["command"]
+                },
+                {
+                    "key_code": "r",
+                    "modifiers": ["command"]
+                }
+            ],
+            "type": "basic"
+        },
+        {
+            "conditions": [
+                {
+                    "bundle_identifiers": [
+                        "^com\\.ranchero\\.NetNewsWire-Evergreen$"
+                    ],
+                    "type": "frontmost_application_if"
+                }
+            ],
+            "from": { "pointing_button": "button3" },
+            "to_after_key_up": [
+                {
+                    "key_code": "quote",
+                    "modifiers": ["command"]
+                },
+                {
+                    "key_code": "r",
+                    "modifiers": ["command"]
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

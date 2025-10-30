@@ -1,0 +1,44 @@
+{
+    "description": "Windows Control",
+    "manipulators": [
+        {
+            "from": {
+                "key_code": "left_arrow",
+                "modifiers": { "mandatory": ["control", "option"] }
+            },
+            "to": [
+                {
+                    "key_code": "left_arrow",
+                    "modifiers": ["control", "fn"]
+                }
+            ],
+            "type": "basic"
+        },
+        {
+            "from": {
+                "key_code": "right_arrow",
+                "modifiers": { "mandatory": ["control", "option"] }
+            },
+            "to": [
+                {
+                    "key_code": "right_arrow",
+                    "modifiers": ["control", "fn"]
+                }
+            ],
+            "type": "basic"
+        },
+        {
+            "from": {
+                "key_code": "return_or_enter",
+                "modifiers": { "mandatory": ["control", "option"] }
+            },
+            "to": [
+                {
+                    "key_code": "f",
+                    "modifiers": ["control", "fn"]
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}
