@@ -3,6 +3,10 @@ set relativeX to 135
 set relativeY to 290
 set cliclickPath to "/opt/homebrew/bin/cliclick"
 
+-- 记录当前鼠标位置
+set oldMousePos to do shell script quoted form of cliclickPath & " p"
+set {oldX, oldY} to my parseCoords(oldMousePos)
+
 -- 检查微信是否运行
 tell application "System Events"
 	set wxRunning to (processes whose name is "WeChat") ≠ {}
@@ -32,11 +36,24 @@ end tell
 set clickX to wxPosX + relativeX
 set clickY to wxPosY + relativeY
 
--- 使用 cliclick 虚拟点击（不移动鼠标）
-do shell script quoted form of cliclickPath & " c:" & clickX & "," & clickY
+-- 执行点击（临时把鼠标移动过去点击）
+do shell script quoted form of cliclickPath & " m:" & clickX & "," & clickY
+do shell script quoted form of cliclickPath & " c:."
 
--- 点击后隐藏界面（cmd + h）
+-- 恢复鼠标到原位置
+do shell script quoted form of cliclickPath & " m:" & oldX & "," & oldY
+
+-- 隐藏微信窗口（Cmd + H）
 delay 0.5
 tell application "System Events"
 	keystroke "h" using {command down}
 end tell
+
+
+-- ----------- 工具函数：解析坐标 -----------
+on parseCoords(t)
+	set AppleScript's text item delimiters to {","}
+	set x to item 1 of text items of t
+	set y to item 2 of text items of t
+	return {x as integer, y as integer}
+end parseCoords
