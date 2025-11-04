@@ -19,20 +19,21 @@ tell application "WeChat" to activate
 
 -- 等待窗口出现（最多 6 秒，每 0.5s 检查一次）
 tell application "System Events"
-	repeat 12 times
-		if exists window 1 of process "WeChat" then exit repeat
+	repeat 20 times -- 最长 10 秒
+		if exists (window 1 of process "WeChat") then exit repeat
 		delay 0.5
 	end repeat
 end tell
 
--- 获取窗口位置
+-- 记录窗口初始位置与尺寸
 tell application "System Events"
 	tell process "WeChat"
 		set {wxPosX, wxPosY} to position of window 1
+		set {wxWidthBefore, wxHeightBefore} to size of window 1
 	end tell
 end tell
 
--- 计算屏幕坐标（左上角 + 相对位置）
+-- 计算点击坐标（左上角 + 相对位置）
 set clickX to wxPosX + relativeX
 set clickY to wxPosY + relativeY
 
@@ -43,17 +44,34 @@ do shell script quoted form of cliclickPath & " c:."
 -- 恢复鼠标到原位置
 do shell script quoted form of cliclickPath & " m:" & oldX & "," & oldY
 
--- 隐藏微信窗口（Cmd + H）
-delay 0.5
+-- 监控窗口尺寸变化（判断是否成功登录）
+tell application "System Events"
+	repeat 20 times -- 最长 10 秒
+		try
+			tell process "WeChat"
+				set {wxWidthNow, wxHeightNow} to size of window 1
+			end tell
+			
+			if wxWidthNow > wxWidthBefore or wxHeightNow > wxHeightBefore then
+				exit repeat
+			end if
+		end try
+		delay 0.5
+	end repeat
+end tell
+
+-- 隐藏微信窗口
 tell application "System Events"
 	keystroke "h" using {command down}
 end tell
 
 
--- ----------- 工具函数：解析坐标 -----------
+-- ----------- 工具函数：解析坐标（安全版） -----------
 on parseCoords(t)
+	set oldDelims to AppleScript's text item delimiters
 	set AppleScript's text item delimiters to {","}
 	set x to item 1 of text items of t
 	set y to item 2 of text items of t
+	set AppleScript's text item delimiters to oldDelims
 	return {x as integer, y as integer}
 end parseCoords
