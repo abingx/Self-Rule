@@ -34,3 +34,9 @@ set clickY to wxPosY + relativeY
 
 -- 使用 cliclick 虚拟点击（不移动鼠标）
 do shell script quoted form of cliclickPath & " c:" & clickX & "," & clickY
+
+-- 点击后隐藏界面（cmd + h）
+delay 0.5
+tell application "System Events"
+	keystroke "h" using {command down}
+end tell
