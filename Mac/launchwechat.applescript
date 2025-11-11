@@ -17,11 +17,16 @@ if wxRunning then return -- 已运行则退出
 -- 启动微信
 tell application "WeChat" to activate
 
--- 等待窗口出现（最多 6 秒，每 0.5s 检查一次）
+-- 等待窗口出现并准备好被查询
 tell application "System Events"
-	repeat 20 times -- 最长 10 秒
-		if exists (window 1 of process "WeChat") then exit repeat
-		delay 0.5
+	-- 等待窗口出现
+	repeat 20 times
+		if exists (window 1 of process "WeChat") then
+			-- 窗口出现后，再短暂等待一下，确保其尺寸和位置信息已稳定
+			delay 0.2
+			exit repeat
+		end if
+		delay 0.3
 	end repeat
 end tell
 
@@ -60,9 +65,12 @@ tell application "System Events"
 	end repeat
 end tell
 
--- 隐藏微信窗口
+-- 隐藏微信窗口 (使用更可靠的 GUI 脚本)
 tell application "System Events"
-	keystroke "h" using {command down}
+    -- 明确告诉微信进程执行按键操作
+    tell process "WeChat"
+        keystroke "h" using {command down}
+    end tell
 end tell
 
 
