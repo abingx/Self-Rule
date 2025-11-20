@@ -104,7 +104,7 @@ rules:
   - DOMAIN-SUFFIX, netflav.com, Global
   - DOMAIN-SUFFIX, javday.tv, Global
   # > VPS
-  - IP-CIDR, 130.162.131.186/32, VPS, no-resolve
+  - IP-CIDR, 152.70.91.193/32, VPS, no-resolve
   # > AI
   - RULE-SET, OpenAI, AI
   - RULE-SET, Copilot, AI
