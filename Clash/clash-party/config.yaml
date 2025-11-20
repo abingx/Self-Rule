@@ -49,7 +49,8 @@ rule-providers:
   OneDrive: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/OneDrive.yaml"}
   GoogleVoice: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/GoogleVoice.yaml"}
   Telegram: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Telegram.yaml"}
-  Speedtest: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Speedtest.yaml"}
+  SpeedtestChina: {<<: *class_yaml, url: "https://kelee.one/Tool/Clash/Rule/SpeedtestChina.yaml"}
+  SpeedtestInternational: {<<: *class_yaml, url: "https://kelee.one/Tool/Clash/Rule/SpeedtestInternational.yaml"}
   WeChat: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/WeChat.yaml"}
   IPTVMainland: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/IPTVMainland.yaml"}
   ChinaMax: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/ChinaMax.yaml"}
@@ -125,7 +126,8 @@ rules:
   # Telegram
   - RULE-SET, Telegram, Telegram
   # Speedtest
-  - RULE-SET, Speedtest, Speedtest
+  - RULE-SET, SpeedtestChina, Speedtest
+  - RULE-SET, SpeedtestInternational, Speedtest
   # 微信
   - RULE-SET, WeChat, DIRECT
   # China
