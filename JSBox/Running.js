@@ -68,29 +68,23 @@ const WIDGET_SPACING = {
     paddingRight: 12,     // 右边距
     paddingBottom: 0,     // 下边距
     paddingLeft: 12,      // 左边距
-    topSpacing: 15,       // Summary 标题和数据区之间的间距
-    dataSpacing: 6,       // 数据行与行之间的间距
-    bottomSpacing: 6      // 数据区和时间戳区之间的间距
+    dataSpacing: 6        // 数据行与行之间的间距
   },
   // Medium 尺寸 (2x3 矩形) 的边距和间距配置
   medium: {
     paddingTop: 0,        // 上边距
-    paddingRight: 16,     // 右边距
+    paddingRight: 12,     // 右边距
     paddingBottom: 0,     // 下边距
-    paddingLeft: 16,      // 左边距
-    topSpacing: 15,       // Summary 标题和数据区之间的间距
-    dataSpacing: 4,       // 数据行与行之间的间距
-    bottomSpacing: 6      // 数据区和时间戳区之间的间距
+    paddingLeft: 12,      // 左边距
+    dataSpacing: 6        // 数据行与行之间的间距
   },
   // Large 尺寸 (4x4 大方块) 的边距和间距配置
   large: {
     paddingTop: 0,        // 上边距
-    paddingRight: 16,     // 右边距
+    paddingRight: 12,     // 右边距
     paddingBottom: 0,     // 下边距
-    paddingLeft: 16,      // 左边距
-    topSpacing: 4,        // Summary 标题和数据区之间的间距
-    dataSpacing: 10,       // 数据行与行之间的间距
-    bottomSpacing: 4      // 数据区和时间戳区之间的间距
+    paddingLeft: 12,      // 左边距
+    dataSpacing: 10       // 数据行与行之间的间距
   }
 };
 
@@ -107,8 +101,11 @@ const WIDGET_FONTS = {
     titleFontFamily: "Menlo-Bold", // 标题字体 (加粗等宽字体)
     titleFontSize: 18,             // 标题字号
     gridFontSize: 12,              // 数据网格字号
-    footerFontSize: 8,             // 页脚/时间戳字号
-    separatorFontSize: 9           // 分隔线字号 (用于占位符显示)
+    footerFontSize: 6,             // 页脚/时间戳字号
+    titleTopSeparatorFontSize: 13, // 标题上方分隔线字号
+    topSeparatorFontSize: 13,       // 标题和数据区之间的分隔线字号
+    bottomSeparatorFontSize: 8,    // 数据区和时间戳区之间的分隔线字号
+    footerBottomSeparatorFontSize: 4  // 时间戳下方分隔线字号
   },
   // Medium 尺寸字体配置
   medium: {
@@ -116,8 +113,11 @@ const WIDGET_FONTS = {
     titleFontFamily: "Menlo-Bold", // 标题字体
     titleFontSize: 22,             // 标题字号 (比 Small 更大)
     gridFontSize: 14,              // 数据网格字号 (比 Small 更大)
-    footerFontSize: 10,            // 页脚/时间戳字号
-    separatorFontSize: 8           // 分隔线字号
+    footerFontSize: 8,            // 页脚/时间戳字号
+    titleTopSeparatorFontSize: 12,  // 标题上方分隔线字号
+    topSeparatorFontSize: 6,       // 标题和数据区之间的分隔线字号
+    bottomSeparatorFontSize: 8,    // 数据区和时间戳区之间的分隔线字号
+    footerBottomSeparatorFontSize: 8  // 时间戳下方分隔线字号
   },
   // Large 尺寸字体配置
   large: {
@@ -125,8 +125,11 @@ const WIDGET_FONTS = {
     titleFontFamily: "Menlo-Bold", // 标题字体
     titleFontSize: 22,             // 标题字号
     gridFontSize: 14,              // 数据网格字号
-    footerFontSize: 10,            // 页脚/时间戳字号
-    separatorFontSize: 20           // 分隔线字号
+    footerFontSize: 8,            // 页脚/时间戳字号
+    titleTopSeparatorFontSize: 30, // 标题上方分隔线字号
+    topSeparatorFontSize: 20,      // 标题和数据区之间的分隔线字号
+    bottomSeparatorFontSize: 30,   // 数据区和时间戳区之间的分隔线字号
+    footerBottomSeparatorFontSize: 20  // 时间戳下方分隔线字号
   }
 };
 
@@ -493,6 +496,16 @@ function renderSmallWidget(smallW, smallH, today, week, month, year, latestRunSt
       padding: $insets(spacing.paddingTop, spacing.paddingRight, spacing.paddingBottom, spacing.paddingLeft)
     },
     views: [
+      // ===== 标题上方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.titleTopSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
+      },
+      
       // ===== 上部标题区 =====
       {
         type: "vstack",
@@ -515,7 +528,7 @@ function renderSmallWidget(smallW, smallH, today, week, month, year, latestRunSt
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.topSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -549,7 +562,7 @@ function renderSmallWidget(smallW, smallH, today, week, month, year, latestRunSt
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.bottomSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -580,6 +593,16 @@ function renderSmallWidget(smallW, smallH, today, week, month, year, latestRunSt
             }
           }
         ]
+      },
+      
+      // ===== 时间戳下方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.footerBottomSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
       }
     ]
   };
@@ -707,6 +730,16 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
       padding: $insets(spacing.paddingTop, spacing.paddingRight, spacing.paddingBottom, spacing.paddingLeft)
     },
     views: [
+      // ===== 标题上方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.titleTopSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
+      },
+      
       // ===== 上部标题区 =====
       {
         type: "vstack",
@@ -729,7 +762,7 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.topSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -763,7 +796,7 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.bottomSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -794,6 +827,16 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
             }
           }
         ]
+      },
+      
+      // ===== 时间戳下方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.footerBottomSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
       }
     ]
   };
@@ -968,6 +1011,16 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
       padding: $insets(spacing.paddingTop, spacing.paddingRight, spacing.paddingBottom, spacing.paddingLeft)
     },
     views: [
+      // ===== 标题上方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.titleTopSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
+      },
+
       // ===== 上部标题区 =====
       {
         type: "vstack",
@@ -990,7 +1043,7 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.topSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -1033,7 +1086,7 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
         type: "text",
         props: {
           text: getSeparator(),
-          font: $font(fonts.fontFamily, fonts.separatorFontSize),
+          font: $font(fonts.fontFamily, fonts.bottomSeparatorFontSize),
           alignment: $widget.alignment.center
         }
       },
@@ -1064,6 +1117,16 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
             }
           }
         ]
+      },
+      
+      // ===== 时间戳下方的分隔线 =====
+      {
+        type: "text",
+        props: {
+          text: getSeparator(),
+          font: $font(fonts.fontFamily, fonts.footerBottomSeparatorFontSize),
+          alignment: $widget.alignment.center
+        }
       }
     ]
   };
