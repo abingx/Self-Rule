@@ -6,6 +6,7 @@
  * - 显示今天/周/月/年的跑步统计数据
  * - 自动从远程 JSON 数据源获取跑步记录
  * - 根据深色/浅色主题自动调整显示样式
+ * - 支持缓存功能，网络不可用时使用本地缓存
  * 
  * 数据来源: running_page 项目的活动数据 API
  */
@@ -21,6 +22,9 @@ const SHOW_PLACEHOLDERS = false;
 // ===== 常量定义 =====
 /** 远程数据 URL，包含所有跑步活动的 JSON 格式数据 */
 const DATA_URL = "https://raw.githubusercontent.com/abingx/running_page/master/src/static/activities.json";
+
+/** 缓存文件名 */
+const CACHE_FILE = "activities_cache.json";
 
 /**
  * 排版占位符说明:
@@ -244,144 +248,206 @@ function summarize(list, since) {
 
 
 /**
+ * ===== 缓存读写函数 =====
+ */
+
+/**
+ * 保存数据到缓存文件
+ * 将 JSON 数据写入文件系统
+ * 
+ * @param {Array} data - 要缓存的跑步数据数组
+ */
+function saveCache(data) {
+  $file.write({
+    data: $data({ string: JSON.stringify(data) }),
+    path: CACHE_FILE
+  });
+}
+
+/**
+ * 从缓存文件读取数据
+ * 
+ * @returns {Array|null} 缓存的跑步数据数组，如果无缓存则返回 null
+ */
+function loadCache() {
+  const cache = $file.read(CACHE_FILE);
+  if (cache) {
+    try {
+      return JSON.parse(cache.string);
+    } catch (e) {
+      console.error("缓存文件解析失败:", e);
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * ===== 主程序入口 =====
  * 从远程 API 获取数据，计算统计数据，并渲染小组件
  */
 
-// 发起 HTTP GET 请求获取跑步数据
+// 先读取缓存数据
+let cachedData = loadCache();
+
+/**
+ * 处理数据并渲染小组件
+ * 
+ * @param {Array} data - 跑步数据数组
+ */
+function processAndRender(data) {
+  // 获取当前时间
+  const now = new Date();
+  
+  // 过滤出所有 "Run" 类型的活动 (排除其他类型如散步等)
+  let runs = data.filter(r => r.type === "Run");
+  
+  // 按最新日期倒序排序 (最新的跑步记录在最前)
+  runs.sort((a, b) => parseDate(b.start_date_local) - parseDate(a.start_date_local));
+
+  // ===== 计算当前时期的统计数据 =====
+  const today = summarize(runs, startOfDay(now));      // 今天的跑步统计
+  const week = summarize(runs, startOfWeek(now));      // 本周的跑步统计
+  const month = summarize(runs, startOfMonth(now));    // 本月的跑步统计
+  const year = summarize(runs, startOfYear(now));      // 本年的跑步统计
+  
+  // ===== 计算前一时期的统计数据 =====
+  
+  // 昨天的跑步数据 (仅统计昨天一天，而不是从昨天开始的累积)
+  const yesterdayStart = new Date(now);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  const yesterdayEnd = new Date(yesterdayStart);
+  yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
+  const yesterdayData = {
+    count: runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= startOfDay(yesterdayStart) && d < startOfDay(yesterdayEnd);
+    }).length,
+    distance: (runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= startOfDay(yesterdayStart) && d < startOfDay(yesterdayEnd);
+    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
+  };
+  
+  // 上周的跑步数据
+  const lastWeekStart = new Date(startOfWeek(now));
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(startOfWeek(now));
+  const lastWeekData = {
+    count: runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastWeekStart && d < lastWeekEnd;
+    }).length,
+    distance: (runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastWeekStart && d < lastWeekEnd;
+    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
+  };
+  
+  // 上月的跑步数据
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthData = {
+    count: runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastMonthStart && d < lastMonthEnd;
+    }).length,
+    distance: (runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastMonthStart && d < lastMonthEnd;
+    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
+  };
+  
+  // 去年的跑步数据
+  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+  const lastYearEnd = new Date(now.getFullYear(), 0, 1);
+  const lastYearData = {
+    count: runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastYearStart && d < lastYearEnd;
+    }).length,
+    distance: (runs.filter(r => {
+      const d = parseDate(r.start_date_local);
+      return d >= lastYearStart && d < lastYearEnd;
+    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
+  };
+
+  // ===== 计算时间戳显示内容 =====
+  
+  // 最新跑步时间 (如果有记录则显示，否则显示 "N/A")
+  const latestRunDate = runs.length ? parseDate(runs[0].start_date_local) : null;
+  const latestRunStr = latestRunDate
+    ? latestRunDate.toLocaleDateString() + " " + latestRunDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    : "N/A";
+  
+  // 数据更新时间 (小组件刷新时间)
+  const updateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+  // ===== 设置小组件渲染 =====
+  // 使用时间线 API，根据不同的小组件尺寸选择对应的渲染函数
+  $widget.setTimeline({
+    render: ctx => {
+      const family = ctx.family;           // 小组件尺寸类型
+      const displaySize = ctx.displaySize; // 显示尺寸 (宽度和高度)
+      const isDarkMode = ctx.isDarkMode;   // 是否为深色模式
+      const widgetWidth = displaySize.width;   // 小组件宽度
+      const widgetHeight = displaySize.height; // 小组件高度
+
+      console.log("Widget Family:", family, "Size:", widgetWidth, "x", widgetHeight);
+
+      // 根据小组件家族类型 (family) 返回相应的渲染结果
+      // family 0 = Small (2x2), 1 = Medium (2x3), 2 = Large (4x4), 3 = xLarge (4x5 等)
+      // family 5 = accessoryCircular (1x1), 6 = accessoryRectangular (1x2), 7 = accessoryInline (一行)
+      if (family === 1) {
+        return renderMediumWidget(widgetWidth, widgetHeight, today, week, month, year, latestRunStr, updateStr, isDarkMode);
+      } else if (family === 0) {
+        return renderSmallWidget(widgetWidth, widgetHeight, today, week, month, year, latestRunStr, updateStr, isDarkMode);
+      } else if (family === 2) {
+        return renderLargeWidget(widgetWidth, widgetHeight, today, yesterdayData, week, lastWeekData, month, lastMonthData, year, lastYearData, latestRunStr, updateStr, isDarkMode);
+      } else if (family === 3) {
+        return renderXLargeWidget(widgetWidth, widgetHeight, family, isDarkMode);
+      } else if (family === 5) {
+        // accessoryCircular (1x1 圆形锁屏小组件)
+        return renderAccessoryCircular(widgetWidth, widgetHeight, today, isDarkMode);
+      } else if (family === 6) {
+        // accessoryRectangular (1x2 长方形锁屏小组件)
+        return renderAccessoryRectangular(widgetWidth, widgetHeight, today, isDarkMode);
+      } else if (family === 7) {
+        // accessoryInline (在日期后面的一行信息)
+        return renderAccessoryInline(widgetWidth, widgetHeight, today, isDarkMode);
+      }
+    },
+    policy: {
+      // 设置时间线更新策略：6 小时后自动刷新
+      afterDate: new Date(now.getTime() + 6 * 60 * 60 * 1000)
+    }
+  });
+}
+
+// 先使用缓存数据渲染（如果可用）
+if (cachedData && cachedData.length > 0) {
+  console.log("使用缓存数据渲染小组件");
+  processAndRender(cachedData);
+}
+
+// 发起 HTTP GET 请求获取远程数据，成功后更新缓存并重新渲染
 $http.get({
   url: DATA_URL,
   handler: resp => {
-    // 获取当前时间
-    const now = new Date();
-    
-    // 过滤出所有 "Run" 类型的活动 (排除其他类型如散步等)
-    let data = resp.data.filter(r => r.type === "Run");
-    
-    // 按最新日期倒序排序 (最新的跑步记录在最前)
-    data.sort((a, b) => parseDate(b.start_date_local) - parseDate(a.start_date_local));
-
-    // ===== 计算当前时期的统计数据 =====
-    const today = summarize(data, startOfDay(now));      // 今天的跑步统计
-    const week = summarize(data, startOfWeek(now));      // 本周的跑步统计
-    const month = summarize(data, startOfMonth(now));    // 本月的跑步统计
-    const year = summarize(data, startOfYear(now));      // 本年的跑步统计
-    
-    // ===== 计算前一时期的统计数据 =====
-    
-    // 昨天的跑步数据 (仅统计昨天一天，而不是从昨天开始的累积)
-    const yesterdayStart = new Date(now);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(yesterdayStart);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
-    const yesterdayData = {
-      count: data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= startOfDay(yesterdayStart) && d < startOfDay(yesterdayEnd);
-      }).length,
-      distance: (data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= startOfDay(yesterdayStart) && d < startOfDay(yesterdayEnd);
-      }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-    };
-    
-    // 上周的跑步数据
-    const lastWeekStart = new Date(startOfWeek(now));
-    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-    const lastWeekEnd = new Date(startOfWeek(now));
-    const lastWeekData = {
-      count: data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastWeekStart && d < lastWeekEnd;
-      }).length,
-      distance: (data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastWeekStart && d < lastWeekEnd;
-      }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-    };
-    
-    // 上月的跑步数据
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthData = {
-      count: data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastMonthStart && d < lastMonthEnd;
-      }).length,
-      distance: (data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastMonthStart && d < lastMonthEnd;
-      }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-    };
-    
-    // 去年的跑步数据
-    const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-    const lastYearEnd = new Date(now.getFullYear(), 0, 1);
-    const lastYearData = {
-      count: data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastYearStart && d < lastYearEnd;
-      }).length,
-      distance: (data.filter(r => {
-        const d = parseDate(r.start_date_local);
-        return d >= lastYearStart && d < lastYearEnd;
-      }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-    };
-
-    // ===== 计算时间戳显示内容 =====
-    
-    // 最新跑步时间 (如果有记录则显示，否则显示 "N/A")
-    const latestRunDate = data.length ? parseDate(data[0].start_date_local) : null;
-    const latestRunStr = latestRunDate
-      ? latestRunDate.toLocaleDateString() + " " + latestRunDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-      : "N/A";
-    
-    // 数据更新时间 (小组件刷新时间)
-    const updateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-    // ===== 设置小组件渲染 =====
-    // 使用时间线 API，根据不同的小组件尺寸选择对应的渲染函数
-    $widget.setTimeline({
-      render: ctx => {
-        const family = ctx.family;           // 小组件尺寸类型
-        const displaySize = ctx.displaySize; // 显示尺寸 (宽度和高度)
-        const isDarkMode = ctx.isDarkMode;   // 是否为深色模式
-        const widgetWidth = displaySize.width;   // 小组件宽度
-        const widgetHeight = displaySize.height; // 小组件高度
-
-        console.log("Widget Family:", family, "Size:", widgetWidth, "x", widgetHeight);
-
-        // 根据小组件家族类型 (family) 返回相应的渲染结果
-        // family 0 = Small (2x2), 1 = Medium (2x3), 2 = Large (4x4), 3 = xLarge (4x5 等)
-        // family 5 = accessoryCircular (1x1), 6 = accessoryRectangular (1x2), 7 = accessoryInline (一行)
-        if (family === 1) {
-          return renderMediumWidget(widgetWidth, widgetHeight, today, week, month, year, latestRunStr, updateStr, isDarkMode);
-        } else if (family === 0) {
-          return renderSmallWidget(widgetWidth, widgetHeight, today, week, month, year, latestRunStr, updateStr, isDarkMode);
-        } else if (family === 2) {
-          return renderLargeWidget(widgetWidth, widgetHeight, today, yesterdayData, week, lastWeekData, month, lastMonthData, year, lastYearData, latestRunStr, updateStr, isDarkMode);
-        } else if (family === 3) {
-          return renderXLargeWidget(widgetWidth, widgetHeight, family, isDarkMode);
-        } else if (family === 5) {
-          // accessoryCircular (1x1 圆形锁屏小组件)
-          return renderAccessoryCircular(widgetWidth, widgetHeight, today, isDarkMode);
-        } else if (family === 6) {
-          // accessoryRectangular (1x2 长方形锁屏小组件)
-          return renderAccessoryRectangular(widgetWidth, widgetHeight, today, isDarkMode);
-        } else if (family === 7) {
-          // accessoryInline (在日期后面的一行信息)
-          return renderAccessoryInline(widgetWidth, widgetHeight, today, isDarkMode);
-        }
-      },
-      policy: {
-        // 设置时间线更新策略：6 小时后自动刷新
-        afterDate: new Date(now.getTime() + 6 * 60 * 60 * 1000)
-      }
-    });
+    if (resp.data && resp.data.length > 0) {
+      // 保存新数据到缓存
+      saveCache(resp.data);
+      console.log("远程数据获取成功，已更新缓存");
+      // 使用新数据重新渲染
+      processAndRender(resp.data);
+    } else if (cachedData && cachedData.length > 0) {
+      console.log("远程数据为空，使用缓存数据");
+      // 远程数据为空，保持使用缓存
+    } else {
+      console.error("远程数据和缓存都不可用");
+    }
   }
 });
-
-
 /**
  * ===== Small 尺寸渲染函数 =====
  * 用于 2x2 的小尺寸小组件
