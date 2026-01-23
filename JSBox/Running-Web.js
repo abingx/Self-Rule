@@ -98,12 +98,16 @@ function generateTableHTML(activities) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    /* ===== 全局样式重置 ===== */
+    /* 重置所有元素的默认边距和内边距，使用 border-box 盒模型 */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
     
+    /* ===== 页面主体样式 ===== */
+    /* 设置系统默认字体、背景色、内边距和文字颜色 */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #f5f5f5;
@@ -111,6 +115,8 @@ function generateTableHTML(activities) {
       color: #333;
     }
     
+    /* ===== 主容器样式 ===== */
+    /* 限制最大宽度、居中显示、白色背景、圆角阴影 */
     .container {
       max-width: 100%;
       margin: 0 auto;
@@ -120,6 +126,8 @@ function generateTableHTML(activities) {
       overflow: hidden;
     }
     
+    /* ===== 头部区域样式 ===== */
+    /* 紫色渐变背景、白色文字、内边距、居中 */
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -127,28 +135,34 @@ function generateTableHTML(activities) {
       text-align: center;
     }
     
+    /* 标题文字大小和粗细 */
     .header h1 {
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 4px;
     }
     
+    /* 副标题文字大小和透明度 */
     .header p {
-      font-size: 14px;
+      font-size: 12px;
       opacity: 0.9;
     }
     
+    /* ===== 数据表格样式 ===== */
+    /* 表格宽度100%、折叠边框、小字号 */
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 10px;
     }
     
+    /* 表头背景色和底部边框 */
     thead {
       background-color: #f8f9fa;
       border-bottom: 2px solid #e9ecef;
     }
     
+    /* 表头单元格样式：内边距、左对齐、加粗、深灰文字 */
     th {
       padding: 6px 4px;
       text-align: left;
@@ -157,19 +171,23 @@ function generateTableHTML(activities) {
       border-right: 1px solid #dee2e6;
     }
     
+    /* 移除最后一列的右边框 */
     th:last-child {
       border-right: none;
     }
     
+    /* 表行样式：底部边框、悬停过渡效果 */
     tbody tr {
       border-bottom: 1px solid #dee2e6;
       transition: background-color 0.2s;
     }
     
+    /* 鼠标悬停时行背景变色 */
     tbody tr:hover {
       background-color: #f8f9fa;
     }
     
+    /* 表格单元格样式：内边距、右边框、自动换行 */
     td {
       padding: 6px 4px;
       border-right: 1px solid #dee2e6;
@@ -177,10 +195,13 @@ function generateTableHTML(activities) {
       white-space: nowrap;
     }
     
+    /* 移除最后一列的右边框 */
     td:last-child {
       border-right: none;
     }
     
+    /* ===== 列数据样式 ===== */
+    /* 名称列：中等粗细、限制最大宽度、允许换行 */
     .name {
       font-weight: 500;
       color: #495057;
@@ -190,6 +211,7 @@ function generateTableHTML(activities) {
       word-break: break-word;
     }
     
+    /* 距离列：加粗、紫色、右对齐、较小字号 */
     .distance {
       font-weight: 600;
       color: #667eea;
@@ -197,6 +219,7 @@ function generateTableHTML(activities) {
       font-size: 9px;
     }
     
+    /* 配速列：居中、紫色、等宽字体 */
     .pace {
       text-align: center;
       color: #764ba2;
@@ -204,12 +227,14 @@ function generateTableHTML(activities) {
       font-size: 9px;
     }
     
+    /* 心率列：居中、红色 */
     .bpm {
       text-align: center;
       color: #e74c3c;
       font-size: 9px;
     }
     
+    /* 时间列：居中、绿色、等宽字体 */
     .time {
       text-align: center;
       color: #27ae60;
@@ -217,12 +242,15 @@ function generateTableHTML(activities) {
       font-size: 9px;
     }
     
+    /* 日期列：居中、灰色 */
     .date {
       text-align: center;
       color: #7f8c8d;
       font-size: 9px;
     }
     
+    /* ===== 空状态样式 ===== */
+    /* 无数据时显示样式：居中、大内边距、灰色文字 */
     .empty {
       text-align: center;
       padding: 40px;
@@ -230,6 +258,8 @@ function generateTableHTML(activities) {
       font-size: 16px;
     }
     
+    /* ===== 统计区域样式 ===== */
+    /* 统计信息区域：浅灰背景、弹性布局、均匀分布 */
     .stats {
       background-color: #f8f9fa;
       padding: 8px 12px;
@@ -239,15 +269,18 @@ function generateTableHTML(activities) {
       font-size: 12px;
     }
     
+    /* 统计文字样式 */
     .stats span {
       font-size: 13px;
       color: #495057;
     }
     
+    /* 单个统计项居中 */
     .stat-item {
       text-align: center;
     }
     
+    /* 统计数值样式：加粗、紫色、大字号 */
     .stat-value {
       font-weight: 600;
       color: #667eea;
@@ -260,6 +293,7 @@ function generateTableHTML(activities) {
   <div class="container">
     <div class="header">
       <h1>跑步数据</h1>
+      <p>Powered by <span style="monospace; color: #e6f91e;">RunningPage</span></p>
     </div>
   `;
   
