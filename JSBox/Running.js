@@ -23,11 +23,11 @@ const SHOW_PLACEHOLDERS = false;
 /** 远程数据 URL，包含所有跑步活动的 JSON 格式数据 */
 const DATA_URL = "https://raw.githubusercontent.com/abingx/running_page/master/src/static/activities.json";
 
-/** 小组件点击跳转的目标 URL */
-const TARGET_URL = "https://running.allinhub.dpdns.org";
+/** 小组件点击要运行的 JSBox 脚本名称 */
+const TARGET_SCRIPT = "Running-Web.js";
 
 /** 缓存文件名 */
-const CACHE_FILE = "activities_cache.json";
+const CACHE_FILE = "shared://activities_cache.json";
 
 /**
  * 排版占位符说明:
@@ -169,21 +169,17 @@ const WIDGET_LAYOUT = {
 
 /**
  * 获取小组件点击时的跳转URL
- * 通过JSBox的jsbox://run?script=方式实现
+ * 通过JSBox的jsbox://run?name=方式直接运行指定脚本
  * 点击小组件会：
  * 1. 打开JSBox主应用
- * 2. 执行脚本打开目标URL
+ * 2. 运行指定的脚本
  * 
- * 修改全局常量 TARGET_URL 即可改变跳转链接
+ * 修改全局常量 TARGET_SCRIPT 即可改变要运行的脚本
  * 
- * @returns {string} 编码后的JSBox URL scheme
+ * @returns {string} JSBox URL scheme
  */
 function getWidgetURL() {
-  // 使用 $app.openURL() 打开链接的 JavaScript 脚本
-  const script = `$app.openURL("${TARGET_URL}")`;
-  // 对脚本进行 URL 编码，使其可以通过 jsbox:// scheme 传递
-  const encodedScript = encodeURIComponent(script);
-  return `jsbox://run?script=${encodedScript}`;
+  return `jsbox://run?name=${TARGET_SCRIPT}`;
 }
 
 /**
