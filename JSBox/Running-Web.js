@@ -5,6 +5,8 @@
  * - 从共享目录读取跑步数据缓存
  * - 显示跑步数据的 HTML 表格
  * - 支持按类型过滤和日期排序
+ * - 支持点击列头进行升序/降序排序
+ * - 支持深色模式切换
  */
 
 // ===== 常量定义 =====
@@ -84,9 +86,10 @@ function formatDateWeb(dateStr) {
  * 生成 HTML 表格
  * 
  * @param {Array} activities - 跑步活动数据
+ * @param {boolean} isDarkMode - 是否深色模式
  * @returns {string} HTML 字符串
  */
-function generateTableHTML(activities) {
+function generateTableHTML(activities, isDarkMode) {
   const runs = activities
     .filter(a => a.type === "Run")
     .sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
@@ -99,7 +102,6 @@ function generateTableHTML(activities) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     /* ===== 全局样式重置 ===== */
-    /* 重置所有元素的默认边距和内边距，使用 border-box 盒模型 */
     * {
       margin: 0;
       padding: 0;
@@ -107,16 +109,110 @@ function generateTableHTML(activities) {
     }
     
     /* ===== 页面主体样式 ===== */
-    /* 设置系统默认字体、背景色、内边距和文字颜色 */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #f5f5f5;
       padding: 12px;
       color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    
+    /* ===== 深色模式样式 (通过类名控制) ===== */
+    body.dark-mode {
+      background-color: #000000;
+      color: #e5e5e5;
+    }
+    
+    body.dark-mode .container {
+      background: #1c1c1e;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+    }
+    
+    body.dark-mode .header {
+      background: linear-gradient(135deg, #5568d3 0%, #6b4fa0 100%);
+    }
+    
+    body.dark-mode thead {
+      background-color: #2c2c2e;
+      border-bottom: 2px solid #3a3a3c;
+    }
+    
+    body.dark-mode th {
+      color: #a8a8aa;
+      border-right: 1px solid #3a3a3c;
+    }
+    
+    body.dark-mode th.sortable {
+      background-color: #2a3f5f;
+    }
+    
+    body.dark-mode th.sortable:hover {
+      background-color: #3a5278;
+    }
+    
+    body.dark-mode th.sort-desc {
+      color: #ff6b6b;
+    }
+    
+    body.dark-mode th.sort-asc {
+      color: #51cf66;
+    }
+    
+    body.dark-mode tbody tr {
+      border-bottom: 1px solid #3a3a3c;
+    }
+    
+    body.dark-mode tbody tr:hover {
+      background-color: #2c2c2e;
+    }
+    
+    body.dark-mode td {
+      border-right: 1px solid #3a3a3c;
+      color: #e5e5e5;
+    }
+    
+    body.dark-mode .name {
+      color: #d1d1d6;
+    }
+    
+    body.dark-mode .distance {
+      color: #7b8cff;
+    }
+    
+    body.dark-mode .pace {
+      color: #b197fc;
+    }
+    
+    body.dark-mode .bpm {
+      color: #ffa94d;
+    }
+    
+    body.dark-mode .time {
+      color: #4fc3f7;
+    }
+    
+    body.dark-mode .date {
+      color: #a0a0a5;
+    }
+    
+    body.dark-mode .empty {
+      color: #6c6c70;
+    }
+    
+    body.dark-mode .stats {
+      background-color: #2c2c2e;
+      border-top: 1px solid #3a3a3c;
+    }
+    
+    body.dark-mode .stats span {
+      color: #a8a8aa;
+    }
+    
+    body.dark-mode .stat-value {
+      color: #7b8cff;
     }
     
     /* ===== 主容器样式 ===== */
-    /* 限制最大宽度、居中显示、白色背景、圆角阴影 */
     .container {
       max-width: 100%;
       margin: 0 auto;
@@ -124,84 +220,98 @@ function generateTableHTML(activities) {
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       overflow: hidden;
+      transition: background 0.3s, box-shadow 0.3s;
     }
     
     /* ===== 头部区域样式 ===== */
-    /* 紫色渐变背景、白色文字、内边距、居中 */
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 16px;
       text-align: center;
+      transition: background 0.3s;
     }
     
-    /* 标题文字大小和粗细 */
     .header h1 {
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 4px;
     }
     
-    /* 副标题文字大小和透明度 */
     .header p {
       font-size: 12px;
       opacity: 0.9;
     }
     
     /* ===== 数据表格样式 ===== */
-    /* 表格宽度100%、折叠边框、小字号 */
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 10px;
     }
     
-    /* 表头背景色和底部边框 */
     thead {
       background-color: #f8f9fa;
       border-bottom: 2px solid #e9ecef;
+      transition: background-color 0.3s, border-color 0.3s;
     }
     
-    /* 表头单元格样式：内边距、左对齐、加粗、深灰文字 */
     th {
       padding: 6px 4px;
       text-align: left;
       font-weight: 600;
       color: #495057;
       border-right: 1px solid #dee2e6;
+      user-select: none;
+      position: relative;
+      transition: all 0.2s;
     }
     
-    /* 移除最后一列的右边框 */
+    th.sortable {
+      cursor: pointer;
+      background-color: #e3f2fd;
+    }
+    
+    th.sortable:hover {
+      background-color: #bbdefb;
+    }
+    
     th:last-child {
       border-right: none;
     }
     
-    /* 表行样式：底部边框、悬停过渡效果 */
-    tbody tr {
-      border-bottom: 1px solid #dee2e6;
-      transition: background-color 0.2s;
+    th.sort-desc {
+      color: #e74c3c;
+      font-weight: 700;
     }
     
-    /* 鼠标悬停时行背景变色 */
+    th.sort-asc {
+      color: #27ae60;
+      font-weight: 700;
+    }
+    
+    tbody tr {
+      border-bottom: 1px solid #dee2e6;
+      transition: background-color 0.2s, border-color 0.3s;
+    }
+    
     tbody tr:hover {
       background-color: #f8f9fa;
     }
     
-    /* 表格单元格样式：内边距、右边框、自动换行 */
     td {
       padding: 6px 4px;
       border-right: 1px solid #dee2e6;
       word-break: break-word;
       white-space: nowrap;
+      transition: border-color 0.3s, color 0.3s;
     }
     
-    /* 移除最后一列的右边框 */
     td:last-child {
       border-right: none;
     }
     
     /* ===== 列数据样式 ===== */
-    /* 名称列：中等粗细、限制最大宽度、允许换行 */
     .name {
       font-weight: 500;
       color: #495057;
@@ -209,57 +319,55 @@ function generateTableHTML(activities) {
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
+      transition: color 0.3s;
     }
     
-    /* 距离列：加粗、紫色、右对齐、较小字号 */
     .distance {
       font-weight: 600;
       color: #667eea;
       text-align: right;
       font-size: 9px;
+      transition: color 0.3s;
     }
     
-    /* 配速列：居中、紫色、等宽字体 */
     .pace {
       text-align: center;
       color: #764ba2;
-      font-family: monospace;
       font-size: 9px;
+      transition: color 0.3s;
     }
     
-    /* 心率列：居中、红色 */
     .bpm {
       text-align: center;
       color: #e74c3c;
       font-size: 9px;
+      transition: color 0.3s;
     }
     
-    /* 时间列：居中、绿色、等宽字体 */
     .time {
       text-align: center;
       color: #27ae60;
-      font-family: monospace;
       font-size: 9px;
+      transition: color 0.3s;
     }
     
-    /* 日期列：居中、灰色 */
     .date {
       text-align: center;
       color: #7f8c8d;
       font-size: 9px;
+      transition: color 0.3s;
     }
     
     /* ===== 空状态样式 ===== */
-    /* 无数据时显示样式：居中、大内边距、灰色文字 */
     .empty {
       text-align: center;
       padding: 40px;
       color: #95a5a6;
       font-size: 16px;
+      transition: color 0.3s;
     }
     
     /* ===== 统计区域样式 ===== */
-    /* 统计信息区域：浅灰背景、弹性布局、均匀分布 */
     .stats {
       background-color: #f8f9fa;
       padding: 8px 12px;
@@ -267,33 +375,33 @@ function generateTableHTML(activities) {
       justify-content: space-around;
       border-top: 1px solid #dee2e6;
       font-size: 12px;
+      transition: background-color 0.3s, border-color 0.3s;
     }
     
-    /* 统计文字样式 */
     .stats span {
       font-size: 13px;
       color: #495057;
+      transition: color 0.3s;
     }
     
-    /* 单个统计项居中 */
     .stat-item {
       text-align: center;
     }
     
-    /* 统计数值样式：加粗、紫色、大字号 */
     .stat-value {
       font-weight: 600;
       color: #667eea;
       display: block;
       font-size: 16px;
+      transition: color 0.3s;
     }
   </style>
 </head>
-<body>
+<body${isDarkMode ? ' class="dark-mode"' : ''}>
   <div class="container">
     <div class="header">
-      <h1>跑步数据</h1>
-      <p>Powered by <span style="monospace; color: #e6f91e;">RunningPage</span></p>
+      <h1>Data View</h1>
+      <p>Powered by <span style="font-family: monospace; color: #e6f91e;">RunningPage</span></p>
     </div>
   `;
   
@@ -301,18 +409,18 @@ function generateTableHTML(activities) {
     html += '<div class="empty">暂无跑步数据</div>';
   } else {
     html += `
-    <table>
+    <table id="runTable">
       <thead>
         <tr>
           <th>Name</th>
-          <th>Km</th>
-          <th>Pace</th>
-          <th>BPM</th>
-          <th>Time</th>
-          <th>Date</th>
+          <th data-sort="distance" class="sortable">Km</th>
+          <th data-sort="pace" class="sortable">Pace</th>
+          <th data-sort="bpm" class="sortable">BPM</th>
+          <th data-sort="time" class="sortable">Time</th>
+          <th data-sort="date" class="sortable sort-desc">Date</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="tableBody">
     `;
     
     runs.forEach(run => {
@@ -322,7 +430,12 @@ function generateTableHTML(activities) {
       const date = formatDateWeb(run.start_date_local);
       
       html += `
-        <tr>
+        <tr data-distance="${run.distance}" 
+            data-pace="${pace !== 'N/A' ? pace : '999:99'}" 
+            data-bpm="${heartrate !== 'N/A' ? heartrate : '0'}"
+            data-time="${run.moving_time}"
+            data-date="${run.start_date_local}"
+            data-name="${(run.name || 'Running').toLowerCase()}">
           <td class="name" title="${run.name || 'Running'}">${run.name || 'Running'}</td>
           <td class="distance">${distanceKm}</td>
           <td class="pace">${pace}</td>
@@ -336,6 +449,115 @@ function generateTableHTML(activities) {
     html += `
       </tbody>
     </table>
+    
+    <script>
+      // 排序状态
+      let currentSort = 'date';
+      let sortDirection = 'desc';
+      
+      // 获取所有可排序的表头
+      const headers = document.querySelectorAll('th[data-sort]');
+      
+      // 为每个表头添加点击事件
+      headers.forEach(header => {
+        header.addEventListener('click', () => {
+          const sortKey = header.dataset.sort;
+          
+          // 如果点击的是当前排序列，切换排序方向
+          if (currentSort === sortKey) {
+            sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+          } else {
+            // 否则，设置新的排序列，默认降序
+            currentSort = sortKey;
+            sortDirection = 'desc';
+          }
+          
+          // 更新表头样式
+          headers.forEach(h => {
+            h.classList.remove('sort-asc', 'sort-desc');
+          });
+          header.classList.add('sort-' + sortDirection);
+          
+          // 执行排序
+          sortTable(sortKey, sortDirection);
+        });
+      });
+      
+      // 排序函数
+      function sortTable(key, direction) {
+        const tbody = document.getElementById('tableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+          let aVal, bVal;
+          
+          switch(key) {
+            case 'name':
+              aVal = a.dataset.name;
+              bVal = b.dataset.name;
+              return direction === 'desc' 
+                ? bVal.localeCompare(aVal)
+                : aVal.localeCompare(bVal);
+              
+            case 'distance':
+              aVal = parseFloat(a.dataset.distance);
+              bVal = parseFloat(b.dataset.distance);
+              break;
+              
+            case 'pace':
+              aVal = a.dataset.pace;
+              bVal = b.dataset.pace;
+              // 将配速转换为秒数进行比较
+              const aPaceSeconds = paceToSeconds(aVal);
+              const bPaceSeconds = paceToSeconds(bVal);
+              return direction === 'desc'
+                ? bPaceSeconds - aPaceSeconds
+                : aPaceSeconds - bPaceSeconds;
+              
+            case 'bpm':
+              aVal = parseFloat(a.dataset.bpm);
+              bVal = parseFloat(b.dataset.bpm);
+              break;
+              
+            case 'time':
+              aVal = a.dataset.time;
+              bVal = b.dataset.time;
+              const aTimeSeconds = timeToSeconds(aVal);
+              const bTimeSeconds = timeToSeconds(bVal);
+              return direction === 'desc'
+                ? bTimeSeconds - aTimeSeconds
+                : aTimeSeconds - bTimeSeconds;
+              
+            case 'date':
+              aVal = new Date(a.dataset.date).getTime();
+              bVal = new Date(b.dataset.date).getTime();
+              break;
+          }
+          
+          return direction === 'desc' ? bVal - aVal : aVal - bVal;
+        });
+        
+        // 清空并重新插入排序后的行
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+      }
+      
+      // 将配速转换为秒数
+      function paceToSeconds(pace) {
+        if (pace === '999:99') return 999999; // N/A 值
+        const parts = pace.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      }
+      
+      // 将时间转换为秒数
+      function timeToSeconds(time) {
+        const parts = time.split(':');
+        const hours = parseInt(parts[0]) || 0;
+        const minutes = parseInt(parts[1]) || 0;
+        const seconds = parseFloat(parts[2]) || 0;
+        return hours * 3600 + minutes * 60 + seconds;
+      }
+    </script>
     `;
   }
   
@@ -354,14 +576,17 @@ function generateTableHTML(activities) {
  */
 function renderWebView() {
   const activities = loadCacheWeb();
-  const html = generateTableHTML(activities);
+  const isDarkMode = $device.isDarkMode;
+  const html = generateTableHTML(activities, isDarkMode);
   
   const encodedHtml = encodeURIComponent(html);
   const dataUrl = `data:text/html;charset=utf-8,${encodedHtml}`;
   
   $ui.render({
     props: {
-      title: "跑步数据"
+      title: "Data View",
+      navBarHidden: true,
+      statusBarStyle: isDarkMode ? 1 : 0
     },
     views: [
       {
