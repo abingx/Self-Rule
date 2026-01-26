@@ -239,8 +239,7 @@ function generateTableHTML(activities, isDarkMode) {
     }
     
     .header p {
-      font-size: 12px;
-      opacity: 0.9;
+      font-size: 9px
     }
     
     /* ===== 数据表格样式 ===== */
@@ -400,7 +399,7 @@ function generateTableHTML(activities, isDarkMode) {
 <body${isDarkMode ? ' class="dark-mode"' : ''}>
   <div class="container">
     <div class="header">
-      <h1>Data View</h1>
+      <h1>Running Data</h1>
       <p>Powered by <span style="font-family: monospace; color: #e6f91e;">RunningPage</span></p>
     </div>
   `;
@@ -584,7 +583,7 @@ function renderWebView() {
   
   $ui.render({
     props: {
-      title: "Data View",
+      title: "Running Data",
       navBarHidden: true,
       statusBarStyle: isDarkMode ? 1 : 0
     },
