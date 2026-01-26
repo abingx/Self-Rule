@@ -24,7 +24,7 @@ const SHOW_PLACEHOLDERS = false;
 const DATA_URL = "https://raw.githubusercontent.com/abingx/running_page/master/src/static/activities.json";
 
 /** 小组件点击要运行的 JSBox 脚本名称 */
-const TARGET_SCRIPT = "Running-Web.js";
+const TARGET_SCRIPT = "Running Data.js";
 
 /** 缓存文件名 */
 const CACHE_FILE = "shared://activities_cache.json";
