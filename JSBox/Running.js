@@ -556,7 +556,7 @@ function renderSmallWidget(smallW, smallH, today, week, month, year, latestRunSt
   }
 
   // ===== 数据格式化 =====
-  const smallTodayLabel = formatLabel("Today");
+  const smallTodayLabel = formatLabel("Day");
   const smallTodayCount = formatCount(today.count);
   const smallTodayDistance = formatDistance(today.distance);
   
@@ -791,7 +791,7 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
   }
 
   // ===== 数据格式化 =====
-  const mediumTodayLabel = formatLabel("Today");
+  const mediumTodayLabel = formatLabel("Day");
   const mediumTodayRuns = formatRuns(today.count);
   const mediumTodayKm = formatKm(today.distance);
   
@@ -1056,24 +1056,24 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
 
   // ===== 数据格式化 =====
   // 当前时期数据
-  const largeTodayLabel = formatLabel("Today");
+  const largeTodayLabel = formatLabel("This Day");
   const largeTodayRuns = formatRuns(today.count);
   const largeTodayKm = formatKm(today.distance);
   
   // 上一时期数据
-  const largeYesterdayLabel = formatLabel("Yesterday");
+  const largeYesterdayLabel = formatLabel("Last Day");
   const largeYesterdayRuns = formatRuns(yesterday.count);
   const largeYesterdayKm = formatKm(yesterday.distance);
-  
-  const largeWeekLabel = formatLabel("Week");
+
+  const largeWeekLabel = formatLabel("This Week");
   const largeWeekRuns = formatRuns(week.count);
   const largeWeekKm = formatKm(week.distance);
-  
+
   const largeLastWeekLabel = formatLabel("Last Week");
   const largeLastWeekRuns = formatRuns(lastWeek.count);
   const largeLastWeekKm = formatKm(lastWeek.distance);
   
-  const largeMonthLabel = formatLabel("Month");
+  const largeMonthLabel = formatLabel("This Month");
   const largeMonthRuns = formatRuns(month.count);
   const largeMonthKm = formatKm(month.distance);
   
@@ -1081,7 +1081,7 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
   const largeLastMonthRuns = formatRuns(lastMonth.count);
   const largeLastMonthKm = formatKm(lastMonth.distance);
   
-  const largeYearLabel = formatLabel("Year");
+  const largeYearLabel = formatLabel("This Year");
   const largeYearRuns = formatRuns(year.count);
   const largeYearKm = formatKm(year.distance);
   
