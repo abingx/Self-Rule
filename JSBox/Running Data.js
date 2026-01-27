@@ -1,12 +1,13 @@
 /**
- * JSBox 跑步数据 Web 视图
+ * JSBox 跑步数据 Web 视图 - iOS 移动端优化版
  * 
  * 功能说明:
  * - 从共享目录读取跑步数据缓存
- * - 显示跑步数据的 HTML 表格
+ * - 显示跑步数据的 HTML 表格（针对 iOS 优化）
  * - 支持按类型过滤和日期排序
  * - 支持点击列头进行升序/降序排序
  * - 支持深色模式切换
+ * - 优化移动端字体和布局
  */
 
 // ===== 常量定义 =====
@@ -66,24 +67,23 @@ function calculatePace(distance, movingTime) {
 }
 
 /**
- * 格式化日期
+ * 格式化日期 - 移动端简洁版
  * 
  * @param {string} dateStr - 日期字符串
- * @returns {string} 格式化后的日期
+ * @returns {string} 格式化后的日期 (格式: yy/mm/dd hh:mm)
  */
 function formatDateWeb(dateStr) {
   const date = new Date(dateStr.replace(" ", "T"));
-  const year = date.getFullYear();
+  const year = String(date.getFullYear()).slice(-2); // 只取后两位年份
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return `${year}/${month}/${day} ${hours}:${minutes}`;
 }
 
 /**
- * 生成 HTML 表格
+ * 生成 HTML 表格 - iOS 移动端优化版
  * 
  * @param {Array} activities - 跑步活动数据
  * @param {boolean} isDarkMode - 是否深色模式
@@ -99,334 +99,523 @@ function generateTableHTML(activities, isDarkMode) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
+    /* ===== CSS 变量定义 ===== */
+    :root {
+      /* 亮色模式 */
+      --primary-gradient: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FFA06B 100%);
+      --secondary-gradient: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+      --header-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      --accent-color: #FF6B6B;
+      --success-color: #51CF66;
+      --warning-color: #FFD93D;
+      --info-color: #4ECDC4;
+      --text-primary: #2C3E50;
+      --text-secondary: #7F8C8D;
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F8F9FA;
+      --bg-gradient: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+      --border-color: #E9ECEF;
+      --shadow-color: rgba(0, 0, 0, 0.08);
+      --hover-bg: rgba(102, 126, 234, 0.05);
+      --card-bg: rgba(255, 255, 255, 0.95);
+    }
+    
+    /* 深色模式变量 */
+    .dark-mode {
+      --primary-gradient: linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%);
+      --secondary-gradient: linear-gradient(135deg, #4ECDC4 0%, #3BA99C 100%);
+      --header-gradient: linear-gradient(135deg, #5568d3 0%, #6b4fa0 50%, #d946ef 100%);
+      --accent-color: #FF8787;
+      --success-color: #69DB7C;
+      --warning-color: #FFE066;
+      --info-color: #66D9EF;
+      --text-primary: #E9ECEF;
+      --text-secondary: #ADB5BD;
+      --bg-primary: #1A1B1E;
+      --bg-secondary: #25262B;
+      --bg-gradient: linear-gradient(135deg, rgba(85, 104, 211, 0.1) 0%, rgba(107, 79, 160, 0.1) 100%);
+      --border-color: #373A40;
+      --shadow-color: rgba(0, 0, 0, 0.4);
+      --hover-bg: rgba(85, 104, 211, 0.15);
+      --card-bg: rgba(26, 27, 30, 0.95);
+    }
+    
     /* ===== 全局样式重置 ===== */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
     
     /* ===== 页面主体样式 ===== */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #f5f5f5;
-      padding: 12px;
-      color: #333;
-      transition: background-color 0.3s, color 0.3s;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-gradient);
+      padding: 0;
+      color: var(--text-primary);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* ===== 深色模式样式 (通过类名控制) ===== */
-    body.dark-mode {
-      background-color: #000000;
-      color: #e5e5e5;
+    /* 背景装饰层 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(255, 107, 107, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(78, 205, 196, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(118, 75, 162, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: float 20s ease-in-out infinite;
     }
     
-    body.dark-mode .container {
-      background: #1c1c1e;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-    }
-    
-    body.dark-mode .header {
-      background: linear-gradient(135deg, #5568d3 0%, #6b4fa0 100%);
-    }
-    
-    body.dark-mode thead {
-      background-color: #2c2c2e;
-      border-bottom: 2px solid #3a3a3c;
-    }
-    
-    body.dark-mode th {
-      color: #a8a8aa;
-      border-right: 1px solid #3a3a3c;
-    }
-    
-    body.dark-mode th.sortable {
-      background-color: #2a3f5f;
-    }
-    
-    body.dark-mode th.sortable:hover {
-      background-color: #3a5278;
-    }
-    
-    body.dark-mode th.sort-desc {
-      color: #ff6b6b;
-    }
-    
-    body.dark-mode th.sort-asc {
-      color: #51cf66;
-    }
-    
-    body.dark-mode tbody tr {
-      border-bottom: 1px solid #3a3a3c;
-    }
-    
-    body.dark-mode tbody tr:hover {
-      background-color: #2c2c2e;
-    }
-    
-    body.dark-mode td {
-      border-right: 1px solid #3a3a3c;
-      color: #e5e5e5;
-    }
-    
-    body.dark-mode .name {
-      color: #d1d1d6;
-    }
-    
-    body.dark-mode .distance {
-      color: #7b8cff;
-    }
-    
-    body.dark-mode .pace {
-      color: #b197fc;
-    }
-    
-    body.dark-mode .bpm {
-      color: #ffa94d;
-    }
-    
-    body.dark-mode .time {
-      color: #4fc3f7;
-    }
-    
-    body.dark-mode .date {
-      color: #a0a0a5;
-    }
-    
-    body.dark-mode .empty {
-      color: #6c6c70;
-    }
-    
-    body.dark-mode .stats {
-      background-color: #2c2c2e;
-      border-top: 1px solid #3a3a3c;
-    }
-    
-    body.dark-mode .stats span {
-      color: #a8a8aa;
-    }
-    
-    body.dark-mode .stat-value {
-      color: #7b8cff;
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(5deg); }
+      66% { transform: translate(-20px, 20px) rotate(-5deg); }
     }
     
     /* ===== 主容器样式 ===== */
     .container {
+      position: relative;
+      z-index: 1;
       max-width: 100%;
-      margin: 0 auto;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin: 0;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
       overflow: hidden;
-      transition: background 0.3s, box-shadow 0.3s;
+      animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
     /* ===== 头部区域样式 ===== */
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--header-gradient);
       color: white;
-      padding: 16px;
+      padding: 20px 16px 16px;
       text-align: center;
-      transition: background 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 70%
+      );
+      animation: shine 3s infinite;
+    }
+    
+    @keyframes shine {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+    
+    .header-content {
+      position: relative;
+      z-index: 1;
     }
     
     .header h1 {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 4px;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.8s ease-out 0.2s both;
     }
     
     .header p {
-      font-size: 9px
+      font-size: 11px;
+      opacity: 0.9;
+      font-weight: 500;
+      animation: fadeIn 0.8s ease-out 0.4s both;
+    }
+    
+    .header .highlight {
+      font-family: "SF Mono", "Monaco", "Courier New", monospace;
+      color: #FFE66D;
+      font-weight: 600;
+      text-shadow: 0 0 20px rgba(255, 230, 109, 0.5);
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* ===== 统计卡片样式 ===== */
+    .stats {
+      background: var(--bg-secondary);
+      padding: 12px 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .stat-card {
+      background: var(--bg-primary);
+      padding: 10px 6px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .stat-card:active {
+      transform: scale(0.95);
+    }
+    
+    .stat-label {
+      font-size: 9px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    
+    .stat-value {
+      font-size: 17px;
+      font-weight: 700;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    
+    /* ===== 表格容器 ===== */
+    .table-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 自定义滚动条 - iOS Safari */
+    .table-container::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
     }
     
     /* ===== 数据表格样式 ===== */
     table {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 10px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 11px;
     }
     
     thead {
-      background-color: #f8f9fa;
-      border-bottom: 2px solid #e9ecef;
-      transition: background-color 0.3s, border-color 0.3s;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-secondary);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 1px 4px var(--shadow-color);
     }
     
     th {
-      padding: 6px 4px;
-      text-align: left;
+      padding: 10px 4px;
+      text-align: center;
       font-weight: 600;
-      color: #495057;
-      border-right: 1px solid #dee2e6;
+      color: var(--text-secondary);
+      border-bottom: 2px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
       user-select: none;
       position: relative;
-      transition: all 0.2s;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      line-height: 1.2;
     }
     
-    th.sortable {
-      cursor: pointer;
-      background-color: #e3f2fd;
-    }
-    
-    th.sortable:hover {
-      background-color: #bbdefb;
+    th:first-child {
+      text-align: left;
+      padding-left: 8px;
     }
     
     th:last-child {
       border-right: none;
+      padding-right: 8px;
     }
     
-    th.sort-desc {
-      color: #e74c3c;
-      font-weight: 700;
+    th.sortable {
+      cursor: pointer;
+      background: linear-gradient(to bottom, var(--bg-secondary) 0%, var(--bg-primary) 100%);
     }
     
-    th.sort-asc {
-      color: #27ae60;
-      font-weight: 700;
+    th.sortable:active {
+      background: var(--hover-bg);
+      transform: scale(0.95);
     }
     
+    th.sortable::after {
+      content: '⇅';
+      position: absolute;
+      right: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.3;
+      font-size: 10px;
+      transition: all 0.3s;
+    }
+    
+    th.sort-desc::after {
+      content: '↓';
+      opacity: 1;
+      color: var(--accent-color);
+    }
+    
+    th.sort-asc::after {
+      content: '↑';
+      opacity: 1;
+      color: var(--success-color);
+    }
+    
+    /* ===== 表格行样式 ===== */
     tbody tr {
-      border-bottom: 1px solid #dee2e6;
-      transition: background-color 0.2s, border-color 0.3s;
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: fadeInRow 0.4s ease-out both;
     }
     
-    tbody tr:hover {
-      background-color: #f8f9fa;
+    @keyframes fadeInRow {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    tbody tr:active {
+      background: var(--hover-bg);
     }
     
     td {
-      padding: 6px 4px;
-      border-right: 1px solid #dee2e6;
-      word-break: break-word;
-      white-space: nowrap;
-      transition: border-color 0.3s, color 0.3s;
+      padding: 8px 4px;
+      border-right: 1px solid var(--border-color);
+      transition: all 0.3s;
+      text-align: center;
+      line-height: 1.3;
+    }
+    
+    td:first-child {
+      text-align: left;
+      padding-left: 8px;
     }
     
     td:last-child {
       border-right: none;
+      padding-right: 8px;
     }
     
     /* ===== 列数据样式 ===== */
     .name {
-      font-weight: 500;
-      color: #495057;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 10px;
       max-width: 95px;
+      word-wrap: break-word;
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      transition: color 0.3s;
+      line-height: 1.3;
     }
     
     .distance {
-      font-weight: 600;
-      color: #667eea;
-      text-align: right;
-      font-size: 9px;
-      transition: color 0.3s;
+      font-weight: 700;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     
     .pace {
-      text-align: center;
-      color: #764ba2;
-      font-size: 9px;
-      transition: color 0.3s;
+      font-weight: 600;
+      color: var(--info-color);
+      font-size: 10px;
+      font-family: "SF Mono", monospace;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      min-width: 40px;
     }
     
     .bpm {
-      text-align: center;
-      color: #e74c3c;
-      font-size: 9px;
-      transition: color 0.3s;
+      font-weight: 600;
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .bpm-value {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 82, 82, 0.15) 100%);
+      color: var(--accent-color);
+      font-size: 10px;
+      line-height: 1.2;
     }
     
     .time {
-      text-align: center;
-      color: #27ae60;
-      font-size: 9px;
-      transition: color 0.3s;
+      font-weight: 600;
+      color: var(--success-color);
+      font-size: 10px;
+      font-family: "SF Mono", monospace;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     
     .date {
-      text-align: center;
-      color: #7f8c8d;
+      color: var(--text-secondary);
       font-size: 9px;
-      transition: color 0.3s;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+      white-space: nowrap;
     }
     
     /* ===== 空状态样式 ===== */
     .empty {
       text-align: center;
-      padding: 40px;
-      color: #95a5a6;
-      font-size: 16px;
-      transition: color 0.3s;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
     }
     
-    /* ===== 统计区域样式 ===== */
-    .stats {
-      background-color: #f8f9fa;
-      padding: 8px 12px;
-      display: flex;
-      justify-content: space-around;
-      border-top: 1px solid #dee2e6;
-      font-size: 12px;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-    
-    .stats span {
-      font-size: 13px;
-      color: #495057;
-      transition: color 0.3s;
-    }
-    
-    .stat-item {
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-weight: 600;
-      color: #667eea;
-      display: block;
-      font-size: 16px;
-      transition: color 0.3s;
+    .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
     }
   </style>
 </head>
 <body${isDarkMode ? ' class="dark-mode"' : ''}>
   <div class="container">
     <div class="header">
-      <h1>Running Data</h1>
-      <p>Powered by <span style="font-family: monospace; color: #e6f91e;">RunningPage</span></p>
+      <div class="header-content">
+        <h1>🏃‍♂️ Running Dashboard</h1>
+        <p>Powered by <span class="highlight">RunningPage</span></p>
+      </div>
     </div>
   `;
   
   if (runs.length === 0) {
-    html += '<div class="empty">暂无跑步数据</div>';
-  } else {
     html += `
-    <table id="runTable">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th data-sort="distance" class="sortable">Km</th>
-          <th data-sort="pace" class="sortable">Pace</th>
-          <th data-sort="bpm" class="sortable">BPM</th>
-          <th data-sort="time" class="sortable">Time</th>
-          <th data-sort="date" class="sortable sort-desc">Date</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
+    <div class="empty">
+      <div class="empty-icon">🏃</div>
+      <p>暂无跑步数据</p>
+    </div>
+    `;
+  } else {
+    // 计算统计数据
+    const totalDistance = runs.reduce((sum, run) => sum + run.distance, 0);
+    const totalRuns = runs.length;
+    const avgDistance = totalDistance / totalRuns / 1000;
+    
+    html += `
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">${totalRuns}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Km</div>
+        <div class="stat-value">${(totalDistance / 1000).toFixed(1)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Km</div>
+        <div class="stat-value">${avgDistance.toFixed(2)}</div>
+      </div>
+    </div>
+    
+    <div class="table-container">
+      <table id="runTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th data-sort="distance" class="sortable">KM</th>
+            <th data-sort="pace" class="sortable">Pace</th>
+            <th data-sort="bpm" class="sortable">BPM</th>
+            <th data-sort="time" class="sortable">Time</th>
+            <th data-sort="date" class="sortable sort-desc">Date</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
     `;
     
-    runs.forEach(run => {
+    runs.forEach((run, index) => {
       const distanceKm = (run.distance / 1000).toFixed(2);
       const pace = calculatePace(run.distance, run.moving_time);
       const heartrate = run.average_heartrate ? Math.round(run.average_heartrate) : "N/A";
       const date = formatDateWeb(run.start_date_local);
+      const movingTime = run.moving_time.split(".")[0];
       
       html += `
         <tr data-distance="${run.distance}" 
@@ -434,20 +623,22 @@ function generateTableHTML(activities, isDarkMode) {
             data-bpm="${heartrate !== 'N/A' ? heartrate : '0'}"
             data-time="${run.moving_time}"
             data-date="${run.start_date_local}"
-            data-name="${(run.name || 'Running').toLowerCase()}">
+            data-name="${(run.name || 'Running').toLowerCase()}"
+            style="animation-delay: ${index * 0.02}s">
           <td class="name" title="${run.name || 'Running'}">${run.name || 'Running'}</td>
           <td class="distance">${distanceKm}</td>
           <td class="pace">${pace}</td>
-          <td class="bpm">${heartrate}</td>
-          <td class="time">${run.moving_time.split(".")[0]}</td>
+          <td class="bpm">${heartrate !== 'N/A' ? `<span class="bpm-value">${heartrate}</span>` : 'N/A'}</td>
+          <td class="time">${movingTime}</td>
           <td class="date">${date}</td>
         </tr>
       `;
     });
     
     html += `
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
     
     <script>
       // 排序状态
@@ -506,7 +697,6 @@ function generateTableHTML(activities, isDarkMode) {
             case 'pace':
               aVal = a.dataset.pace;
               bVal = b.dataset.pace;
-              // 将配速转换为秒数进行比较
               const aPaceSeconds = paceToSeconds(aVal);
               const bPaceSeconds = paceToSeconds(bVal);
               return direction === 'desc'
@@ -536,14 +726,17 @@ function generateTableHTML(activities, isDarkMode) {
           return direction === 'desc' ? bVal - aVal : aVal - bVal;
         });
         
-        // 清空并重新插入排序后的行
+        // 清空并重新插入排序后的行，添加动画延迟
         tbody.innerHTML = '';
-        rows.forEach(row => tbody.appendChild(row));
+        rows.forEach((row, index) => {
+          row.style.animationDelay = (index * 0.015) + 's';
+          tbody.appendChild(row);
+        });
       }
       
       // 将配速转换为秒数
       function paceToSeconds(pace) {
-        if (pace === '999:99') return 999999; // N/A 值
+        if (pace === '999:99') return 999999;
         const parts = pace.split(':');
         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
       }
@@ -583,7 +776,7 @@ function renderWebView() {
   
   $ui.render({
     props: {
-      title: "Running Data",
+      title: "Running Dashboard",
       navBarHidden: true,
       statusBarStyle: isDarkMode ? 1 : 0
     },
