@@ -74,7 +74,7 @@ function calculatePace(distance, movingTime) {
  */
 function formatDateWeb(dateStr) {
   const date = new Date(dateStr.replace(" ", "T"));
-  const year = String(date.getFullYear()).slice(-2); // 只取后两位年份
+  const year = String(date.getFullYear());
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
@@ -481,7 +481,7 @@ function generateTableHTML(activities, isDarkMode) {
       font-weight: 600;
       color: var(--text-primary);
       font-size: 10px;
-      max-width: 95px;
+      max-width: 100px;
       word-wrap: break-word;
       white-space: normal;
       line-height: 1.3;
@@ -496,6 +496,7 @@ function generateTableHTML(activities, isDarkMode) {
       font-size: 11px;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+      text-align: right;
     }
     
     .pace {
