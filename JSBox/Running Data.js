@@ -284,7 +284,7 @@ function generateTableHTML(activities, isDarkMode) {
       background: var(--bg-secondary);
       padding: 12px 10px;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       border-bottom: 1px solid var(--border-color);
     }
@@ -302,6 +302,7 @@ function generateTableHTML(activities, isDarkMode) {
     .stat-card:nth-child(1) { animation-delay: 0.1s; }
     .stat-card:nth-child(2) { animation-delay: 0.2s; }
     .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
     
     @keyframes scaleIn {
       from {
@@ -578,7 +579,25 @@ function generateTableHTML(activities, isDarkMode) {
     // 计算统计数据
     const totalDistance = runs.reduce((sum, run) => sum + run.distance, 0);
     const totalRuns = runs.length;
-    const avgDistance = totalDistance / totalRuns / 1000;
+    
+    // 计算平均配速
+    const totalSeconds = runs.reduce((sum, run) => {
+      const parts = run.moving_time.split(":");
+      const hours = parseInt(parts[0]) || 0;
+      const minutes = parseInt(parts[1]) || 0;
+      const seconds = parseInt(parts[2]) || 0;
+      return sum + hours * 3600 + minutes * 60 + seconds;
+    }, 0);
+    const avgSecondsPerKm = totalSeconds / (totalDistance / 1000);
+    const avgPaceMin = Math.floor(avgSecondsPerKm / 60);
+    const avgPaceSec = Math.round(avgSecondsPerKm % 60);
+    const avgPace = `${avgPaceMin}:${avgPaceSec.toString().padStart(2, "0")}`;
+    
+    // 计算平均心率（只包含有心率数据的记录）
+    const runsWithHeartrate = runs.filter(run => run.average_heartrate);
+    const avgBpm = runsWithHeartrate.length > 0
+      ? runsWithHeartrate.reduce((sum, run) => sum + run.average_heartrate, 0) / runsWithHeartrate.length
+      : 0;
     
     html += `
     <div class="stats">
@@ -591,8 +610,12 @@ function generateTableHTML(activities, isDarkMode) {
         <div class="stat-value">${(totalDistance / 1000).toFixed(1)}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Avg Km</div>
-        <div class="stat-value">${avgDistance.toFixed(2)}</div>
+        <div class="stat-label">Avg Pace</div>
+        <div class="stat-value">${avgPace}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Bpm</div>
+        <div class="stat-value">${avgBpm > 0 ? Math.round(avgBpm) : 'N/A'}</div>
       </div>
     </div>
     
