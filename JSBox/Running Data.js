@@ -153,7 +153,7 @@ function generateTableHTML(activities, isDarkMode) {
     /* ===== 页面主体样式 ===== */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
-      background: var(--bg-gradient);
+      background: var(--bg-primary);
       padding: 0;
       color: var(--text-primary);
       min-height: 100vh;
