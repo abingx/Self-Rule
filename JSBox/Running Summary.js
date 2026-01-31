@@ -392,14 +392,22 @@ function processAndRender(data) {
 
   // ===== 计算时间戳显示内容 =====
   
-  // 最新跑步时间 (如果有记录则显示，否则显示 "N/A")
-  const latestRunDate = runs.length ? parseDate(runs[0].start_date_local) : null;
-  const latestRunStr = latestRunDate
-    ? latestRunDate.toLocaleDateString() + " " + latestRunDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-    : "N/A";
-  
-  // 数据更新时间 (小组件刷新时间)
-  const updateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+// 格式化日期为 yyyy/mm/dd hh:mm
+function formatDateTime(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}/${month}/${day} ${hour}:${minute}`;
+}
+
+// 最新跑步时间 (如果有记录则显示,否则显示 "N/A")
+const latestRunDate = runs.length ? parseDate(runs[0].start_date_local) : null;
+const latestRunStr = latestRunDate ? formatDateTime(latestRunDate) : "N/A";
+
+// 数据更新时间 (小组件刷新时间)
+const updateStr = formatDateTime(now);
 
   // ===== 设置小组件渲染 =====
   // 使用时间线 API，根据不同的小组件尺寸选择对应的渲染函数
