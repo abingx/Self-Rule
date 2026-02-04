@@ -101,10 +101,10 @@ function processAndRender(data) {
 
       console.log("Widget Family:", family, "Size:", widgetWidth, "x", widgetHeight);
 
-      if (family === 1) {
-        return require("./widgets/medium")(widgetWidth, widgetHeight, isDarkMode, widgetData);
-      } else if (family === 0) {
+      if (family === 0) {
         return require("./widgets/small")(widgetWidth, widgetHeight, isDarkMode, widgetData);
+      } else if (family === 1) {
+        return require("./widgets/medium")(widgetWidth, widgetHeight, isDarkMode, widgetData);
       } else if (family === 2) {
         return require("./widgets/large")(widgetWidth, widgetHeight, isDarkMode, widgetData);
       } else if (family === 3) {
