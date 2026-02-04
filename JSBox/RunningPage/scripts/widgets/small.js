@@ -117,7 +117,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                 props: {
                   text: " ",
                   font: $font("Helvetica-Bold", 14),
-                  color: textTitle,
+                  color: textValue,
                   frame: {
                     width: (width - 10 * 2) * 0.23,
                     height: (height - 4 * 2) * 0.33,
@@ -146,7 +146,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                 props: {
                   text: "km",
                   font: $font("Helvetica-Bold", 14),
-                  color: textTitle,
+                  color: textValue,
                   frame: {
                     width: (width - 10 * 2) * 0.23,
                     height: (height - 4 * 2) * 0.33,

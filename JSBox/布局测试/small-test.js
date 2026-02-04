@@ -9,11 +9,10 @@ function renderSmallWidget(width, height, isDarkMode) {
   const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
   const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
   const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
-  
+
   return {
     type: "vstack",
     props: {
-      padding: 0,
       spacing: 0,
       frame: {
         width: width,
@@ -32,7 +31,6 @@ function renderSmallWidget(width, height, isDarkMode) {
       {
         type: "hstack",
         props: {
-          padding: 0,
           spacing: 2,
           frame: {
             width: width - 10 * 2,
@@ -48,7 +46,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10+6) * 2) * 0.7 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
@@ -62,7 +60,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10+6) * 2) * 0.3 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
@@ -75,7 +73,6 @@ function renderSmallWidget(width, height, isDarkMode) {
       {
         type: "vstack",
         props: {
-          padding: 0,
           spacing: 0,
           frame: {
             width: width - 10 * 2,
@@ -91,7 +88,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 10),
               color: textLabel,
               frame: {
-                width: width - (10 + 6) * 2,
+                width: width - 10 * 2,
                 height: (height - 4 * 2) * 0.33 * 0.38,
               },
               //border:  { color:  $color("#ff0202"), width: 1, },
@@ -100,10 +97,9 @@ function renderSmallWidget(width, height, isDarkMode) {
           {
             type: "hstack",
             props: {
-              padding: 0,
-              spacing: 6,
+              spacing: 0,
               frame: {
-                width: width - (10 + 6) * 2,
+                width: width - 10 * 2,
                 height: (height - 4 * 2) * 0.33 * 0.62,
               },
               alignment: $widget.alignment.bottom,
@@ -113,17 +109,29 @@ function renderSmallWidget(width, height, isDarkMode) {
               {
                 type: "text",
                 props: {
-                  text: "9.12",
+                  text: " ",
+                  font: $font("Helvetica-Bold", 14),
+                  color: textValue,
+                  frame: {
+                    width: (width - 10 * 2) * 0.23,
+                    height: (height - 4 * 2) * 0.33,
+                    alignment: $widget.alignment.center,
+                  },
+                  //border:  { color:  $color("#ee8700"), width: 1, },
+                },
+              },
+              {
+                type: "text",
+                props: {
+                  text: "89.12",
                   font: $font("Helvetica-Bold", 28),
                   color: textValue,
                   frame: {
-                    width: (width - (10 + 6) * 2) * 0.8 - 3, //补齐数字和km之间间距
-                    height:
-                      (height - 4 * 2) *
-                      0.33 *
-                      0.62,
+                    width: (width - 10 * 2) * 0.54,
+                    height: (height - 4 * 2) * 0.33,
                     alignment: $widget.alignment.center,
                   },
+                  minimumScaleFactor: 0.5,
                   //border:  { color:  $color("#baee00"), width: 1, },
                 },
               },
@@ -132,13 +140,10 @@ function renderSmallWidget(width, height, isDarkMode) {
                 props: {
                   text: "km",
                   font: $font("Helvetica-Bold", 14),
-              color: textTitle,
+                  color: textValue,
                   frame: {
-                    width: (width - 10 * 2) * 0.2 - 3, //补齐数字和km之间间距
-                    height:
-                      (height - 4 * 2) *
-                      0.33 *
-                      0.62,
+                    width: (width - 10 * 2) * 0.23,
+                    height: (height - 4 * 2) * 0.33,
                     alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, },
@@ -152,17 +157,18 @@ function renderSmallWidget(width, height, isDarkMode) {
       {
         type: "hstack",
         props: {
+          spacing: 6,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.39,
           },
-          spacing: 6,
           //border:  { color:  $color("#fcd8f4"), width: 1, },
         },
         views: [
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -175,7 +181,6 @@ function renderSmallWidget(width, height, isDarkMode) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
@@ -211,6 +216,7 @@ function renderSmallWidget(width, height, isDarkMode) {
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -223,7 +229,6 @@ function renderSmallWidget(width, height, isDarkMode) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
@@ -259,6 +264,7 @@ function renderSmallWidget(width, height, isDarkMode) {
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -271,7 +277,6 @@ function renderSmallWidget(width, height, isDarkMode) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
