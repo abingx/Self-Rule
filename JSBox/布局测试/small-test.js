@@ -153,7 +153,7 @@ function renderSmallWidget(width, height, isDarkMode) {
         type: "hstack",
         props: {
           frame: {
-            width: width - 4 * 2,
+            width: width - 10 * 2,
             height: (height - 4 * 2) * 0.39,
           },
           spacing: 6,
@@ -164,11 +164,8 @@ function renderSmallWidget(width, height, isDarkMode) {
             type: "vstack",
             props: {
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: (width - 10 * 2 - 6 * 2) / 3,
+                height: (height - 4 * 2) * 0.39 * 0.7,
               },
               background: {
                 type: "gradient",
@@ -215,11 +212,8 @@ function renderSmallWidget(width, height, isDarkMode) {
             type: "vstack",
             props: {
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: (width - 10 * 2 - 6 * 2) / 3,
+                height: (height - 4 * 2) * 0.39 * 0.7,
               },
               background: {
                 type: "gradient",
@@ -266,11 +260,8 @@ function renderSmallWidget(width, height, isDarkMode) {
             type: "vstack",
             props: {
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: (width - 10 * 2 - 6 * 2) / 3,
+                height: (height - 4 * 2) * 0.39 * 0.7,
               },
               background: {
                 type: "gradient",
@@ -320,7 +311,7 @@ function renderSmallWidget(width, height, isDarkMode) {
         type: "hstack",
         props: {
           frame: {
-            width: width - 4 * 2 - 12,
+            width: width - 10 * 2 - 10,
             height: (height - 4 * 2) * 0.07,
           },
           spacing: 0,
@@ -330,11 +321,11 @@ function renderSmallWidget(width, height, isDarkMode) {
           {
             type: "text",
             props: {
-              text: "Latest:2026/02/03 05:12",
-              font: $font("Helvetica", 6),
+              text: "2026/02/03 05:12",
+              font: $font("Menlo", 6),
               color: textTime,
               frame: {
-                width: (width - 4 * 2 - 16) / 2,
+                width: (width - 10 * 2 - 10) / 2,
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.leading,
               },
@@ -344,15 +335,15 @@ function renderSmallWidget(width, height, isDarkMode) {
           {
             type: "text",
             props: {
-              text: "Update:2026/02/03 12:31",
-              font: $font("Helvetica", 6),
+              text: "2026/02/03 12:31",
+              font: $font("Menlo", 6),
               color: textTime,
-              //border:  { color:  $color("green"), width: 1, },
               frame: {
-                width: (width - 4 * 2 - 16) / 2,
+                width: (width - 10 * 2 - 10) / 2,
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.trailing,
               },
+              //border:  { color:  $color("green"), width: 1, },
             },
           },
         ],
