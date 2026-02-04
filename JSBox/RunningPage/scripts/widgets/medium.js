@@ -22,7 +22,8 @@ const FONTS = {
   footerBottomSeparatorFontSize: 8 
 };
 
-function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRunStr, updateStr, isDarkMode, widgetURL) {
+function renderMediumWidget(widgetWidth, widgetHeight, isDarkMode, widgetData) {
+  const { today, week, month, year, latestRunStr, updateStr, getWidgetURL } = widgetData;
   function createCell(text, align) {
     return {
       type: "text",
@@ -63,7 +64,7 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
     props: { 
       spacing: 0,
       padding: $insets(SPACING.paddingTop, SPACING.paddingRight, SPACING.paddingBottom, SPACING.paddingLeft),
-      link: widgetURL()
+      link: getWidgetURL()
     },
     views: [
       {
@@ -104,9 +105,9 @@ function renderMediumWidget(mediumW, mediumH, today, week, month, year, latestRu
         type: "vgrid",
         props: {
           columns: [
-            { fixed: (mediumW - SPACING.paddingLeft - SPACING.paddingRight) * 0.36 },
-            { fixed: (mediumW - SPACING.paddingLeft - SPACING.paddingRight) * 0.22 },
-            { fixed: (mediumW - SPACING.paddingLeft - SPACING.paddingRight) * 0.42 }
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.36 },
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.22 },
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.42 }
           ],
           spacing: SPACING.dataSpacing
         },

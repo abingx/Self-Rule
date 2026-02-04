@@ -1,6 +1,8 @@
 // Accessory Inline Widget
 
-function renderAccessoryInline(inlineW, inlineH, today, isDarkMode) {
+function renderAccessoryInline(widgetWidth, widgetHeight, isDarkMode, widgetData) {
+  const { today } = widgetData;
+  const isDarkMode = isDarkMode;
   return {
     type: "hstack",
     props: {

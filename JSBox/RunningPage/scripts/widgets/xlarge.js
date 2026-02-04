@@ -1,6 +1,6 @@
 // XLarge Widget (iPad)
 
-function renderXLargeWidget(xlargeW, xlargeH, family, isDarkMode) {
+function renderXLargeWidget(widgetWidth, widgetHeight, isDarkMode, widgetData) {
   return {
     type: "vstack",
     props: {
@@ -32,7 +32,7 @@ function renderXLargeWidget(xlargeW, xlargeH, family, isDarkMode) {
       {
         type: "text",
         props: {
-          text: `尺寸: ${xlargeW.toFixed(1)} x ${xlargeH.toFixed(1)}`,
+          text: `尺寸: ${widgetWidth.toFixed(1)} x ${widgetHeight.toFixed(1)}`,
           font: $font(22),
           color: isDarkMode ? $color("#cccccc") : $color("#424242")
         }

@@ -1,6 +1,8 @@
 // Accessory Circular Widget
 
-function renderAccessoryCircular(circularW, circularH, today, isDarkMode) {
+function renderAccessoryCircular(widgetWidth, widgetHeight, isDarkMode, widgetData) {
+  const { today } = widgetData;
+  const isDarkMode = isDarkMode;
   return {
     type: "vstack",
     props: {

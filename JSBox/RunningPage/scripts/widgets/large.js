@@ -22,7 +22,8 @@ const FONTS = {
   footerBottomSeparatorFontSize: 20 
 };
 
-function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, month, lastMonth, year, lastYear, latestRunStr, updateStr, isDarkMode, widgetURL) {
+function renderLargeWidget(widgetWidth, widgetHeight, isDarkMode, widgetData) {
+  const { today, yesterday, week, lastWeek, month, lastMonth, year, lastYear, latestRunStr, updateStr, getWidgetURL } = widgetData;
   function createCell(text, align, colorType = "default") {
     let color = $color("#999999");
     
@@ -78,7 +79,7 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
     props: { 
       spacing: 0,
       padding: $insets(SPACING.paddingTop, SPACING.paddingRight, SPACING.paddingBottom, SPACING.paddingLeft),
-      link: widgetURL()
+      link: getWidgetURL()
     },
     views: [
       {
@@ -119,9 +120,9 @@ function renderLargeWidget(largeW, largeH, today, yesterday, week, lastWeek, mon
         type: "vgrid",
         props: {
           columns: [
-            { fixed: (largeW - SPACING.paddingLeft - SPACING.paddingRight) * 0.36 },
-            { fixed: (largeW - SPACING.paddingLeft - SPACING.paddingRight) * 0.22 },
-            { fixed: (largeW - SPACING.paddingLeft - SPACING.paddingRight) * 0.42 }
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.36 },
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.22 },
+            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.42 }
           ],
           spacing: SPACING.dataSpacing
         },
