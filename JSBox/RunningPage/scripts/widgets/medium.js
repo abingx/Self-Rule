@@ -1,179 +1,342 @@
-// Medium Widget
+// Small Widget
 
 const utils = require("../utils");
 
-const SPACING = { 
-  paddingTop: 0, 
-  paddingRight: 12, 
-  paddingBottom: 0, 
-  paddingLeft: 12, 
-  dataSpacing: 6 
-};
-
-const FONTS = { 
-  fontFamily: "Menlo", 
-  titleFontFamily: "Menlo-Bold", 
-  titleFontSize: 22, 
-  gridFontSize: 14, 
-  footerFontSize: 8, 
-  titleTopSeparatorFontSize: 12, 
-  topSeparatorFontSize: 6, 
-  bottomSeparatorFontSize: 8, 
-  footerBottomSeparatorFontSize: 8 
-};
-
-function renderMediumWidget(widgetWidth, widgetHeight, isDarkMode, widgetData) {
+function renderMediumWidget(width, height, isDarkMode, widgetData) {
   const { today, week, month, year, latestRunStr, updateStr, getWidgetURL } = widgetData;
-  function createCell(text, align) {
-    return {
-      type: "text",
-      props: {
-        text,
-        font: $font(FONTS.fontFamily, FONTS.gridFontSize),
-        frame: { maxWidth: Infinity },
-        alignment: align === "left" ? $widget.alignment.leading : $widget.alignment.trailing
-      }
-    };
-  }
-
-  function padLeft(str, width) {
-    return str.padStart(width, utils.getPlaceholder(1));
-  }
-  
-  function formatLabel(label) {
-    return label.padEnd(9, utils.getPlaceholder(1));
-  }
-  
-  function formatRuns(count) {
-    if (count === 0) {
-      return padLeft("0", 3) + " run" + utils.getPlaceholder(1);
-    } else if (count === 1) {
-      return padLeft("1", 3) + " run" + utils.getPlaceholder(1);
-    } else {
-      return padLeft(count.toString(), 3) + " runs";
-    }
-  }
-  
-  function formatKm(distance) {
-    const kmStr = Number(distance).toFixed(2);
-    return padLeft(kmStr, 8) + " km";
-  }
+  // 背景色
+  const bgColors = isDarkMode
+    ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]
+    : [$color("#667eea"), $color("#764ba2"), $color("#f093fb")];
+  // 文字色
+  const textTitle = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
+  const textLabel = isDarkMode ? $color("#adb5bd") : $color("#ffffff");
+  const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
+  const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
+  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
 
   return {
     type: "vstack",
-    props: { 
+    props: {
       spacing: 0,
-      padding: $insets(SPACING.paddingTop, SPACING.paddingRight, SPACING.paddingBottom, SPACING.paddingLeft),
-      link: getWidgetURL()
+      frame: {
+        width: width,
+        height: height,
+      },
+      background: {
+        type: "gradient",
+        props: {
+          colors: bgColors,
+        },
+      },
+      widgetURL: getWidgetURL(),
+      //border:  { color:  $color("#ee00ba"), width: 1, },
     },
     views: [
+      // 标题区
       {
-        type: "text",
+        type: "hstack",
         props: {
-          text: utils.getSeparator(),
-          font: $font(FONTS.fontFamily, FONTS.titleTopSeparatorFontSize),
-          alignment: $widget.alignment.center
-        }
-      },
-      
-      {
-        type: "vstack",
-        props: {
-          alignment: $widget.horizontalAlignment.center,
-          spacing: 0
-        },
-        views: [{
-          type: "text",
-          props: {
-            text: "Summary",
-            font: $font(FONTS.titleFontFamily, FONTS.titleFontSize),
-            alignment: $widget.alignment.center
-          }
-        }]
-      },
-      
-      {
-        type: "text",
-        props: {
-          text: utils.getSeparator(),
-          font: $font(FONTS.fontFamily, FONTS.topSeparatorFontSize),
-          alignment: $widget.alignment.center
-        }
-      },
-      
-      {
-        type: "vgrid",
-        props: {
-          columns: [
-            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.36 },
-            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.22 },
-            { fixed: (widgetWidth - SPACING.paddingLeft - SPACING.paddingRight) * 0.42 }
-          ],
-          spacing: SPACING.dataSpacing
-        },
-        views: [
-          createCell(formatLabel("Today"), "left"), 
-          createCell(formatRuns(today.count), "right"), 
-          createCell(formatKm(today.distance), "right"),
-          
-          createCell(formatLabel("Week"), "left"), 
-          createCell(formatRuns(week.count), "right"), 
-          createCell(formatKm(week.distance), "right"),
-          
-          createCell(formatLabel("Month"), "left"), 
-          createCell(formatRuns(month.count), "right"), 
-          createCell(formatKm(month.distance), "right"),
-          
-          createCell(formatLabel("Year"), "left"), 
-          createCell(formatRuns(year.count), "right"), 
-          createCell(formatKm(year.distance), "right")
-        ]
-      },
-      
-      {
-        type: "text",
-        props: {
-          text: utils.getSeparator(),
-          font: $font(FONTS.fontFamily, FONTS.bottomSeparatorFontSize),
-          alignment: $widget.alignment.center
-        }
-      },
-      
-      {
-        type: "vstack",
-        props: {
-          alignment: $widget.horizontalAlignment.center,
-          spacing: 1
+          spacing: 2,
+          frame: {
+            width: width - 10 * 2,
+            height: (height - 4 * 2) * 0.21,
+          },
+          //border:  { color:  $color("#dfd930"), width: 1, },
         },
         views: [
           {
             type: "text",
             props: {
-              text: `Latest: ${latestRunStr}`,
-              font: $font(FONTS.fontFamily, FONTS.footerFontSize),
-              alignment: $widget.alignment.center
-            }
+              text: "Running",
+              font: $font("Helvetica-Bold", 15),
+              color: textTitle,
+              frame: {
+                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
+                height: (height - 4 * 2) * 0.21,
+                alignment: $widget.alignment.leading,
+              },
+              //border:  { color:  $color("#baee00"), width: 1, },
+            },
           },
           {
             type: "text",
             props: {
-              text: `Update: ${updateStr}`,
-              font: $font(FONTS.fontFamily, FONTS.footerFontSize),
-              alignment: $widget.alignment.center
-            }
-          }
-        ]
+              text: "🏃‍♂️",
+              font: $font("Helvetica-Bold", 15),
+              color: textTitle,
+              frame: {
+                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
+                height: (height - 4 * 2) * 0.21,
+                alignment: $widget.alignment.trailing,
+              },
+              //border:  { color:  $color("#ee8700"), width: 1, },
+            },
+          },
+        ],
       },
-      
+      // 数据区
       {
-        type: "text",
+        type: "hstack",
         props: {
-          text: utils.getSeparator(),
-          font: $font(FONTS.fontFamily, FONTS.footerBottomSeparatorFontSize),
-          alignment: $widget.alignment.center
-        }
-      }
-    ]
+          spacing: 10,
+          frame: {
+            width: width - 10 * 2,
+            height: (height - 4 * 2) * 0.72,
+          },
+          //border:  { color:  $color("#fcd8f4"), width: 1, },
+        },
+        views: [
+          {
+            type: "vstack",
+            props: {
+              spacing: 10,
+              frame: {
+                width: (width - 10 * 2 - 10 * 1) * 0.4,
+                height: (height - 4 * 2) * 0.72,
+              },
+              background: {
+                type: "gradient",
+                props: {
+                  colors: boxBg,
+                  opacity: 0.3,
+                  cornerRadius: 6,
+                },
+              },
+              //border:  { color:  $color("#059171"), width: 1, },
+            },
+            views: [
+              {
+                type: "text",
+                props: {
+                  text: "TODAY",
+                  font: $font("Helvetica-Bold", 15),
+                  color: textLabel,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
+                },
+              },
+              {
+                type: "text",
+                props: {
+                  text: today.count.toString(),
+                  font: $font("Helvetica-Bold", 15),
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
+                },
+              },
+              {
+                type: "text",
+                props: {
+                  text: Number(today.distance).toFixed(2),
+                  font: $font("Helvetica-Bold", 15),
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
+                },
+              },
+            ],
+          },
+          {
+            type: "vstack",
+            props: {
+              spacing: 3,
+              frame: {
+                width: (width - 10 * 2 - 10 * 1) * 0.6,
+                height: (height - 4 * 2) * 0.72,
+              },
+              //border:  { color:  $color("#059171"), width: 1, },
+            },
+            views: [
+              {
+                type: "hstack",
+                props: {
+                  spacing: 20,
+                  frame: {
+                    width: (width - 10 * 2 - 10 * 1) * 0.6,
+                    height: ((height - 4 * 2) * 0.72 - 3 * 2)/ 3,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: boxBg,
+                      opacity: 0.3,
+                      cornerRadius: 6,
+                    },
+                  },
+                  //border:  { color:  $color("#e8f3f0"), width: 1, },
+                },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "WEEK",
+                      font: $font("Helvetica-Bold", 15),
+                      color: textLabel,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: week.count.toString(),
+                      font: $font("Helvetica-Bold", 15),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: Number(week.distance).toFixed(2),
+                      font: $font("Helvetica-Bold", 15),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                ],
+              },
+              {
+                type: "hstack",
+                props: {
+                  spacing: 20,
+                  frame: {
+                    width: (width - 10 * 2 - 10 * 1) * 0.6,
+                    height: ((height - 4 * 2) * 0.72 - 3 * 2)/ 3,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: boxBg,
+                      opacity: 0.3,
+                      cornerRadius: 6,
+                    },
+                  },
+                  //border:  { color:  $color("#059171"), width: 1, },
+                },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "MONTH",
+                      font: $font("Helvetica-Bold", 15),
+                      color: textLabel,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: month.count.toString(),
+                      font: $font("Helvetica-Bold", 15),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: Number(month.distance).toFixed(2),
+                      font: $font("Helvetica-Bold", 8),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                ],
+              },
+              {
+                type: "hstack",
+                props: {
+                  spacing: 20,
+                  frame: {
+                    width: (width - 10 * 2 - 10 * 1) * 0.6,
+                    height: ((height - 4 * 2) * 0.72 - 3 * 2)/ 3,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: boxBg,
+                      opacity: 0.3,
+                      cornerRadius: 6,
+                    },
+                  },
+                  //border:  { color:  $color("#059171"), width: 1, },
+                },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "YEAR",
+                      font: $font("Helvetica-Bold", 15),
+                      color: textLabel,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: year.count.toString(),
+                      font: $font("Helvetica-Bold", 15),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: Number(year.distance).toFixed(2),
+                      font: $font("Helvetica-Bold", 15),
+                      color: textValue,
+                      //border:  { color:  $color("#ee8700"), width: 1, },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      // 时间戳区
+      {
+        type: "hstack",
+        props: {
+          spacing: 0,
+          frame: {
+            width: width - 10 * 2 - 10,
+            height: (height - 4 * 2) * 0.07,
+          },
+          //border:  { color:  $color("#35854e"), width: 1, },
+        },
+        views: [
+          {
+            type: "text",
+            props: {
+              text: latestRunStr,
+              font: $font("Menlo", 6),
+              color: textTime,
+              frame: {
+                width: (width - 10 * 2 - 10) / 2,
+                height: (height - 4 * 2) * 0.07,
+                alignment: $widget.alignment.leading,
+              },
+              //border:  { color:  $color("green"), width: 1, },
+            },
+          },
+          {
+            type: "text",
+            props: {
+              text: updateStr,
+              font: $font("Menlo", 6),
+              color: textTime,
+              frame: {
+                width: (width - 10 * 2 - 10) / 2,
+                height: (height - 4 * 2) * 0.07,
+                alignment: $widget.alignment.trailing,
+              },
+              //border:  { color:  $color("green"), width: 1, },
+            },
+          },
+        ],
+      },
+    ],
   };
 }
 
