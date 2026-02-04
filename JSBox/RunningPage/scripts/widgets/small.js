@@ -94,7 +94,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               font: $font("Helvetica-Bold", 10),
               color: textLabel,
               frame: {
-                width: width - (10 + 6) * 2,
+                width: width - 10 * 2,
                 height: (height - 4 * 2) * 0.33 * 0.38,
               },
               //border:  { color:  $color("#ff0202"), width: 1, },
@@ -103,9 +103,9 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
           {
             type: "hstack",
             props: {
-              spacing: 6,
+              spacing: 0,
               frame: {
-                width: width - (10 + 6) * 2,
+                width: width - 10 * 2,
                 height: (height - 4 * 2) * 0.33 * 0.62,
               },
               alignment: $widget.alignment.bottom,
@@ -115,14 +115,29 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
+                  text: " ",
+                  font: $font("Helvetica-Bold", 14),
+                  color: textTitle,
+                  frame: {
+                    width: (width - 10 * 2) * 0.23,
+                    height: (height - 4 * 2) * 0.33,
+                    alignment: $widget.alignment.center,
+                  },
+                  //border:  { color:  $color("#ee8700"), width: 1, },
+                },
+              },
+              {
+                type: "text",
+                props: {
                   text: Number(today.distance).toFixed(2),
                   font: $font("Helvetica-Bold", 28),
                   color: textValue,
                   frame: {
-                    width: (width - (10 + 6) * 2) * 0.8 - 3,
-                    height: (height - 4 * 2) * 0.33 * 0.62,
+                    width: (width - 10 * 2) * 0.54,
+                    height: (height - 4 * 2) * 0.33,
                     alignment: $widget.alignment.center,
                   },
+                  minimumScaleFactor: 0.5,
                   //border:  { color:  $color("#baee00"), width: 1, },
                 },
               },
@@ -133,8 +148,8 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   font: $font("Helvetica-Bold", 14),
                   color: textTitle,
                   frame: {
-                    width: (width - 10 * 2) * 0.2 - 3,
-                    height: (height - 4 * 2) * 0.33 * 0.62,
+                    width: (width - 10 * 2) * 0.23,
+                    height: (height - 4 * 2) * 0.33,
                     alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, },
