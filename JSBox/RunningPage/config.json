@@ -1,0 +1,40 @@
+{
+  "info": {
+    "name": "Running Data",
+    "url": "https://github.com/abingx/running_page",
+    "version": "2.0.0",
+    "author": "abingx",
+    "website": "",
+    "types": 15
+  },
+  "settings": {
+    "props": {
+      "items": [
+        {
+          "title": "DATA_URL",
+          "type": "string",
+          "key": "data_url",
+          "value": "https://raw.githubusercontent.com/abingx/running_page/master/src/static/activities.json"
+        },
+        {
+          "title": "TARGET_SCRIPT",
+          "type": "string",
+          "key": "target_script",
+          "value": "Running Data.js"
+        },
+        {
+          "title": "SHOW_PLACEHOLDERS",
+          "type": "boolean",
+          "key": "show_placeholders",
+          "value": false
+        }
+      ]
+    }
+  },
+  "widget": {
+    "height": 0,
+    "staticSize": false,
+    "tintColor": "#667eea",
+    "iconColor": "#FFFFFF"
+  }
+}

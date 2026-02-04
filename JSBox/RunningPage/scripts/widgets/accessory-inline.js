@@ -1,0 +1,31 @@
+// Accessory Inline Widget
+
+function renderAccessoryInline(inlineW, inlineH, today, isDarkMode) {
+  return {
+    type: "hstack",
+    props: {
+      alignment: $widget.alignment.center,
+      spacing: 8,
+      padding: $insets(2, 6, 2, 6)
+    },
+    views: [
+      {
+        type: "text",
+        props: {
+          text: "🏃",
+          font: $font(14)
+        }
+      },
+      {
+        type: "text",
+        props: {
+          text: `${today.count} | ${today.distance}km`,
+          font: $font("Menlo", 11),
+          color: isDarkMode ? $color("#FFFFFF") : $color("#000000")
+        }
+      }
+    ]
+  };
+}
+
+module.exports = renderAccessoryInline;
