@@ -1,4 +1,13 @@
-function renderSmallWidget(width, height) {
+function renderSmallWidget(width, height, isDarkMode) {
+  const bgColors = isDarkMode
+    ? [$color("#677CE6", "#6C6ED3"), $color("#776ECB", "#6D4A9D")]
+    : [$color("#7788ea"), $color("#bac3fa")];
+  const textTitle = isDarkMode ? $color("#d7d7d7") : $color("#FFFFFF");
+  const textLabel = isDarkMode ? $color("#d7d7d7") : $color("#F0F2FF");
+  const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
+  const textTime = isDarkMode ? $color("#ffffff") : $color("#DEE3FF");
+  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#8B9AF5")];
+  
   return {
     type: "vstack",
     props: {
@@ -11,10 +20,10 @@ function renderSmallWidget(width, height) {
       background: {
         type: "gradient",
         props: {
-          colors: [$color("#7788ea"), $color("#bac3fa")],
+          colors: bgColors,
         },
       },
-      border:  { color:  $color("#ee00ba"), width: 1, },
+      //border:  { color:  $color("#ee00ba"), width: 1, },
     },
     views: [
       // 标题区
@@ -27,7 +36,7 @@ function renderSmallWidget(width, height) {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
           },
-          border:  { color:  $color("#dfd930"), width: 1, },
+          //border:  { color:  $color("#dfd930"), width: 1, },
         },
         views: [
           {
@@ -35,13 +44,13 @@ function renderSmallWidget(width, height) {
             props: {
               text: "Running",
               font: $font("Helvetica-Bold", 15),
-              color: $color("#FFFFFF"),
+              color: textTitle,
               frame: {
                 width: (width - (10+6) * 2) * 0.7 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
-              border:  { color:  $color("#baee00"), width: 1, },
+              //border:  { color:  $color("#baee00"), width: 1, },
             },
           },
           {
@@ -49,13 +58,13 @@ function renderSmallWidget(width, height) {
             props: {
               text: "🏃‍♂️",
               font: $font("Helvetica-Bold", 15),
-              color: $color("#FFFFFF"),
+              color: textTitle,
               frame: {
                 width: (width - (10+6) * 2) * 0.3 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
-              border:  { color:  $color("#ee8700"), width: 1, },
+              //border:  { color:  $color("#ee8700"), width: 1, },
             },
           },
         ],
@@ -70,7 +79,7 @@ function renderSmallWidget(width, height) {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.33,
           },
-          border:  { color:  $color("#744c6b"), width: 1, },
+          //border:  { color:  $color("#744c6b"), width: 1, },
         },
         views: [
           {
@@ -78,12 +87,12 @@ function renderSmallWidget(width, height) {
             props: {
               text: "Today",
               font: $font("Helvetica-Bold", 10),
-              color: $color("#F0F2FF"),
+              color: textLabel,
               frame: {
                 width: width - (10 + 6) * 2,
                 height: (height - 4 * 2) * 0.33 * 0.38,
               },
-              border:  { color:  $color("#ff0202"), width: 1, },
+              //border:  { color:  $color("#ff0202"), width: 1, },
             },
           },
           {
@@ -96,7 +105,7 @@ function renderSmallWidget(width, height) {
                 height: (height - 4 * 2) * 0.33 * 0.62,
               },
               alignment: $widget.alignment.bottom,
-              border:  { color:  $color("#6c7c87"), width: 1, },
+              //border:  { color:  $color("#6c7c87"), width: 1, },
             },
             views: [
               {
@@ -104,7 +113,7 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "19.12",
                   font: $font("Helvetica-Bold", 30),
-                  color: $color("#ffffff"),
+                  color: textValue,
                   frame: {
                     width: (width - (10 + 6) * 2) * 0.7 - 3, //补齐数字和km之间间距
                     height:
@@ -113,7 +122,7 @@ function renderSmallWidget(width, height) {
                       0.62,
                     alignment: $widget.alignment.trailing,
                   },
-                  border:  { color:  $color("#baee00"), width: 1, },
+                  //border:  { color:  $color("#baee00"), width: 1, },
                 },
               },
               {
@@ -121,7 +130,7 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "km",
                   font: $font("Helvetica-Bold", 14),
-                  color: $color("#FFFFFF"),
+              color: textTitle,
                   frame: {
                     width: (width - 10 * 2) * 0.3- 3, //补齐数字和km之间间距
                     height:
@@ -130,7 +139,7 @@ function renderSmallWidget(width, height) {
                       0.62,
                     alignment: $widget.alignment.leading,
                   },
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -146,7 +155,7 @@ function renderSmallWidget(width, height) {
             height: (height - 4 * 2) * 0.39,
           },
           spacing: 6,
-          border:  { color:  $color("#fcd8f4"), width: 1, },
+          //border:  { color:  $color("#fcd8f4"), width: 1, },
         },
         views: [
           {
@@ -162,13 +171,13 @@ function renderSmallWidget(width, height) {
               background: {
                 type: "gradient",
                 props: {
-                  colors: [$color("#8B9AF5")],
+                  colors: boxBg,
                   opacity: 0.3,
                   cornerRadius: 6,
                 },
               },
               spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -176,8 +185,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "WEEK",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#E8EBFF"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textLabel,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -185,8 +194,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "3",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -194,8 +203,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "52.23",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -213,13 +222,13 @@ function renderSmallWidget(width, height) {
               background: {
                 type: "gradient",
                 props: {
-                  colors: [$color("#8B9AF5")],
+                  colors: boxBg,
                   opacity: 0.3,
                   cornerRadius: 6,
                 },
               },
               spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -227,8 +236,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "MONTH",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#E8EBFF"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textLabel,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -236,8 +245,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "22",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -245,8 +254,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "152.23",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -264,13 +273,13 @@ function renderSmallWidget(width, height) {
               background: {
                 type: "gradient",
                 props: {
-                  colors: [$color("#8B9AF5")],
+                  colors: boxBg,
                   opacity: 0.3,
                   cornerRadius: 6,
                 },
               },
               spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -278,8 +287,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "YEAR",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#E8EBFF"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textLabel,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -287,8 +296,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "123",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -296,8 +305,8 @@ function renderSmallWidget(width, height) {
                 props: {
                   text: "2152.23",
                   font: $font("Helvetica-Bold", 8),
-                  color: $color("#ffffff"),
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  color: textValue,
+                  //border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -313,7 +322,7 @@ function renderSmallWidget(width, height) {
             height: (height - 4 * 2) * 0.07,
           },
           spacing: 0,
-          border:  { color:  $color("#35854e"), width: 1, },
+          //border:  { color:  $color("#35854e"), width: 1, },
         },
         views: [
           {
@@ -321,13 +330,13 @@ function renderSmallWidget(width, height) {
             props: {
               text: "Latest:2026/02/03 05:12",
               font: $font("Helvetica", 6),
-              color: $color("#DEE3FF"),
+              color: textTime,
               frame: {
                 width: (width - 4 * 2 - 16) / 2,
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.leading,
               },
-              border:  { color:  $color("green"), width: 1, },
+              //border:  { color:  $color("green"), width: 1, },
             },
           },
           {
@@ -335,8 +344,8 @@ function renderSmallWidget(width, height) {
             props: {
               text: "Update:2026/02/03 12:31",
               font: $font("Helvetica", 6),
-              color: $color("#DEE3FF"),
-              border:  { color:  $color("green"), width: 1, },
+              color: textTime,
+              //border:  { color:  $color("green"), width: 1, },
               frame: {
                 width: (width - 4 * 2 - 16) / 2,
                 height: (height - 4 * 2) * 0.07,
@@ -388,7 +397,7 @@ $widget.setTimeline({
       };
     } else {
       // Small 尺寸 (family === 0) 或其他
-      return renderSmallWidget(widgetWidth, widgetHeight);
+      return renderSmallWidget(widgetWidth, widgetHeight, isDarkMode);
     }
   },
 });
