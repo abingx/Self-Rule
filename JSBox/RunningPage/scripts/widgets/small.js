@@ -18,7 +18,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
   return {
     type: "vstack",
     props: {
-      padding: 0,
       spacing: 0,
       frame: {
         width: width,
@@ -38,7 +37,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
       {
         type: "hstack",
         props: {
-          padding: 0,
           spacing: 2,
           frame: {
             width: width - 10 * 2,
@@ -81,7 +79,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
       {
         type: "vstack",
         props: {
-          padding: 0,
           spacing: 0,
           frame: {
             width: width - 10 * 2,
@@ -106,7 +103,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
           {
             type: "hstack",
             props: {
-              padding: 0,
               spacing: 6,
               frame: {
                 width: width - (10 + 6) * 2,
@@ -152,17 +148,18 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
       {
         type: "hstack",
         props: {
+          spacing: 6,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.39,
           },
-          spacing: 6,
           //border:  { color:  $color("#fcd8f4"), width: 1, },
         },
         views: [
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -175,7 +172,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
@@ -211,6 +207,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -223,7 +220,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
@@ -259,6 +255,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
           {
             type: "vstack",
             props: {
+              spacing: 3,
               frame: {
                 width: (width - 10 * 2 - 6 * 2) / 3,
                 height: (height - 4 * 2) * 0.39 * 0.7,
@@ -271,7 +268,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   cornerRadius: 6,
                 },
               },
-              spacing: 3,
               //border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
@@ -310,11 +306,11 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
       {
         type: "hstack",
         props: {
+          spacing: 0,
           frame: {
             width: width - 10 * 2 - 10,
             height: (height - 4 * 2) * 0.07,
           },
-          spacing: 0,
           //border:  { color:  $color("#35854e"), width: 1, },
         },
         views: [
