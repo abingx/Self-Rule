@@ -1,12 +1,14 @@
 function renderSmallWidget(width, height, isDarkMode) {
+  // 使用 Running Data.js 中的标题渐变颜色作为背景
   const bgColors = isDarkMode
-    ? [$color("#677CE6", "#6C6ED3"), $color("#776ECB", "#6D4A9D")]
-    : [$color("#7788ea"), $color("#bac3fa")];
-  const textTitle = isDarkMode ? $color("#d7d7d7") : $color("#FFFFFF");
-  const textLabel = isDarkMode ? $color("#d7d7d7") : $color("#F0F2FF");
+    ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]
+    : [$color("#667eea"), $color("#764ba2"), $color("#f093fb")];
+  // 字体颜色：突出重点，使用高对比度
+  const textTitle = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
+  const textLabel = isDarkMode ? $color("#adb5bd") : $color("#ffffff");
   const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
-  const textTime = isDarkMode ? $color("#ffffff") : $color("#DEE3FF");
-  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#8B9AF5")];
+  const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
+  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
   
   return {
     type: "vstack",
@@ -111,16 +113,16 @@ function renderSmallWidget(width, height, isDarkMode) {
               {
                 type: "text",
                 props: {
-                  text: "19.12",
-                  font: $font("Helvetica-Bold", 30),
+                  text: "9.12",
+                  font: $font("Helvetica-Bold", 28),
                   color: textValue,
                   frame: {
-                    width: (width - (10 + 6) * 2) * 0.7 - 3, //补齐数字和km之间间距
+                    width: (width - (10 + 6) * 2) * 0.8 - 3, //补齐数字和km之间间距
                     height:
                       (height - 4 * 2) *
                       0.33 *
                       0.62,
-                    alignment: $widget.alignment.trailing,
+                    alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#baee00"), width: 1, },
                 },
@@ -132,12 +134,12 @@ function renderSmallWidget(width, height, isDarkMode) {
                   font: $font("Helvetica-Bold", 14),
               color: textTitle,
                   frame: {
-                    width: (width - 10 * 2) * 0.3- 3, //补齐数字和km之间间距
+                    width: (width - 10 * 2) * 0.2 - 3, //补齐数字和km之间间距
                     height:
                       (height - 4 * 2) *
                       0.33 *
                       0.62,
-                    alignment: $widget.alignment.leading,
+                    alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, },
                 },
