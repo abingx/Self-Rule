@@ -1,4 +1,4 @@
-function renderSmallWidget(width, height, isDarkMode) {
+function renderMediumWidget(width, height, isDarkMode) {
   // 使用 Running Data.js 中的标题渐变颜色作为背景
   const bgColors = isDarkMode
     ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]
@@ -25,7 +25,7 @@ function renderSmallWidget(width, height, isDarkMode) {
           colors: bgColors,
         },
       },
-      //border:  { color:  $color("#ee00ba"), width: 1, },
+      border:  { color:  $color("#ee00ba"), width: 1, },
     },
     views: [
       // 标题区
@@ -38,7 +38,7 @@ function renderSmallWidget(width, height, isDarkMode) {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
           },
-          //border:  { color:  $color("#dfd930"), width: 1, },
+          border:  { color:  $color("#dfd930"), width: 1, },
         },
         views: [
           {
@@ -52,7 +52,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
-              //border:  { color:  $color("#baee00"), width: 1, },
+              border:  { color:  $color("#baee00"), width: 1, },
             },
           },
           {
@@ -66,7 +66,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
-              //border:  { color:  $color("#ee8700"), width: 1, },
+              border:  { color:  $color("#ee8700"), width: 1, },
             },
           },
         ],
@@ -81,7 +81,7 @@ function renderSmallWidget(width, height, isDarkMode) {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.33,
           },
-          //border:  { color:  $color("#744c6b"), width: 1, },
+          border:  { color:  $color("#744c6b"), width: 1, },
         },
         views: [
           {
@@ -94,7 +94,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 width: width - (10 + 6) * 2,
                 height: (height - 4 * 2) * 0.33 * 0.38,
               },
-              //border:  { color:  $color("#ff0202"), width: 1, },
+              border:  { color:  $color("#ff0202"), width: 1, },
             },
           },
           {
@@ -107,7 +107,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 height: (height - 4 * 2) * 0.33 * 0.62,
               },
               alignment: $widget.alignment.bottom,
-              //border:  { color:  $color("#6c7c87"), width: 1, },
+              border:  { color:  $color("#6c7c87"), width: 1, },
             },
             views: [
               {
@@ -124,7 +124,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                       0.62,
                     alignment: $widget.alignment.center,
                   },
-                  //border:  { color:  $color("#baee00"), width: 1, },
+                  border:  { color:  $color("#baee00"), width: 1, },
                 },
               },
               {
@@ -141,7 +141,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                       0.62,
                     alignment: $widget.alignment.center,
                   },
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -157,7 +157,7 @@ function renderSmallWidget(width, height, isDarkMode) {
             height: (height - 4 * 2) * 0.39,
           },
           spacing: 6,
-          //border:  { color:  $color("#fcd8f4"), width: 1, },
+          border:  { color:  $color("#fcd8f4"), width: 1, },
         },
         views: [
           {
@@ -179,7 +179,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 },
               },
               spacing: 3,
-              //border:  { color:  $color("#059171"), width: 1, },
+              border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -188,7 +188,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "WEEK",
                   font: $font("Helvetica-Bold", 8),
                   color: textLabel,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -197,7 +197,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "3",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -206,7 +206,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "52.23",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -230,7 +230,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 },
               },
               spacing: 3,
-              //border:  { color:  $color("#059171"), width: 1, },
+              border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -239,7 +239,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "MONTH",
                   font: $font("Helvetica-Bold", 8),
                   color: textLabel,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -248,7 +248,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "22",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -257,7 +257,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "152.23",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -281,7 +281,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 },
               },
               spacing: 3,
-              //border:  { color:  $color("#059171"), width: 1, },
+              border:  { color:  $color("#059171"), width: 1, },
             },
             views: [
               {
@@ -290,7 +290,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "YEAR",
                   font: $font("Helvetica-Bold", 8),
                   color: textLabel,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -299,7 +299,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "123",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
               {
@@ -308,7 +308,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   text: "2152.23",
                   font: $font("Helvetica-Bold", 8),
                   color: textValue,
-                  //border:  { color:  $color("#ee8700"), width: 1, },
+                  border:  { color:  $color("#ee8700"), width: 1, },
                 },
               },
             ],
@@ -324,7 +324,7 @@ function renderSmallWidget(width, height, isDarkMode) {
             height: (height - 4 * 2) * 0.07,
           },
           spacing: 0,
-          //border:  { color:  $color("#35854e"), width: 1, },
+          border:  { color:  $color("#35854e"), width: 1, },
         },
         views: [
           {
@@ -338,7 +338,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.leading,
               },
-              //border:  { color:  $color("green"), width: 1, },
+              border:  { color:  $color("green"), width: 1, },
             },
           },
           {
@@ -347,7 +347,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               text: "Update:2026/02/03 12:31",
               font: $font("Helvetica", 6),
               color: textTime,
-              //border:  { color:  $color("green"), width: 1, },
+              border:  { color:  $color("green"), width: 1, },
               frame: {
                 width: (width - 4 * 2 - 16) / 2,
                 height: (height - 4 * 2) * 0.07,
@@ -381,25 +381,25 @@ $widget.setTimeline({
 
     if (family === 1) {
       // Medium 尺寸
-      return {
-        type: "text",
-        props: {
-          text: "Medium Widget\n请使用小尺寸",
-          alignment: $widget.alignment.center,
-        },
-      };
+      return renderMediumWidget(widgetWidth, widgetHeight, isDarkMode);
     } else if (family === 2) {
       // Large 尺寸
       return {
         type: "text",
         props: {
-          text: "Large Widget\n请使用小尺寸",
+          text: "Large Widget\n请使用中尺寸",
           alignment: $widget.alignment.center,
         },
       };
     } else {
       // Small 尺寸 (family === 0) 或其他
-      return renderSmallWidget(widgetWidth, widgetHeight, isDarkMode);
+      return {
+        type: "text",
+        props: {
+          text: "Small Widget\n请使用中尺寸",
+          alignment: $widget.alignment.center,
+        },
+      };
     }
   },
 });
