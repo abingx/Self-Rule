@@ -13,10 +13,20 @@ function processAndRender(data) {
   let runs = data.filter(r => r.type === "Run");
   runs.sort((a, b) => utils.parseDate(b.start_date_local) - utils.parseDate(a.start_date_local));
 
+  // 计算统计数据（已包含所有需要的字段：count, distance, duration, heartRate, pace, maxDistance, bestPace）
   const today = utils.summarize(runs, utils.startOfDay(now));
   const week = utils.summarize(runs, utils.startOfWeek(now));
   const month = utils.summarize(runs, utils.startOfMonth(now));
   const year = utils.summarize(runs, utils.startOfYear(now));
+
+  // 为 today 添加运动效果（基于平均心率和总时长）
+  const todayRuns = runs.filter(r => utils.parseDate(r.start_date_local) >= utils.startOfDay(now));
+  const totalMovingTime = todayRuns.reduce((sum, r) => {
+    const time = r.moving_time || r.elapsed_time || 0;
+    return sum + utils.parseTimeToSeconds(time);
+  }, 0);
+  const todayTrainingName = todayRuns.length > 0 ? todayRuns[0].name : null;
+  today.effect = utils.getExerciseEffect(today.heartRate, totalMovingTime, todayTrainingName);
 
   const yesterdayStart = new Date(now);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
