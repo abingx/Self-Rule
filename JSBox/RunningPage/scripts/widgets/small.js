@@ -50,7 +50,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
       {
         type: "hstack", // 水平堆叠布局
         props: {
-          spacing: 2, // 标题和图标之间的间距
+          spacing: 0, // 标题和图标之间的间距
           frame: {
             width: width - 10 * 2, // 宽度考虑内边距
             height: (height - 4 * 2) * 0.21, // 高度占总组件高度的百分比
@@ -66,7 +66,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               font: $font("Helvetica-Bold", 15), // 粗体字体，大小15
               color: textTitle, // 根据深色模式使用适当的文字颜色
               frame: {
-                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2, // 计算70%可用空间的宽度
+                width: (width - 10 * 2 - 6 * 2 ) * 0.7, // 计算70%可用空间的宽度
                 height: (height - 4 * 2) * 0.21, // 与父容器相同高度
                 alignment: $widget.alignment.leading, // 文字左对齐
               },
@@ -81,7 +81,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               font: $font("Helvetica-Bold", 15), // 粗体字体，大小15
               color: textTitle, // 根据深色模式使用适当的文字颜色
               frame: {
-                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2, // 计算30%可用空间的宽度
+                width: (width - 10 * 2 - 6 * 2 ) * 0.3, // 计算30%可用空间的宽度
                 height: (height - 4 * 2) * 0.21, // 与父容器相同高度
                 alignment: $widget.alignment.trailing, // 文字右对齐
               },
@@ -138,7 +138,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   color: textValue, // 文字颜色（不会显示）
                   frame: {
                     width: (width - 10 * 2) * 0.23, // 容器宽度的23%
-                    height: (height - 4 * 2) * 0.33, // 父容器的全高
+                    height: (height - 4 * 2) * 0.33 * 0.62, // 父容器的全高
                     alignment: $widget.alignment.center, // 居中对齐
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试
@@ -156,6 +156,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                     height: (height - 4 * 2) * 0.33, // 父容器的全高
                     alignment: $widget.alignment.center, // 居中对齐
                   },
+                  lineLimit: 1,
                   minimumScaleFactor: 0.5, // 如需要允许文字缩小
                   //border:  { color:  $color("#baee00"), width: 1, }, // 可选边框，用于调试
                 },
@@ -169,7 +170,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   color: textValue, // 根据深色模式使用适当的文字颜色
                   frame: {
                     width: (width - 10 * 2) * 0.23, // 容器宽度的23%
-                    height: (height - 4 * 2) * 0.33, // 父容器的全高
+                    height: (height - 4 * 2) * 0.33 * 0.62, // 父容器的全高
                     alignment: $widget.alignment.center, // 居中对齐
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试

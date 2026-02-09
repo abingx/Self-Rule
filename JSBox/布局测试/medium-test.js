@@ -31,7 +31,7 @@ function renderMediumWidget(width, height, isDarkMode) {
       {
         type: "hstack",
         props: {
-          spacing: 2,
+          spacing: 0,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
@@ -46,7 +46,7 @@ function renderMediumWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.7,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
@@ -60,7 +60,7 @@ function renderMediumWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.3,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
@@ -153,6 +153,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                         height: (height - 4 * 2) * 0.72 * 0.35,
                         alignment: $widget.alignment.center,
                       },
+                      lineLimit: 1,
                       minimumScaleFactor: 0.5,
                       //border: { color: $color("#baee00"), width: 1, },
                     },
@@ -393,7 +394,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "DST",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -406,7 +407,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "RUN",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -419,7 +420,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "BPM",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -432,7 +433,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PAC",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -445,7 +446,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "MAX",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -458,7 +459,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PR",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -484,7 +485,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "53.12",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -497,7 +498,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "5",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -510,7 +511,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "140",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -523,7 +524,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "5'39\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -536,7 +537,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "31.45",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -549,7 +550,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "4'39\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -636,7 +637,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "DST",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -649,7 +650,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "RUN",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -662,7 +663,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "BPM",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -675,7 +676,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PAC",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -688,7 +689,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "MAX",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -701,7 +702,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PR",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -727,7 +728,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "253.12",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -740,7 +741,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "15",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -753,7 +754,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "145",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -766,7 +767,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "5'30\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -779,7 +780,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "31.45",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -792,7 +793,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "4'21\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -879,7 +880,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "DST",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -892,7 +893,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "RUN",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -905,7 +906,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "BPM",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -918,7 +919,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PAC",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -931,7 +932,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "MAX",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -944,7 +945,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "PR",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -970,7 +971,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "2153.12",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -983,7 +984,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "175",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -996,7 +997,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "147",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -1009,7 +1010,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "5'33\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -1022,7 +1023,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "42.21",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
@@ -1035,7 +1036,7 @@ function renderMediumWidget(width, height, isDarkMode) {
                             type: "text",
                             props: {
                               text: "4'35\"",
-                              font: $font("Helvetica-Bold", 5),
+                              font: $font("Helvetica-Bold", 6),
                               color: textLabel,
                               frame: {
                                 width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,

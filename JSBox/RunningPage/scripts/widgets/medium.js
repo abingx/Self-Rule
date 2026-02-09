@@ -49,7 +49,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
       {
         type: "hstack",
         props: {
-          spacing: 2,
+          spacing: 0,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
@@ -64,7 +64,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.7,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
@@ -78,7 +78,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.3,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
@@ -171,6 +171,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                         height: (height - 4 * 2) * 0.72 * 0.35,
                         alignment: $widget.alignment.center,
                       },
+                      lineLimit: 1,
                       minimumScaleFactor: 0.5,
                       //border: { color: $color("#baee00"), width: 1, },
                     },

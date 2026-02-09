@@ -31,7 +31,7 @@ function renderSmallWidget(width, height, isDarkMode) {
       {
         type: "hstack",
         props: {
-          spacing: 2,
+          spacing: 0,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
@@ -46,7 +46,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
+                width: (width - 10 * 2 - 6 * 2) * 0.7,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
@@ -60,7 +60,7 @@ function renderSmallWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
+                width: (width - 10 * 2 - 6 * 2) * 0.3,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
@@ -114,7 +114,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   color: textValue,
                   frame: {
                     width: (width - 10 * 2) * 0.23,
-                    height: (height - 4 * 2) * 0.33,
+                    height: (height - 4 * 2) * 0.33 * 0.62,
                     alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, },
@@ -131,6 +131,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                     height: (height - 4 * 2) * 0.33,
                     alignment: $widget.alignment.center,
                   },
+                  lineLimit: 1,
                   minimumScaleFactor: 0.5,
                   //border:  { color:  $color("#baee00"), width: 1, },
                 },
@@ -143,7 +144,7 @@ function renderSmallWidget(width, height, isDarkMode) {
                   color: textValue,
                   frame: {
                     width: (width - 10 * 2) * 0.23,
-                    height: (height - 4 * 2) * 0.33,
+                    height: (height - 4 * 2) * 0.33 * 0.62,
                     alignment: $widget.alignment.center,
                   },
                   //border:  { color:  $color("#ee8700"), width: 1, },
