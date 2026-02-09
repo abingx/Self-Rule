@@ -121,8 +121,8 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
         {
           type: "text",
           props: {
-            text: data.effect || "有氧效果",
-            font: $font("Helvetica-Bold", 6),
+            text: data.effect,
+            font: $font("Helvetica-Bold", 8),
             color: textValue,
             frame: {
               width: (width - 10 * 2 - 10) * 0.4,
