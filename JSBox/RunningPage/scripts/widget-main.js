@@ -26,62 +26,87 @@ function processAndRender(data) {
     return sum + utils.parseTimeToSeconds(time);
   }, 0);
   const todayTrainingName = todayRuns.length > 0 ? todayRuns[0].name : null;
-  today.effect = utils.getExerciseEffect(today.heartRate, totalMovingTime, todayTrainingName);
+  
+  // 如果今天没有跑步活动或距离为0，则显示"跑休"
+  if (todayRuns.length === 0 || parseFloat(today.distance) === 0) {
+    today.effect = "跑休";
+  } else {
+    today.effect = utils.getExerciseEffect(todayTrainingName);
+  }
 
+  // 计算 Yesterday（昨天）的统计数据
   const yesterdayStart = new Date(now);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  const yesterdayEnd = new Date(yesterdayStart);
-  yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
-  const yesterday = {
-    count: runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= utils.startOfDay(yesterdayStart) && d < utils.startOfDay(yesterdayEnd);
-    }).length,
-    distance: (runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= utils.startOfDay(yesterdayStart) && d < utils.startOfDay(yesterdayEnd);
-    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-  };
+  const yesterdayStartOfDay = utils.startOfDay(yesterdayStart);
+  const yesterdayEndOfDay = new Date(yesterdayStartOfDay);
+  yesterdayEndOfDay.setDate(yesterdayEndOfDay.getDate() + 1);
 
-  const lastWeekStart = new Date(utils.startOfWeek(now));
+  // 获取昨天的运行数据（仅在昨天范围内的数据）
+  const yesterdayRuns = runs.filter(r => {
+    const d = utils.parseDate(r.start_date_local);
+    return d >= yesterdayStartOfDay && d < yesterdayEndOfDay;
+  });
+
+  // 使用过滤后的数据进行汇总
+  const yesterday = utils.summarize(yesterdayRuns, yesterdayStartOfDay);
+
+  // 为 yesterday 添加运动效果
+  const yesterdayTotalMovingTime = yesterdayRuns.reduce((sum, r) => {
+    const time = r.moving_time || r.elapsed_time || 0;
+    return sum + utils.parseTimeToSeconds(time);
+  }, 0);
+  const yesterdayTrainingName = yesterdayRuns.length > 0 ? yesterdayRuns[0].name : null;
+
+  // 如果昨天没有跑步活动或距离为0，则显示"跑休"
+  if (yesterdayRuns.length === 0 || parseFloat(yesterday.distance) === 0) {
+    yesterday.effect = "跑休";
+  } else {
+    yesterday.effect = utils.getExerciseEffect(yesterdayTrainingName);
+  }
+
+  // 计算 Last Week（上周）的统计数据 (上周一到周日)
+  const currentWeekStart = utils.startOfWeek(now);
+  const lastWeekStart = new Date(currentWeekStart);
   lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-  const lastWeekEnd = new Date(utils.startOfWeek(now));
-  const lastWeek = {
-    count: runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastWeekStart && d < lastWeekEnd;
-    }).length,
-    distance: (runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastWeekStart && d < lastWeekEnd;
-    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-  };
+  const lastWeekEnd = new Date(lastWeekStart);
+  lastWeekEnd.setDate(lastWeekEnd.getDate() + 7);
+  
+  // 获取上周的运行数据（仅在上周范围内的数据）
+  const lastWeekRuns = runs.filter(r => {
+    const d = utils.parseDate(r.start_date_local);
+    return d >= lastWeekStart && d < lastWeekEnd;
+  });
+  
+  // 使用过滤后的数据进行汇总
+  const lastWeek = utils.summarize(lastWeekRuns, lastWeekStart);
 
+  // 计算 Last Month（上月）的统计数据 (上个月1号到月末)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonth = {
-    count: runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastMonthStart && d < lastMonthEnd;
-    }).length,
-    distance: (runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastMonthStart && d < lastMonthEnd;
-    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-  };
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0); // 本月第0天是上个月最后一天
+  lastMonthEnd.setHours(23, 59, 59, 999); // 设置为当天最后一刻
+  
+  // 获取上月的运行数据（仅在上月范围内的数据）
+  const lastMonthRuns = runs.filter(r => {
+    const d = utils.parseDate(r.start_date_local);
+    return d >= lastMonthStart && d <= lastMonthEnd;
+  });
+  
+  // 使用过滤后的数据进行汇总
+  const lastMonth = utils.summarize(lastMonthRuns, lastMonthStart);
 
+  // 计算 Last Year（去年）的统计数据 (上一个完整年度)
   const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-  const lastYearEnd = new Date(now.getFullYear(), 0, 1);
-  const lastYear = {
-    count: runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastYearStart && d < lastYearEnd;
-    }).length,
-    distance: (runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return d >= lastYearStart && d < lastYearEnd;
-    }).reduce((sum, r) => sum + r.distance, 0) / 1000).toFixed(2)
-  };
+  const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31); // 上年12月31日
+  lastYearEnd.setHours(23, 59, 59, 999); // 设置为当天最后一刻
+  
+  // 获取去年的运行数据（仅在去年范围内的数据）
+  const lastYearRuns = runs.filter(r => {
+    const d = utils.parseDate(r.start_date_local);
+    return d >= lastYearStart && d <= lastYearEnd;
+  });
+  
+  // 使用过滤后的数据进行汇总
+  const lastYear = utils.summarize(lastYearRuns, lastYearStart);
 
   const latestRunDate = runs.length ? utils.parseDate(runs[0].start_date_local) : null;
   const latestRunStr = latestRunDate ? utils.formatDateTime(latestRunDate) : "N/A";

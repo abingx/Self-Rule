@@ -159,8 +159,8 @@ function formatDuration(seconds) {
   }
 }
 
-function getExerciseEffect(heartRate, duration, name) {
-  // 优先从 name 中提取训练类型
+function getExerciseEffect(name) {
+  // 从 name 中提取训练类型
   if (name && typeof name === 'string') {
     let trainingType = null;
 
@@ -187,14 +187,8 @@ function getExerciseEffect(heartRate, duration, name) {
     }
   }
 
-  // 如果没有从 name 提取到,使用心率判断
-  if (!heartRate || !duration) return "有氧效果";
-
-  // 简单的运动效果判断逻辑
-  if (heartRate < 120) return "轻松有氧";
-  if (heartRate < 140) return "有氧耐力";
-  if (heartRate < 160) return "乳酸阈值";
-  return "高强度";
+  // 如果没有从 name 提取到有效训练类型,返回默认值
+  return "跑步";
 }
 
 module.exports = {

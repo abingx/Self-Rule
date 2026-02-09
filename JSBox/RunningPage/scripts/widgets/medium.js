@@ -196,7 +196,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
-                  text: today.effect || "有氧效果",
+                  text: today.effect,
                   font: $font("Helvetica-Bold", 6),
                   color: textValue,
                   frame: {
