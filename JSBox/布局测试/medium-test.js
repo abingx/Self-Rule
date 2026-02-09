@@ -9,11 +9,10 @@ function renderMediumWidget(width, height, isDarkMode) {
   const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
   const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
   const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
-  
+
   return {
     type: "vstack",
     props: {
-      padding: 0,
       spacing: 0,
       frame: {
         width: width,
@@ -25,20 +24,19 @@ function renderMediumWidget(width, height, isDarkMode) {
           colors: bgColors,
         },
       },
-      border:  { color:  $color("#ee00ba"), width: 1, },
+      //border:  { color:  $color("#ee00ba"), width: 1, },
     },
     views: [
       // 标题区
       {
         type: "hstack",
         props: {
-          padding: 0,
           spacing: 2,
           frame: {
             width: width - 10 * 2,
             height: (height - 4 * 2) * 0.21,
           },
-          border:  { color:  $color("#dfd930"), width: 1, },
+          //border:  { color:  $color("#dfd930"), width: 1, },
         },
         views: [
           {
@@ -48,11 +46,11 @@ function renderMediumWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10+6) * 2) * 0.7 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.7 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.leading,
               },
-              border:  { color:  $color("#baee00"), width: 1, },
+              //border:  { color:  $color("#baee00"), width: 1, },
             },
           },
           {
@@ -62,254 +60,995 @@ function renderMediumWidget(width, height, isDarkMode) {
               font: $font("Helvetica-Bold", 15),
               color: textTitle,
               frame: {
-                width: (width - (10+6) * 2) * 0.3 - 2 / 2,
+                width: (width - (10 + 6) * 2) * 0.3 - 2 / 2,
                 height: (height - 4 * 2) * 0.21,
                 alignment: $widget.alignment.trailing,
               },
-              border:  { color:  $color("#ee8700"), width: 1, },
+              //border:  { color:  $color("#ee8700"), width: 1, },
             },
           },
         ],
       },
-      // 主数据区
-      {
-        type: "vstack",
-        props: {
-          padding: 0,
-          spacing: 0,
-          frame: {
-            width: width - 10 * 2,
-            height: (height - 4 * 2) * 0.33,
-          },
-          border:  { color:  $color("#744c6b"), width: 1, },
-        },
-        views: [
-          {
-            type: "text",
-            props: {
-              text: "Today",
-              font: $font("Helvetica-Bold", 10),
-              color: textLabel,
-              frame: {
-                width: width - (10 + 6) * 2,
-                height: (height - 4 * 2) * 0.33 * 0.38,
-              },
-              border:  { color:  $color("#ff0202"), width: 1, },
-            },
-          },
-          {
-            type: "hstack",
-            props: {
-              padding: 0,
-              spacing: 6,
-              frame: {
-                width: width - (10 + 6) * 2,
-                height: (height - 4 * 2) * 0.33 * 0.62,
-              },
-              alignment: $widget.alignment.bottom,
-              border:  { color:  $color("#6c7c87"), width: 1, },
-            },
-            views: [
-              {
-                type: "text",
-                props: {
-                  text: "9.12",
-                  font: $font("Helvetica-Bold", 28),
-                  color: textValue,
-                  frame: {
-                    width: (width - (10 + 6) * 2) * 0.8 - 3, //补齐数字和km之间间距
-                    height:
-                      (height - 4 * 2) *
-                      0.33 *
-                      0.62,
-                    alignment: $widget.alignment.center,
-                  },
-                  border:  { color:  $color("#baee00"), width: 1, },
-                },
-              },
-              {
-                type: "text",
-                props: {
-                  text: "km",
-                  font: $font("Helvetica-Bold", 14),
-              color: textTitle,
-                  frame: {
-                    width: (width - 10 * 2) * 0.2 - 3, //补齐数字和km之间间距
-                    height:
-                      (height - 4 * 2) *
-                      0.33 *
-                      0.62,
-                    alignment: $widget.alignment.center,
-                  },
-                  border:  { color:  $color("#ee8700"), width: 1, },
-                },
-              },
-            ],
-          },
-        ],
-      },
-      // 分数据区
+      // 数据区
       {
         type: "hstack",
         props: {
+          spacing: 0,
           frame: {
-            width: width - 4 * 2,
-            height: (height - 4 * 2) * 0.39,
+            width: width - 10 * 2,
+            height: (height - 4 * 2) * 0.72,
           },
-          spacing: 6,
-          border:  { color:  $color("#fcd8f4"), width: 1, },
+          //border:  { color:  $color("#dfd930"), width: 1, },
         },
         views: [
+          // 左数据区
           {
             type: "vstack",
             props: {
+              spacing: 0,
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: (width - 10 * 2 - 10) * 0.4,
+                height: (height - 4 * 2) * 0.72,
               },
               background: {
                 type: "gradient",
                 props: {
-                  colors: boxBg,
-                  opacity: 0.3,
-                  cornerRadius: 6,
+                  colors: [$color("#ffffff")],
+                  opacity: 0.1,
+                  cornerRadius: 10,
                 },
               },
-              spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border:  { color:  $color("#30df4a"), width: 1, },
             },
             views: [
+              // 第一排
               {
                 type: "text",
                 props: {
-                  text: "WEEK",
-                  font: $font("Helvetica-Bold", 8),
+                  text: "Today",
+                  font: $font("Helvetica-Bold", 10),
                   color: textLabel,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  frame: {
+                    width: (width - 10 * 2 - 10) * 0.4,
+                    height: (height - 4 * 2) * 0.72 * 0.15,
+                  },
+                  //border: { color: $color("#ff0202"), width: 1, },
                 },
               },
+              // 第二排
+              {
+                type: "hstack",
+                props: {
+                  spacing: 0,
+                  frame: {
+                    width: (width - 10 * 2 - 10) * 0.4,
+                    height: (height - 4 * 2) * 0.72 * 0.35,
+                  },
+                  alignment: $widget.alignment.bottom,
+                  //border: { color: $color("#6c7c87"), width: 1, },
+                },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: " ",
+                      font: $font("Helvetica-Bold", 14),
+                      color: textValue,
+                      frame: {
+                        width: (width - 10 * 2 - 10) * 0.4 * 0.23,
+                        height: (height - 4 * 2) * 0.72 * 0.35,
+                        alignment: $widget.alignment.center,
+                      },
+                      //border: { color: $color("#ee8700"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "89.12",
+                      font: $font("Helvetica-Bold", 28),
+                      color: textValue,
+                      frame: {
+                        width: (width - 10 * 2 - 10) * 0.4 * 0.54,
+                        height: (height - 4 * 2) * 0.72 * 0.35,
+                        alignment: $widget.alignment.center,
+                      },
+                      minimumScaleFactor: 0.5,
+                      //border: { color: $color("#baee00"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "km",
+                      font: $font("Helvetica-Bold", 14),
+                      color: textValue,
+                      frame: {
+                        width: (width - 10 * 2 - 10) * 0.4 * 0.23,
+                        height: (height - 4 * 2) * 0.72 * 0.35,
+                        alignment: $widget.alignment.center,
+                      },
+                      //border: { color: $color("#ee8700"), width: 1, },
+                    },
+                  },
+                ],
+              },
+              // 第三排
               {
                 type: "text",
                 props: {
-                  text: "3",
-                  font: $font("Helvetica-Bold", 8),
+                  text: "无氧效果",
+                  font: $font("Helvetica-Bold", 6),
                   color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  frame: {
+                    width: (width - 10 * 2 - 10) * 0.4,
+                    height: (height - 4 * 2) * 0.72 * 0.15,
+                    alignment: $widget.alignment.center,
+                  },
+                  //border: { color: $color("#ee8700"), width: 1, },
                 },
               },
+              // 第四行
               {
-                type: "text",
+                type: "hstack",
                 props: {
-                  text: "52.23",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  spacing: 0,
+                  frame: {
+                    width: (width - 10 * 2 - 10) * 0.4,
+                    height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                  },
+                  //border: { color: $color("#5f3f3f"), width: 1, },
                 },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "BPM",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "Time",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "Pace",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                ],
+              },
+              // 第五行
+              {
+                type: "hstack",
+                props: {
+                  spacing: 0,
+                  frame: {
+                    width: (width - 10 * 2 - 10) * 0.4,
+                    height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                  },
+                  //border: { color: $color("#5f3f3f"), width: 1, },
+                },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "140",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "2:12:34",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: "5'30\"",
+                      font: $font("Helvetica", 8),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.4) / 3,
+                        height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
+                      },
+                      //border: { color: $color("#5f3f3f"), width: 1, },
+                    }
+                  },
+                ],
               },
             ],
           },
+          // 中空白
           {
-            type: "vstack",
+            type: "text",
             props: {
+              text: " ",
+              //font: $font("Helvetica-Bold", 15),
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: 10,
+                height: (height - 4 * 2) * 0.72,
               },
-              background: {
-                type: "gradient",
-                props: {
-                  colors: boxBg,
-                  opacity: 0.3,
-                  cornerRadius: 6,
-                },
-              },
-              spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border: { color: $color("#baee00"), width: 1, },
             },
-            views: [
-              {
-                type: "text",
-                props: {
-                  text: "MONTH",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textLabel,
-                  border:  { color:  $color("#ee8700"), width: 1, },
-                },
-              },
-              {
-                type: "text",
-                props: {
-                  text: "22",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
-                },
-              },
-              {
-                type: "text",
-                props: {
-                  text: "152.23",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
-                },
-              },
-            ],
           },
+          // 右数据区
           {
-            type: "vstack",
+            type: "hstack",
             props: {
+              spacing: 10,
               frame: {
-                width: (width - 4 * 2 - 6 * 4) / 3,
-                height:
-                  (height - 4 * 2) *
-                  0.39 *
-                  0.7,
+                width: (width - 10 * 2 - 10) * 0.6,
+                height: (height - 4 * 2) * 0.72,
               },
-              background: {
-                type: "gradient",
-                props: {
-                  colors: boxBg,
-                  opacity: 0.3,
-                  cornerRadius: 6,
-                },
-              },
-              spacing: 3,
-              border:  { color:  $color("#059171"), width: 1, },
+              //border:  { color:  $color("#304adf"), width: 1, },
             },
             views: [
+              // 第一列WEEK
               {
-                type: "text",
+                type: "vstack",
                 props: {
-                  text: "YEAR",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textLabel,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  spacing: 0,
+                  frame: {
+                    width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                    height: (height - 4 * 2) * 0.72,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: [$color("#ffffff")],
+                      opacity: 0.3,
+                      cornerRadius: 10,
+                    },
+                  },
+                  //border: { color: $color("#30df4a"), width: 1, },
                 },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "WEEK",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.15,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: " ",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.05,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "hstack",
+                    props: {
+                      spacing: 3,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.8,
+                      },
+                      //border:  { color:  $color("#30df4a"), width: 1, },
+                    },
+                    views:[
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "DST",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "RUN",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "BPM",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PAC",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "MAX",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PR",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "53.12",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "5",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "140",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "5'39\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "31.45",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "4'39\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
+              // 第二列MONTH
               {
-                type: "text",
+                type: "vstack",
                 props: {
-                  text: "123",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  spacing: 0,
+                  frame: {
+                    width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                    height: (height - 4 * 2) * 0.72,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: [$color("#ffffff")],
+                      opacity: 0.3,
+                      cornerRadius: 10,
+                    },
+                  },
+                  //border: { color: $color("#30df4a"), width: 1, },
                 },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "MONTH",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.15,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: " ",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.05,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "hstack",
+                    props: {
+                      spacing: 3,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.8,
+                      },
+                      //border:  { color:  $color("#30df4a"), width: 1, },
+                    },
+                    views:[
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "DST",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "RUN",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "BPM",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PAC",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "MAX",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PR",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "253.12",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "15",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "145",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "5'30\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "31.45",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "4'21\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
+              // 第三列YEAR
               {
-                type: "text",
+                type: "vstack",
                 props: {
-                  text: "2152.23",
-                  font: $font("Helvetica-Bold", 8),
-                  color: textValue,
-                  border:  { color:  $color("#ee8700"), width: 1, },
+                  spacing: 0,
+                  frame: {
+                    width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                    height: (height - 4 * 2) * 0.72,
+                  },
+                  background: {
+                    type: "gradient",
+                    props: {
+                      colors: [$color("#ffffff")],
+                      opacity: 0.3,
+                      cornerRadius: 10,
+                    },
+                  },
+                  //border: { color: $color("#30df4a"), width: 1, },
                 },
+                views: [
+                  {
+                    type: "text",
+                    props: {
+                      text: "YEAR",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.15,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "text",
+                    props: {
+                      text: " ",
+                      font: $font("Helvetica-Bold", 10),
+                      color: textLabel,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.05,
+                      },
+                      //border: { color: $color("#ff0202"), width: 1, },
+                    },
+                  },
+                  {
+                    type: "hstack",
+                    props: {
+                      spacing: 3,
+                      frame: {
+                        width: ((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3,
+                        height: (height - 4 * 2) * 0.72 * 0.8,
+                      },
+                      //border:  { color:  $color("#30df4a"), width: 1, },
+                    },
+                    views:[
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "DST",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "RUN",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "BPM",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PAC",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "MAX",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "PR",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                      {
+                        type: "vstack",
+                        props: {
+                          spacing: 0,
+                          frame: {
+                            width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                            height: (height - 4 * 2) * 0.72 * 0.8,
+                          },
+                        //border:  { color:  $color("#3f5842"), width: 1, },
+                        },
+                        views:[
+                          {
+                            type: "text",
+                            props: {
+                              text: "2153.12",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "175",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "147",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "5'33\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "42.21",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                          {
+                            type: "text",
+                            props: {
+                              text: "4'35\"",
+                              font: $font("Helvetica-Bold", 5),
+                              color: textLabel,
+                              frame: {
+                                width: (((width - 10 * 2 - 10) * 0.6 - 10 * 2) / 3 - 3) / 2,
+                                height: ((height - 4 * 2) * 0.72 * 0.8) / 6,
+                              },
+                              //border: { color: $color("#ff0202"), width: 1, },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
             ],
           },
@@ -320,39 +1059,39 @@ function renderMediumWidget(width, height, isDarkMode) {
         type: "hstack",
         props: {
           frame: {
-            width: width - 4 * 2 - 12,
+            width: width - 10 * 2 - 10,
             height: (height - 4 * 2) * 0.07,
           },
           spacing: 0,
-          border:  { color:  $color("#35854e"), width: 1, },
+          //border:  { color:  $color("#35854e"), width: 1, },
         },
         views: [
           {
             type: "text",
             props: {
-              text: "Latest:2026/02/03 05:12",
-              font: $font("Helvetica", 6),
+              text: "2026/02/03 05:12",
+              font: $font("Menlo", 6),
               color: textTime,
               frame: {
-                width: (width - 4 * 2 - 16) / 2,
+                width: (width - 10 * 2 - 10) / 2,
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.leading,
               },
-              border:  { color:  $color("green"), width: 1, },
+              //border:  { color:  $color("green"), width: 1, },
             },
           },
           {
             type: "text",
             props: {
-              text: "Update:2026/02/03 12:31",
-              font: $font("Helvetica", 6),
+              text: "2026/02/03 12:31",
+              font: $font("Menlo", 6),
               color: textTime,
-              border:  { color:  $color("green"), width: 1, },
               frame: {
-                width: (width - 4 * 2 - 16) / 2,
+                width: (width - 10 * 2 - 10) / 2,
                 height: (height - 4 * 2) * 0.07,
                 alignment: $widget.alignment.trailing,
               },
+              //border:  { color:  $color("green"), width: 1, },
             },
           },
         ],
