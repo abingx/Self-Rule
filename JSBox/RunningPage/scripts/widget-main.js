@@ -152,9 +152,20 @@ function processAndRender(data) {
         return require("./widgets/accessory-inline")(widgetWidth, widgetHeight, isDarkMode, widgetData);
       }
     },
-    policy: {
-      afterDate: new Date(now.getTime() + 6 * 60 * 60 * 1000)
-    }
+    policy: (() => {
+      const currentHour = now.getHours();
+      if (currentHour >= 8 && currentHour < 20) {
+        // 8:00 到 20:00 之间每小时更新
+        return {
+          afterDate: new Date(now.getTime() + 1 * 60 * 60 * 1000)
+        };
+      } else {
+        // 其余时间每6小时更新
+        return {
+          afterDate: new Date(now.getTime() + 6 * 60 * 60 * 1000)
+        };
+      }
+    })()
   });
 }
 
