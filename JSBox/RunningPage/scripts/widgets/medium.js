@@ -1089,7 +1089,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
           {
             type: "text",
             props: {
-              text: latestRunStr,
+              text: "Latest:" + latestRunStr,
               font: $font("Menlo", 6),
               color: textTime,
               frame: {
@@ -1103,7 +1103,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
           {
             type: "text",
             props: {
-              text: updateStr,
+              text: "Update:" + updateStr,
               font: $font("Menlo", 6),
               color: textTime,
               frame: {

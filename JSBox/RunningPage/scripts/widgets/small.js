@@ -366,28 +366,13 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
           {
             type: "text",
             props: {
-              text: latestRunStr, // 最新跑步时间格式化字符串
+              text: "Latest:" + latestRunStr, // 最新跑步时间格式化字符串
               font: $font("Menlo", 6), // 等宽字体，小字号
               color: textTime, // 根据深色模式使用适当的时间戳颜色
               frame: {
-                width: (width - 10 * 2 - 10) / 2, // 可用宽度的一半
+                width: width - 10 * 2 - 10, // 可用宽度的一半
                 height: (height - 4 * 2) * 0.07, // 与父容器相同高度
-                alignment: $widget.alignment.leading, // 左对齐
-              },
-              //border:  { color:  $color("green"), width: 1, }, // 可选边框，用于调试
-            },
-          },
-          // 最后更新时间
-          {
-            type: "text",
-            props: {
-              text: updateStr, // 更新时间格式化字符串
-              font: $font("Menlo", 6), // 等宽字体，小字号
-              color: textTime, // 根据深色模式使用适当的时间戳颜色
-              frame: {
-                width: (width - 10 * 2 - 10) / 2, // 可用宽度的一半
-                height: (height - 4 * 2) * 0.07, // 与父容器相同高度
-                alignment: $widget.alignment.trailing, // 右对齐
+                alignment: $widget.alignment.center, // 左对齐
               },
               //border:  { color:  $color("green"), width: 1, }, // 可选边框，用于调试
             },
