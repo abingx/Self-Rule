@@ -89,7 +89,7 @@ dns:
   enable: true
   #cache-algorithm: lru
   prefer-h3: false
-  listen: 0.0.0.0:7874
+  listen: 127.0.0.1:7874
   ipv6: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
@@ -148,28 +148,33 @@ dns:
   fake-ip-filter-mode: blacklist
   use-hosts: true
   use-system-hosts: false
-  respect-rules: false
+  respect-rules: true
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
     - 114.114.114.144
     - 180.76.76.76
     - 1.2.4.8
-  nameserver-policy: {}
+  nameserver-policy:
+    "geosite:private,geosite:cn":
+      - 223.5.5.5
+      - 119.29.29.29
+    "geosite:geolocation-!cn":
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
   proxy-server-nameserver:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+  direct-nameserver:
     - 223.5.5.5
     - 119.29.29.29
     - 114.114.114.144
     - 180.76.76.76
     - 1.2.4.8
-  direct-nameserver: []
   #direct-nameserver-follow-policy: false
   nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.144
-    - 180.76.76.76
-    - 1.2.4.8 
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
   fallback:
     - 8.8.8.8
     - 8.8.4.4
@@ -253,15 +258,15 @@ tproxy-port: 7894
 tun:
   enable: true
   stack: mixed
-  device: utun1500
+  #device: utun1500
   auto-route: true
-  auto-redirect: true
+  auto-redirect: false
   auto-detect-interface: true
   dns-hijack:
     - any:53
     - tcp://any:53
   strict-route: true
-  mtu: 9000
+  mtu: 1500
   #gso: true
   #gso-max-size: 65536
   #udp-timeout: 300
