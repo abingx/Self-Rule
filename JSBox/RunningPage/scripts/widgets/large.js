@@ -71,22 +71,9 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
               width: (width - 10 * 2 - 10) * 0.4,
               height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
             },
-            alignment: $widget.alignment.bottom,
+            //alignment: $widget.alignment.bottom,
           },
           views: [
-            {
-              type: "text",
-              props: {
-                text: " ",
-                font: $font("Helvetica-Bold", 14),
-                color: textValue,
-                frame: {
-                  width: (width - 10 * 2 - 10) * 0.4 * 0.23,
-                  height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
-                  alignment: $widget.alignment.center,
-                },
-              },
-            },
             {
               type: "text",
               props: {
@@ -100,19 +87,6 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
                 },
                 lineLimit: 1,
                 minimumScaleFactor: 0.5,
-              },
-            },
-            {
-              type: "text",
-              props: {
-                text: "km",
-                font: $font("Helvetica-Bold", 14),
-                color: textValue,
-                frame: {
-                  width: (width - 10 * 2 - 10) * 0.4 * 0.23,
-                  height: ((height - 4 * 2) * 0.72 * 0.35) / 2,
-                  alignment: $widget.alignment.center,
-                },
               },
             },
           ],

@@ -125,25 +125,10 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                 width: width - 10 * 2, // 容器的全宽
                 height: (height - 4 * 2) * 0.33 * 0.62, // 容器高度的62%
               },
-              alignment: $widget.alignment.bottom, // 内容底部对齐
+              //alignment: $widget.alignment.bottom, // 内容底部对齐
               //border:  { color:  $color("#6c7c87"), width: 1, }, // 可选边框，用于调试
             },
             views: [
-              // 左侧空白元素
-              {
-                type: "text",
-                props: {
-                  text: " ", // 空白字符
-                  font: $font("Helvetica-Bold", 14), // 字体大小用于间距计算
-                  color: textValue, // 文字颜色（不会显示）
-                  frame: {
-                    width: (width - 10 * 2) * 0.23, // 容器宽度的23%
-                    height: (height - 4 * 2) * 0.33 * 0.62, // 父容器的全高
-                    alignment: $widget.alignment.center, // 居中对齐
-                  },
-                  //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试
-                },
-              },
               // 距离数值（主要数字）
               {
                 type: "text",
@@ -159,21 +144,6 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
                   lineLimit: 1,
                   minimumScaleFactor: 0.5, // 如需要允许文字缩小
                   //border:  { color:  $color("#baee00"), width: 1, }, // 可选边框，用于调试
-                },
-              },
-              // "km" 单位标签
-              {
-                type: "text",
-                props: {
-                  text: "km", // 计量单位
-                  font: $font("Helvetica-Bold", 14), // 中等字体大小
-                  color: textValue, // 根据深色模式使用适当的文字颜色
-                  frame: {
-                    width: (width - 10 * 2) * 0.23, // 容器宽度的23%
-                    height: (height - 4 * 2) * 0.33 * 0.62, // 父容器的全高
-                    alignment: $widget.alignment.center, // 居中对齐
-                  },
-                  //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试
                 },
               },
             ],

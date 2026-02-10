@@ -142,24 +142,10 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                     width: (width - 10 * 2 - 10) * 0.4,
                     height: (height - 4 * 2) * 0.72 * 0.35,
                   },
-                  alignment: $widget.alignment.bottom,
+                  //alignment: $widget.alignment.bottom,
                   //border: { color: $color("#6c7c87"), width: 1, },
                 },
                 views: [
-                  {
-                    type: "text",
-                    props: {
-                      text: " ",
-                      font: $font("Helvetica-Bold", 14),
-                      color: textValue,
-                      frame: {
-                        width: (width - 10 * 2 - 10) * 0.4 * 0.23,
-                        height: (height - 4 * 2) * 0.72 * 0.35,
-                        alignment: $widget.alignment.center,
-                      },
-                      //border: { color: $color("#ee8700"), width: 1, },
-                    },
-                  },
                   {
                     type: "text",
                     props: {
@@ -174,20 +160,6 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                       lineLimit: 1,
                       minimumScaleFactor: 0.5,
                       //border: { color: $color("#baee00"), width: 1, },
-                    },
-                  },
-                  {
-                    type: "text",
-                    props: {
-                      text: "km",
-                      font: $font("Helvetica-Bold", 14),
-                      color: textValue,
-                      frame: {
-                        width: (width - 10 * 2 - 10) * 0.4 * 0.23,
-                        height: (height - 4 * 2) * 0.72 * 0.35,
-                        alignment: $widget.alignment.center,
-                      },
-                      //border: { color: $color("#ee8700"), width: 1, },
                     },
                   },
                 ],
