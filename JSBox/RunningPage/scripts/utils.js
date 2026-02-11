@@ -1,6 +1,9 @@
 // 工具函数模块
 
 function parseDate(str) {
+  if (str instanceof Date) return new Date(str);
+  if (typeof str === "number") return new Date(str);
+  if (typeof str !== "string" || str.trim().length === 0) return new Date(NaN);
   return new Date(str.replace(" ", "T"));
 }
 
@@ -51,7 +54,10 @@ function startOfYear(d) {
 }
 
 function summarize(list, since) {
-  const runs = list.filter(r => parseDate(r.start_date_local) >= since);
+  const runs = list.filter(r => {
+    const date = parseDate(r.start_date_local);
+    return !isNaN(date.getTime()) && date >= since;
+  });
   const count = runs.length;
   const distance = runs.reduce((sum, r) => sum + r.distance, 0) / 1000;
 
@@ -114,22 +120,6 @@ function loadCache() {
   return null;
 }
 
-function getPlaceholder(count = 1) {
-  if (global.CONFIG.SHOW_PLACEHOLDERS) {
-    return "^".repeat(count);
-  } else {
-    return " ".repeat(count);
-  }
-}
-
-function getSeparator() {
-  if (global.CONFIG.SHOW_PLACEHOLDERS) {
-    return "`_`_`_`_`_`_`_`_`_`";
-  } else {
-    return "              ";
-  }
-}
-
 function formatDateTime(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -141,16 +131,18 @@ function formatDateTime(date) {
 
 function formatPace(secondsPerKm) {
   if (typeof secondsPerKm !== 'number' || !isFinite(secondsPerKm) || secondsPerKm <= 0) return null;
-  const minutes = Math.floor(secondsPerKm / 60);
-  const seconds = Math.round(secondsPerKm % 60);
+  const totalSeconds = Math.round(secondsPerKm);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
   return `${minutes}'${String(seconds).padStart(2, '0')}"`;
 }
 
 function formatDuration(seconds) {
   if (typeof seconds !== 'number' || !isFinite(seconds) || seconds <= 0) return null;
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.round(seconds % 60);
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
 
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -201,8 +193,6 @@ module.exports = {
   summarize,
   saveCache,
   loadCache,
-  getPlaceholder,
-  getSeparator,
   formatDateTime,
   formatPace,
   formatDuration,
