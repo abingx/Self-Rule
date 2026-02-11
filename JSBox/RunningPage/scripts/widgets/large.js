@@ -1,6 +1,8 @@
 // Large Widget
 // 此模块定义了 JSBox 中的跑步统计大尺寸小组件
 
+const common = require("./common");
+
 /**
  * 渲染大型跑步统计组件
  * @param {number} width - 组件宽度
@@ -13,17 +15,7 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
   // 解构组件数据以提取跑步统计数据
   const { today, yesterday, week, lastWeek, month, lastMonth, year, lastYear, latestRunStr, updateStr, getWidgetURL } = widgetData;
 
-  // 根据深色模式设置定义渐变背景色
-  const bgColors = isDarkMode
-    ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]
-    : [$color("#667eea"), $color("#764ba2"), $color("#f093fb")];
-
-  // 根据深色模式设置定义文本颜色
-  const textTitle = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
-  const textLabel = isDarkMode ? $color("#adb5bd") : $color("#ffffff");
-  const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
-  const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
-  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
+  const { bgColors, textTitle, textLabel, textValue, textTime, boxBg } = common.getTheme(isDarkMode);
 
   /**
    * 创建单个时期详细数据区（左侧大卡片）
@@ -77,7 +69,7 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
             {
               type: "text",
               props: {
-                text: Number(data.distance || 0).toFixed(2),
+                text: common.formatDistanceKm(data.distance),
                 font: $font("Helvetica-Bold", 28),
                 color: textValue,
                 frame: {
@@ -364,7 +356,7 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
                 {
                   type: "text",
                   props: {
-                    text: Number(data.distance || 0).toFixed(2),
+                    text: common.formatDistanceKm(data.distance),
                     font: $font("Helvetica-Bold", 6),
                     color: textValue,
                     frame: {
@@ -412,7 +404,7 @@ function renderLargeWidget(width, height, isDarkMode, widgetData) {
                 {
                   type: "text",
                   props: {
-                    text: data.maxDistance ? Number(data.maxDistance).toFixed(2) : "-",
+                    text: data.maxDistance ? common.formatDistanceKm(data.maxDistance) : "-",
                     font: $font("Helvetica-Bold", 6),
                     color: textValue,
                     frame: {

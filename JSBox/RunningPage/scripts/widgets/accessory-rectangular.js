@@ -2,7 +2,6 @@
 
 function renderAccessoryRectangular(widgetWidth, widgetHeight, isDarkMode, widgetData) {
   const { today } = widgetData;
-  const isDarkMode = isDarkMode;
   return {
     type: "vstack",
     props: {

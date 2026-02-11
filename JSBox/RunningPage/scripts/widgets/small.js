@@ -1,7 +1,7 @@
 // Small Widget
 // 此模块定义了 JSBox 中的跑步统计小尺寸小组件
 
-const utils = require("../utils");
+const common = require("./common");
 
 /**
  * 渲染小型跑步统计组件
@@ -13,19 +13,10 @@ const utils = require("../utils");
  */
 function renderSmallWidget(width, height, isDarkMode, widgetData) {
   // 解构组件数据以提取跑步统计数据
-  const { today, week, month, year, latestRunStr, updateStr, getWidgetURL } = widgetData;
+  const { today, week, month, year, latestRunStr, getWidgetURL } = widgetData;
 
   // 根据深色模式设置定义渐变背景色
-  const bgColors = isDarkMode
-    ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]  // 深色模式渐变色
-    : [$color("#667eea"), $color("#764ba2"), $color("#f093fb")]; // 浅色模式渐变色
-
-  // 根据深色模式设置定义文本颜色
-  const textTitle = isDarkMode ? $color("#e9ecef") : $color("#ffffff"); // 标题文字颜色
-  const textLabel = isDarkMode ? $color("#adb5bd") : $color("#ffffff"); // 标签文字颜色
-  const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff"); // 数值文字颜色
-  const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");  // 时间戳文字颜色
-  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")]; // 数据框背景色
+  const { bgColors, textTitle, textLabel, textValue, textTime, boxBg } = common.getTheme(isDarkMode);
 
   // 返回组件配置对象
   return {
@@ -133,7 +124,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
-                  text: Number(today.distance).toFixed(2), // 将距离格式化为两位小数
+                  text: common.formatDistanceKm(today.distance), // 将距离格式化为两位小数
                   font: $font("Helvetica-Bold", 28), // 大号粗体字体显示主要数值
                   color: textValue, // 根据深色模式使用适当的文字颜色
                   frame: {
@@ -206,7 +197,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
-                  text: Number(week.distance).toFixed(2), // 将距离格式化为两位小数
+                  text: common.formatDistanceKm(week.distance), // 将距离格式化为两位小数
                   font: $font("Helvetica-Bold", 8), // 小号粗体字体
                   color: textValue, // 根据深色模式使用适当的文字颜色
                   //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试
@@ -258,7 +249,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
-                  text: Number(month.distance).toFixed(2), // 将距离格式化为两位小数
+                  text: common.formatDistanceKm(month.distance), // 将距离格式化为两位小数
                   font: $font("Helvetica-Bold", 8), // 小号粗体字体
                   color: textValue, // 根据深色模式使用适当的文字颜色
                   //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试
@@ -310,7 +301,7 @@ function renderSmallWidget(width, height, isDarkMode, widgetData) {
               {
                 type: "text",
                 props: {
-                  text: Number(year.distance).toFixed(2), // 将距离格式化为两位小数
+                  text: common.formatDistanceKm(year.distance), // 将距离格式化为两位小数
                   font: $font("Helvetica-Bold", 8), // 小号粗体字体
                   color: textValue, // 根据深色模式使用适当的文字颜色
                   //border:  { color:  $color("#ee8700"), width: 1, }, // 可选边框，用于调试

@@ -7,6 +7,26 @@ function parseDate(str) {
   return new Date(str.replace(" ", "T"));
 }
 
+// 对单条活动数据做一次预处理，给统计阶段提供可复用字段，避免重复解析。
+function normalizeRunData(run) {
+  if (!run || typeof run !== "object") return null;
+
+  const startDate = parseDate(run.start_date_local);
+  const startTimestamp = startDate.getTime();
+  const distanceMeters = Number(run.distance) || 0;
+  const distanceKm = distanceMeters / 1000;
+  const movingSeconds = parseTimeToSeconds(run.moving_time || run.elapsed_time || 0);
+
+  return {
+    ...run,
+    _startDate: startDate,
+    _startTimestamp: isFinite(startTimestamp) ? startTimestamp : NaN,
+    _distanceMeters: distanceMeters,
+    _distanceKm: distanceKm,
+    _movingSeconds: movingSeconds
+  };
+}
+
 /**
  * 解析时间字符串为秒数
  * 支持格式: "H:MM:SS" 或 "H:MM:SS.ffffff"
@@ -54,15 +74,23 @@ function startOfYear(d) {
 }
 
 function summarize(list, since) {
+  // since 为时间窗口起点；调用方可先筛选窗口，再复用 summarize 聚合。
   const runs = list.filter(r => {
-    const date = parseDate(r.start_date_local);
-    return !isNaN(date.getTime()) && date >= since;
+    if (!r) return false;
+    const timestamp = Number.isFinite(r._startTimestamp)
+      ? r._startTimestamp
+      : parseDate(r.start_date_local).getTime();
+    return !isNaN(timestamp) && timestamp >= since.getTime();
   });
   const count = runs.length;
-  const distance = runs.reduce((sum, r) => sum + r.distance, 0) / 1000;
+  const distance = runs.reduce((sum, r) => {
+    if (typeof r._distanceKm === "number") return sum + r._distanceKm;
+    return sum + (Number(r.distance) || 0) / 1000;
+  }, 0);
 
-  // 计算总时长
+  // 计算总时长（秒）
   const totalTime = runs.reduce((sum, r) => {
+    if (typeof r._movingSeconds === "number") return sum + r._movingSeconds;
     const time = r.moving_time || r.elapsed_time || 0;
     return sum + parseTimeToSeconds(time);
   }, 0);
@@ -74,19 +102,31 @@ function summarize(list, since) {
     ? Math.round(runsWithHeartRate.reduce((sum, r) => sum + r.average_heartrate, 0) / runsWithHeartRate.length)
     : null;
 
-  // 计算平均配速（分钟/公里）
+  // 计算平均配速（秒/公里 -> 文本）
   const totalDistance = distance;
   const pace = totalDistance > 0 ? formatPace(totalTime / totalDistance) : null;
 
   // 找到最大单次距离
   const maxDistance = runs.length > 0
-    ? Math.max(...runs.map(r => r.distance / 1000))
+    ? Math.max(...runs.map(r => (typeof r._distanceKm === "number" ? r._distanceKm : (Number(r.distance) || 0) / 1000)))
     : 0;
 
   // 找到最佳配速（最快的配速，即最小的秒/公里）
-  const runsWithPace = runs.filter(r => r.distance > 0 && (r.moving_time || r.elapsed_time));
+  const runsWithPace = runs.filter(r => (typeof r._distanceMeters === "number" ? r._distanceMeters : Number(r.distance) || 0) > 0 && (r.moving_time || r.elapsed_time));
   const bestPace = runsWithPace.length > 0
-    ? formatPace(Math.min(...runsWithPace.map(r => parseTimeToSeconds(r.moving_time || r.elapsed_time) / (r.distance / 1000))))
+    ? formatPace(
+      Math.min(
+        ...runsWithPace.map(r => {
+          const seconds = typeof r._movingSeconds === "number"
+            ? r._movingSeconds
+            : parseTimeToSeconds(r.moving_time || r.elapsed_time);
+          const km = typeof r._distanceKm === "number"
+            ? r._distanceKm
+            : (Number(r.distance) || 0) / 1000;
+          return seconds / km;
+        })
+      )
+    )
     : null;
 
   return {
@@ -185,6 +225,7 @@ function getExerciseEffect(name) {
 
 module.exports = {
   parseDate,
+  normalizeRunData,
   parseTimeToSeconds,
   startOfDay,
   startOfWeek,

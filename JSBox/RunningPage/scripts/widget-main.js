@@ -2,18 +2,33 @@
 
 const utils = require("./utils");
 
+if (global.CONFIG.SHOW_PLACEHOLDERS) {
+  console.log("SHOW_PLACEHOLDERS is enabled but placeholder rendering is not implemented yet.");
+}
+
 function getWidgetURL() {
   return `jsbox://run?name=${encodeURIComponent(global.CONFIG.TARGET_SCRIPT)}`;
 }
 
 let cachedData = utils.loadCache();
 
+// 统一清洗输入数据，确保后续统计只处理可用的 Run 数据。
+// 这里会补充标准化字段（时间戳、公里数、秒数）供统计阶段复用。
+function sanitizeData(data) {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(item => item && typeof item === "object")
+    .map(utils.normalizeRunData)
+    .filter(item => item && item.type === "Run");
+}
+
 function processAndRender(data) {
   const now = new Date();
-  let runs = data.filter(r => r && r.type === "Run");
+  // 先清洗再排序，保证「最近一次跑步」始终可通过 runs[0] 读取。
+  let runs = sanitizeData(data);
   runs.sort((a, b) => {
-    const timeA = utils.parseDate(a.start_date_local).getTime();
-    const timeB = utils.parseDate(b.start_date_local).getTime();
+    const timeA = Number.isFinite(a._startTimestamp) ? a._startTimestamp : utils.parseDate(a.start_date_local).getTime();
+    const timeB = Number.isFinite(b._startTimestamp) ? b._startTimestamp : utils.parseDate(b.start_date_local).getTime();
     const safeA = isFinite(timeA) ? timeA : -Infinity;
     const safeB = isFinite(timeB) ? timeB : -Infinity;
     return safeB - safeA;
@@ -27,11 +42,14 @@ function processAndRender(data) {
 
   // 通用函数：获取指定时间段的统计数据和运动效果
   function getPeriodData(start, end, defaultEffect = "跑休") {
+    const startTs = start.getTime();
+    const endTs = end.getTime();
     const periodRuns = runs.filter(r => {
-      const d = utils.parseDate(r.start_date_local);
-      return !isNaN(d.getTime()) && d >= start && d < end;
+      const ts = Number.isFinite(r._startTimestamp) ? r._startTimestamp : utils.parseDate(r.start_date_local).getTime();
+      return !isNaN(ts) && ts >= startTs && ts < endTs;
     });
     
+    // summarize 只关心 >= since，传入已切片后的 periodRuns 可得到该时间窗的汇总。
     const stats = utils.summarize(periodRuns, start);
     
     // 如果时间段内没有跑步活动或距离为0，则显示默认效果
@@ -74,8 +92,8 @@ function processAndRender(data) {
 
   // 为上月数据单独处理，因为月份结束时间的特殊性
   const lastMonthRuns = runs.filter(r => {
-    const d = utils.parseDate(r.start_date_local);
-    return !isNaN(d.getTime()) && d >= lastMonthStart && d <= lastMonthEnd;
+    const ts = Number.isFinite(r._startTimestamp) ? r._startTimestamp : utils.parseDate(r.start_date_local).getTime();
+    return !isNaN(ts) && ts >= lastMonthStart.getTime() && ts <= lastMonthEnd.getTime();
   });
 
   const lastMonth = utils.summarize(lastMonthRuns, lastMonthStart);
@@ -87,14 +105,16 @@ function processAndRender(data) {
 
   // 为去年数据单独处理，因为年份结束时间的特殊性
   const lastYearRuns = runs.filter(r => {
-    const d = utils.parseDate(r.start_date_local);
-    return !isNaN(d.getTime()) && d >= lastYearStart && d <= lastYearEnd;
+    const ts = Number.isFinite(r._startTimestamp) ? r._startTimestamp : utils.parseDate(r.start_date_local).getTime();
+    return !isNaN(ts) && ts >= lastYearStart.getTime() && ts <= lastYearEnd.getTime();
   });
 
   const lastYear = utils.summarize(lastYearRuns, lastYearStart);
 
   const latestRunDate = runs.length ? utils.parseDate(runs[0].start_date_local) : null;
-  const latestRunStr = latestRunDate ? utils.formatDateTime(latestRunDate) : "N/A";
+  const latestRunStr = latestRunDate && !isNaN(latestRunDate.getTime())
+    ? utils.formatDateTime(latestRunDate)
+    : "N/A";
   const updateStr = utils.formatDateTime(now);
 
   const widgetData = {
@@ -138,6 +158,7 @@ function processAndRender(data) {
       }
     },
     policy: (() => {
+      // 白天更新频率更高，夜间降频以减少不必要刷新。
       const currentHour = now.getHours();
       if (currentHour >= 8 && currentHour < 20) {
         // 8:00 到 20:00 之间每小时更新
@@ -167,7 +188,7 @@ if (cachedData && cachedData.length > 0) {
 $http.get({
   url: global.CONFIG.DATA_URL,
   handler: resp => {
-    if (resp.data && resp.data.length > 0) {
+    if (Array.isArray(resp.data) && resp.data.length > 0) {
       // 比较远程数据与缓存数据
       const hasChanges = !cachedData || !compareData(cachedData, resp.data);
       
@@ -197,6 +218,8 @@ function compareData(oldData, newData) {
 
   const normalize = arr =>
     arr
+      .filter(item => item && typeof item === "object")
+      // 只比较会影响展示的关键字段，忽略顺序和无关字段。
       .map(item => ({
         id: item.id,
         start_date_local: item.start_date_local,

@@ -1,7 +1,7 @@
 // Medium Widget
 // 此模块定义了 JSBox 中的跑步统计中等尺寸小组件
 
-const utils = require("../utils");
+const common = require("./common");
 
 /**
  * 渲染中型跑步统计组件
@@ -15,17 +15,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
   // 解构组件数据以提取跑步统计数据
   const { today, week, month, year, latestRunStr, updateStr, getWidgetURL } = widgetData;
 
-  // 根据深色模式设置定义渐变背景色
-  const bgColors = isDarkMode
-    ? [$color("#5568d3"), $color("#6b4fa0"), $color("#d946ef")]
-    : [$color("#667eea"), $color("#764ba2"), $color("#f093fb")];
-
-  // 根据深色模式设置定义文本颜色
-  const textTitle = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
-  const textLabel = isDarkMode ? $color("#adb5bd") : $color("#ffffff");
-  const textValue = isDarkMode ? $color("#ffffff") : $color("#ffffff");
-  const textTime = isDarkMode ? $color("#e9ecef") : $color("#ffffff");
-  const boxBg = isDarkMode ? [$color("#ffffff")] : [$color("#ffffff")];
+  const { bgColors, textTitle, textLabel, textValue, textTime, boxBg } = common.getTheme(isDarkMode);
 
   return {
     type: "vstack",
@@ -149,7 +139,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                   {
                     type: "text",
                     props: {
-                      text: Number(today.distance || 0).toFixed(2),
+                      text: common.formatDistanceKm(today.distance),
                       font: $font("Helvetica-Bold", 28),
                       color: textValue,
                       frame: {
@@ -475,7 +465,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: Number(week.distance || 0).toFixed(2),
+                              text: common.formatDistanceKm(week.distance),
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
@@ -527,7 +517,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: week.maxDistance ? Number(week.maxDistance).toFixed(2) : "-",
+                              text: week.maxDistance ? common.formatDistanceKm(week.maxDistance) : "-",
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
@@ -718,7 +708,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: Number(month.distance || 0).toFixed(2),
+                              text: common.formatDistanceKm(month.distance),
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
@@ -770,7 +760,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: month.maxDistance ? Number(month.maxDistance).toFixed(2) : "-",
+                              text: month.maxDistance ? common.formatDistanceKm(month.maxDistance) : "-",
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
@@ -961,7 +951,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: Number(year.distance || 0).toFixed(2),
+                              text: common.formatDistanceKm(year.distance),
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
@@ -1013,7 +1003,7 @@ function renderMediumWidget(width, height, isDarkMode, widgetData) {
                           {
                             type: "text",
                             props: {
-                              text: year.maxDistance ? Number(year.maxDistance).toFixed(2) : "-",
+                              text: year.maxDistance ? common.formatDistanceKm(year.maxDistance) : "-",
                               font: $font("Helvetica-Bold", 6),
                               color: textValue,
                               frame: {
