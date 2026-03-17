@@ -38,7 +38,7 @@ if (token) {
 	console.log(`doortoken recorded: ${token}`);
 } else {
 	console.log('No doortoken found in response body:', responseObj);
-	$notification.post('芝麻开门', '', 'access-token未找到，请检查响应', '');
+	//$notification.post('芝麻开门', '', 'access-token未找到，请检查响应', '');
 }
 
 $done({});
