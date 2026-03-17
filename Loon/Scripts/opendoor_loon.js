@@ -165,7 +165,7 @@ function openDoor(id) {
 		}
 
 		console.log('开门请求返回：', parsed);
-		notify('芝麻开门', '', '开门失败：' + (parsed.message || '未知原因'), '');
+		notify('芝麻开门', '', '开门失败：' + (parsed.message || '未知原因'), 'wechat://');
 		done(200, { success: false, message: parsed.message || '开门失败' });
 	});
 }
