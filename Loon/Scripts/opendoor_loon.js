@@ -145,7 +145,7 @@ function openDoor(id) {
 			parsed = typeof body === 'string' ? JSON.parse(body) : body;
 		} catch (e) {
 			console.log('Error parsing response data:', e);
-			notify('芝麻开门', '', '返回解析失败', '');
+			notify('芝麻开门', '', '返回解析失败，从微信打开', 'wechat://');
 			done(502, { success: false, message: 'Parse error' });
 			return;
 		}
