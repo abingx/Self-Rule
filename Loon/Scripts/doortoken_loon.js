@@ -16,7 +16,7 @@ try {
 	responseObj = JSON.parse(responseBody);
 } catch (e) {
 	console.log('Failed to parse response body:', e);
-	$notification.post('芝麻开门', '', 'access-token解析失败，请检查登录流程', '');
+	//$notification.post('获取开门token', '', 'access-token解析失败，请检查登录流程', '');
 	$done({});
 	return;
 }
@@ -34,7 +34,7 @@ const token = tokenCandidates.find((item) => typeof item === 'string' && item.le
 
 if (token) {
 	$persistentStore.write(token, 'doortoken');
-	$notification.post('芝麻开门', '', 'access-token获取成功🎉');
+	$notification.post('获取开门token', '', 'access-token获取成功🎉');
 	console.log(`doortoken recorded: ${token}`);
 } else {
 	console.log('No doortoken found in response body:', responseObj);
