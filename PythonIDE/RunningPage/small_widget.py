@@ -38,13 +38,13 @@ with w.vstack(
         padding=0,
         # border_color="#ffffff", border_width=1  # 外边框
     ):
-        w.text("Running", size=15, weight="bold", color=TEXT_TITLE, align="leading", frame={"width": 60})
-        w.spacer(length=None)
-        w.text("🏃‍♂️", size=15, weight="bold", color=TEXT_TITLE, align="trailing", frame={"width": 10})
+        w.text("Running", size=20, weight="bold", color=TEXT_TITLE)
+        with w.hstack():
+            w.spacer(length=None)
+            w.text("🏃‍♂️", size=20)
 
     # 动态占位符，保持布局稳定
     w.spacer(length=None)
-
     # ② 今日距离
     with w.vstack(
         spacing=0,
@@ -53,7 +53,7 @@ with w.vstack(
         # border_color="#ffffff", border_width=1  # 外边框
     ):
         w.text("Today", size=10, weight="bold", color=TEXT_LABEL)
-        w.text(f"{data['today']['distance']:.2f}", size=32, weight="bold", color=TEXT_VALUE, max_lines=1)
+        w.text(f"{data['today']['distance']:.2f}", size=32, weight="bold", color=TEXT_VALUE)
 
     # 动态占位符，保持布局稳定
     w.spacer(length=None)
