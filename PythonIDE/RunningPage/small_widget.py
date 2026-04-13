@@ -65,11 +65,18 @@ with w.vstack(
         align="center",
         # border_color="#ffffff", border_width=1  # 外边框
     ):
-        for label, key in [("WEEK", "week"), ("MONTH", "month"), ("YEAR", "year")]:
-            with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3):
-                w.text(label, size=7, weight="bold", color=TEXT_LABEL, align="center", frame={"width": 30})
-                w.text(str(data[key]["count"]), size=7, weight="bold", color=TEXT_VALUE, align="center", frame={"width": 30})
-                w.text(f"{data[key]['distance']:.2f}", size=7, weight="bold", color=TEXT_VALUE, align="center", frame={"width": 30})
+        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
+            w.text("WEEK", size=10, weight="bold", color=TEXT_LABEL)
+            w.text(str(data["week"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
+            w.text(f"{data['week']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
+        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
+            w.text("MONTH", size=10, weight="bold", color=TEXT_LABEL)
+            w.text(str(data["month"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
+            w.text(f"{data['month']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
+        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
+            w.text("YEAR", size=10, weight="bold", color=TEXT_LABEL)
+            w.text(str(data["year"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
+            w.text(f"{data['year']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
 
     # 动态占位符，保持布局稳定
     w.spacer(length=None)
