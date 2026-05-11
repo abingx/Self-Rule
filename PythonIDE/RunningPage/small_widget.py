@@ -32,19 +32,17 @@ with w.vstack(
     # border_color="#ffffff", border_width=1  # 外边框
 ):
 
-    # ① 头部：Running + 🏃‍♂️
+    # ① 头部：Running
     with w.hstack(
         spacing=0,
         padding=0,
         # border_color="#ffffff", border_width=1  # 外边框
     ):
-        w.text("Running", size=20, weight="bold", color=TEXT_TITLE)
-        with w.hstack():
-            w.spacer(length=None)
-            w.text("🏃‍♂️", size=20)
+        w.text("Running Page", size=18, weight="bold", color=TEXT_TITLE, align="leading")
 
     # 动态占位符，保持布局稳定
     w.spacer(length=None)
+
     # ② 今日距离
     with w.vstack(
         spacing=0,
@@ -59,24 +57,24 @@ with w.vstack(
     w.spacer(length=None)
 
     # ③ 周 / 月 / 年 三列卡片
-    with w.hstack(
-        spacing=6,
-        padding=0,
-        align="center",
-        # border_color="#ffffff", border_width=1  # 外边框
-    ):
-        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
-            w.text("WEEK", size=10, weight="bold", color=TEXT_LABEL)
-            w.text(str(data["week"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
-            w.text(f"{data['week']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
-        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
-            w.text("MONTH", size=10, weight="bold", color=TEXT_LABEL)
-            w.text(str(data["month"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
-            w.text(f"{data['month']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
-        with w.card(background=BOX_BG, corner_radius=6, padding=6, spacing=3, opacity=0.3, align="center"):
-            w.text("YEAR", size=10, weight="bold", color=TEXT_LABEL)
-            w.text(str(data["year"]["count"]), size=10, weight="bold", color=TEXT_VALUE)
-            w.text(f"{data['year']['distance']:.2f}", size=10, weight="bold", color=TEXT_VALUE)
+    with w.card(background=BOX_BG, corner_radius=6, padding=8, opacity=0.3):
+        with w.hstack(
+            spacing=12,
+            padding=0,
+            align="center",
+        ):
+            with w.vstack(spacing=2, padding=0, align="center"):
+                w.text("WEEK", size=8, weight="bold", color=TEXT_LABEL)
+                w.text("MONTH", size=8, weight="bold", color=TEXT_LABEL)
+                w.text("YEAR", size=8, weight="bold", color=TEXT_LABEL)
+            with w.vstack(spacing=2, padding=0, align="center"):
+                w.text(str(data["week"]["count"]), size=8, weight="bold", color=TEXT_VALUE)
+                w.text(str(data["month"]["count"]), size=8, weight="bold", color=TEXT_VALUE)
+                w.text(str(data["year"]["count"]), size=8, weight="bold", color=TEXT_VALUE)
+            with w.vstack(spacing=2, padding=0, align="center"):
+                w.text(f"{data['week']['distance']:.2f}", size=8, weight="bold", color=TEXT_VALUE)
+                w.text(f"{data['month']['distance']:.2f}", size=8, weight="bold", color=TEXT_VALUE)
+                w.text(f"{data['year']['distance']:.2f}", size=8, weight="bold", color=TEXT_VALUE)
 
     # 动态占位符，保持布局稳定
     w.spacer(length=None)
