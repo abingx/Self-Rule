@@ -68,8 +68,6 @@ tcp-concurrent: true
 #    dC5jb20AAA==
 #    -----END ECH KEYS-----
 #  # ECH 密钥，如果填写则会启用 ECH
-## 全局客户端指纹
-global-client-fingerprint: chrome
 ## GEOIP 数据模式
 geodata-mode: false
 ## GEO 文件加载模式
@@ -195,14 +193,6 @@ dns:
 
 # hosts
 hosts:
-  91.108.56.100: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.101: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.104: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.107: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.125: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.126: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.128: [91.108.56.147, 91.108.56.135, 91.108.56.130]
-  91.108.56.156: [91.108.56.147, 91.108.56.135, 91.108.56.130]
   iosapps.itunes.apple.com: iosapps.itunes.apple.com.download.ks-cdn.com
   updates.g.aaplimg.com: updates.cdn-apple.com.download.ks-cdn.com
 
@@ -342,29 +332,27 @@ domain_yaml: &domain_yaml {type: http, interval: 86400, behavior: domain, format
 class_yaml: &class_yaml {type: http, interval: 86400, behavior: classical, format: yaml}
 # 机场代理地址
 proxy-providers:  
-  Proxies: {<<: *pp, url: ""}
-  SS+TLS: {<<: *pp, url: ""}
+  FlowerCloud: {<<: *pp, url: ""}
+  PPDog: {<<: *pp, url: ""}
 # 机场代理策略组分组
 proxy-groups:
-  - {name: Global, type: select, proxies: [HK, JP, US, SG, TW, UN, DIRECT, Proxies], use: [SS+TLS]}
-  - {name: Telegram, type: select, proxies: [SG, Global, HK, JP, US, TW]}
-  - {name: AI, type: select, proxies: [US, Global, HK, JP, SG, TW]}
-  - {name: VPS, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW, UN]}
-  - {name: Emby, type: select, proxies: [DIRECT, 实验线路0.2X, Global], use: [SS+TLS]}
-  - {name: Apple, type: select, proxies: [DIRECT, Global, HK, JP, US, SG, TW]}
-  - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
-  - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, 高级线路, 标准线路, 实验线路0.2X, Proxies], use: [SS+TLS]}
   - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
+  - {name: Global, type: select, proxies: [HK, JP, US, SG, TW, UN, DIRECT, Proxies, Backup]}
+  - {name: 0.2X, type: select, filter: "实验", use: [Proxies]}
   - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [Proxies]}
+  - {name: Emby, type: select, proxies: [0.2X, Global, DIRECT]}
+  - {name: AI, type: select, proxies: [US, Global, HK, JP, SG, TW]}
+  - {name: Telegram, type: select, proxies: [Global, HK, JP, US, SG, TW]}
+  - {name: Apple, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, Global]}
+  - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
+  - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, Proxies]}
   - {name: HK, <<: *pg_ut, filter: "(香港).*(高级)", use: [Proxies]}
   - {name: JP, <<: *pg_ut, filter: "(日本).*(高级)", use: [Proxies]}
   - {name: US, <<: *pg_ut, filter: "(美国).*(高级)", use: [Proxies]}
   - {name: SG, <<: *pg_ut, filter: "(新加坡).*(高级)", use: [Proxies]}
   - {name: TW, <<: *pg_ut, filter: "(台湾).*(高级)", use: [Proxies]}
-  - {name: 高级线路, filter: "高级", type: select, use: [Proxies]} 
-  - {name: 标准线路, filter: "标准", type: select, use: [Proxies]} 
-  - {name: 实验线路0.2X, filter: "实验", type: select, use: [Proxies]} 
-  - {name: Proxies, type: select, use: [Proxies]} 
+  - {name: Proxies, type: select, use: [FlowerCloud]}
+  - {name: Backup, type: select, use: [PPDog]}
 # 规则订阅
 rule-providers:
   OpenAI: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/OpenAI.yaml"} 
@@ -382,22 +370,19 @@ rule-providers:
   SpeedtestInternational: {<<: *class_yaml, url: "https://kelee.one/Tool/Clash/Rule/SpeedtestInternational.yaml"}
   WeChat: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/WeChat.yaml"}
   IPTVMainland: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/IPTVMainland.yaml"}
+  STUN: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/STUN.yaml"}
   ChinaMax: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/ChinaMax.yaml"}
   IPTVOther: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/IPTVOther.yaml"}
   Global: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Global.yaml"}
 # 规则
 rules:
   # 白名单
-  - DOMAIN, feiyang.allinhub.dpdns.org, DIRECT
-  - DOMAIN, update.code.visualstudio.com, DIRECT
-  - DOMAIN-SUFFIX, msecnd.net, DIRECT
   - DOMAIN-SUFFIX, rztcd.com, DIRECT
   - DOMAIN-SUFFIX, cddyjy.com, DIRECT
   - DOMAIN-SUFFIX, bendibao.com, DIRECT
-  - DOMAIN-SUFFIX, cdrcbank.com, DIRECT
   - DOMAIN-SUFFIX, splashtop.com, DIRECT
   # 黑名单
-  - DOMAIN, img.noobzone.ru, GLOBAL
+  - DOMAIN, img.noobzone.ru, Global
   - DOMAIN, connect.garmin.com, Global
   - DOMAIN, sso.garmin.com, Global
   - DOMAIN-SUFFIX, mailjet.com, Global
@@ -405,20 +390,37 @@ rules:
   - DOMAIN-SUFFIX, oplist.org, Global
   - DOMAIN-SUFFIX, openlist.team, Global
   - DOMAIN-SUFFIX, readest.com, Global
-  - DOMAIN-SUFFIX, mcp.so, Global
   - DOMAIN-SUFFIX, nsloon.app, Global
   - DOMAIN-SUFFIX, kelee.one, Global
-  - DOMAIN-SUFFIX, annas-archive.org, Global
-  - DOMAIN-SUFFIX, firefly-iii.org, Global
-  - DOMAIN-SUFFIX, allinhub.dpdns.org, Global
-  - DOMAIN-SUFFIX, amysecure.com, Global
-  - DOMAIN-SUFFIX, paopao.dog, Global
-  - DOMAIN-SUFFIX, api-flowercloud.com, Global
+  - DOMAIN-SUFFIX, dpdns.org, Global
+  - DOMAIN-SUFFIX, kdns.fr, Global
   - DOMAIN-SUFFIX, rutracker.org, Global
   - DOMAIN-SUFFIX, linux.do, Global
-  - DOMAIN-SUFFIX, rclone.org, GLOBAL
+  - DOMAIN-SUFFIX, rclone.org, Global
+  - DOMAIN-SUFFIX, day.app, Global
+  - DOMAIN-SUFFIX, charliemonroe.net, Global
+  - DOMAIN-SUFFIX, serif.com, Global
+  - DOMAIN-SUFFIX, pixnoy.com, Global
+  - DOMAIN-SUFFIX, appraven.net, Global
+  - DOMAIN-SUFFIX, 5km.tech, Global
+  - DOMAIN-SUFFIX, egernapp.com, Global
+  - DOMAIN-SUFFIX, koofr.net, Global
+  - DOMAIN-SUFFIX, rssforever.com, Global
+  - DOMAIN-SUFFIX, oracle.com, Global
+  - DOMAIN-SUFFIX, mole.fit, Global
+  - DOMAIN-SUFFIX, opencode.ai, Global
+  # 机场
+  - DOMAIN-SUFFIX, paopao.dog, Global
+  - DOMAIN-SUFFIX, api-flowercloud.com, Global
+  - DOMAIN-SUFFIX, jwfq.com, Global
+  - DOMAIN-SUFFIX, ash.do, Global
   # Emby
-  - DOMAIN-SUFFIX, uhdnow.com, Emby
+  - DOMAIN, tv.ash.yt, Emby
+  - DOMAIN-SUFFIX, emby.moe, Emby
+  - DOMAIN-SUFFIX, xxlb.net, Emby
+  - DOMAIN-SUFFIX, loseremby.org, Emby
+  - DOMAIN-SUFFIX, zabc.net, Emby
+  - IP-CIDR, 154.12.52.149/25, Emby, no-resolve
   # JavBus
   - DOMAIN-SUFFIX, dmm.co.jp, JP
   - DOMAIN-SUFFIX, mgstage.com, JP
@@ -433,8 +435,10 @@ rules:
   - DOMAIN-SUFFIX, jav.guru, Global
   - DOMAIN-SUFFIX, netflav.com, Global
   - DOMAIN-SUFFIX, javday.tv, Global
-  # > VPS
-  - IP-CIDR, 152.70.91.193/32, VPS, no-resolve
+  - DOMAIN-SUFFIX, alonestreaming.com, Emby
+  - DOMAIN-SUFFIX, mushroomtrack.com, Emby
+  - DOMAIN-SUFFIX, phncdn.com, Emby
+  - DOMAIN-SUFFIX, cdn77.org, Emby
   # > AI
   - RULE-SET, OpenAI, AI
   - RULE-SET, Copilot, AI
@@ -459,6 +463,8 @@ rules:
   - RULE-SET, SpeedtestInternational, Speedtest
   # 微信
   - RULE-SET, WeChat, DIRECT
+  # STUN
+  - RULE-SET, STUN, DIRECT
   # China
   - RULE-SET, IPTVMainland, DIRECT
   - RULE-SET, ChinaMax, DIRECT
