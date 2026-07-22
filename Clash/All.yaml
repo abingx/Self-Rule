@@ -338,20 +338,20 @@ proxy-providers:
 proxy-groups:
   - {name: Final, type: select, proxies: [DIRECT, Global, REJECT]}
   - {name: Global, type: select, proxies: [HK, JP, US, SG, TW, UN, DIRECT, Proxies, Backup]}
-  - {name: 0.2X, type: select, filter: "实验", use: [Proxies]}
-  - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [Proxies]}
+  - {name: 0.2X, type: select, filter: "实验", use: [FlowerCloud]}
+  - {name: UN, type: select, filter: "^(?!.*?(香港|日本|新加坡|美国|台湾|实验)).*(标准)", use: [FlowerCloud]}
   - {name: Emby, type: select, proxies: [0.2X, Global, DIRECT]}
   - {name: AI, type: select, proxies: [US, Global, HK, JP, SG, TW]}
   - {name: Telegram, type: select, proxies: [Global, HK, JP, US, SG, TW]}
   - {name: Apple, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, Global]}
   - {name: OneDrive, type: select, proxies: [DIRECT, Global]}
   - {name: Speedtest, type: select, proxies: [DIRECT, HK, JP, US, SG, TW, UN, Proxies]}
-  - {name: HK, <<: *pg_ut, filter: "(香港).*(高级)", use: [Proxies]}
-  - {name: JP, <<: *pg_ut, filter: "(日本).*(高级)", use: [Proxies]}
-  - {name: US, <<: *pg_ut, filter: "(美国).*(高级)", use: [Proxies]}
-  - {name: SG, <<: *pg_ut, filter: "(新加坡).*(高级)", use: [Proxies]}
-  - {name: TW, <<: *pg_ut, filter: "(台湾).*(高级)", use: [Proxies]}
-  - {name: Proxies, type: select, use: [FlowerCloud]}
+  - {name: HK, <<: *pg_ut, filter: "(香港).*(高级)", use: [FlowerCloud]}
+  - {name: JP, <<: *pg_ut, filter: "(日本).*(高级)", use: [FlowerCloud]}
+  - {name: US, <<: *pg_ut, filter: "(美国).*(高级)", use: [FlowerCloud]}
+  - {name: SG, <<: *pg_ut, filter: "(新加坡).*(高级)", use: [FlowerCloud]}
+  - {name: TW, <<: *pg_ut, filter: "(台湾).*(高级)", use: [FlowerCloud]}
+  - {name: Proxies, type: select, filter: "^(?!.*(Traffic|Expire)).*", use: [FlowerCloud]}
   - {name: Backup, type: select, use: [PPDog]}
 # 规则订阅
 rule-providers:
