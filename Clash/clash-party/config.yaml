@@ -36,10 +36,7 @@ proxy-groups:
   - {name: Backup, type: select, use: [PPDog]}
 # 规则订阅
 rule-providers:
-  OpenAI: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/OpenAI.yaml"} 
-  Copilot: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Copilot.yaml"}
-  Gemini: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Gemini.yaml"}
-  Claude: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Claude.yaml"}
+  AI: {<<: *class_yaml, url: "https://kelee.one/Tool/Clash/Rule/AI.yaml"} 
   Lan: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Lan.yaml"}
   Fix: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Direct.yaml"}
   Bing: {<<: *class_yaml, url: "https://rule.kelee.one/Clash/Bing.yaml"}
@@ -121,10 +118,7 @@ rules:
   - DOMAIN-SUFFIX, phncdn.com, Emby
   - DOMAIN-SUFFIX, cdn77.org, Emby
   # > AI
-  - RULE-SET, OpenAI, AI
-  - RULE-SET, Copilot, AI
-  - RULE-SET, Gemini, AI
-  - RULE-SET, Claude, AI
+  - RULE-SET, AI, AI
   # 局域网
   - RULE-SET, Lan, DIRECT
   # 后续规则修正
