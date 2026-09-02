@@ -3,11 +3,10 @@
 
 import appui
 
-from core import cache
+from core import runtime
 from core import state as st
 from core.cache import img_src
 from core.config import APP_TITLE
-from parser.movies import fetch_actresses
 from ui import components
 from ui.detail import detail_destination, sample_destination
 from ui.sublist import cur_base, open_sub, sub_destination
@@ -31,13 +30,16 @@ def actress_cell(a):
     )
 
 
+def actress_url(page):
+    """女优列表分页 URL。"""
+    return cur_base().rstrip("/") + "/actresses/" + str(page)
+
+
 def load_actresses():
-    """重新加载女优第一页。"""
+    """重新加载女优第一页（后台抓取，不阻塞点击）。"""
     st.state.actress_page = 1
-    items = fetch_actresses(1, cur_base())
-    for it in items:
-        cache.request_img(it["img"])
-    st.state.actresses = items[:st.MAX_LIST_ITEMS]
+    st.state.actress_loading = True
+    runtime.request_page(actress_url(1), "actress")
 
 
 def load_actresses_once():
@@ -50,15 +52,11 @@ def load_actresses_once():
 
 
 def load_actresses_more():
-    """追加女优下一页。"""
+    """追加女优下一页（后台抓取，不阻塞点击）。"""
     if len(st.state.actresses) >= st.MAX_LIST_ITEMS:
         return
-    res = fetch_actresses(st.state.actress_page + 1, cur_base())
-    if res:
-        for it in res:
-            cache.request_img(it["img"], priority=True)
-        st.state.actress_page += 1
-        st.state.actresses = (st.state.actresses + res)[:st.MAX_LIST_ITEMS]
+    st.state.actress_loading = True
+    runtime.request_page(actress_url(st.state.actress_page + 1), "actress", append=True)
 
 
 def actress_page():
@@ -72,6 +70,7 @@ def actress_page():
                     spacing=10,
                     content=[actress_cell(a) for a in st.state.actresses],
                 ),
+                appui.ProgressView().frame(height=16 if st.state.actress_loading else 0),
                 appui.Button("加载更多", action=load_actresses_more),
             ], spacing=10).padding()
         ).refreshable(action=load_actresses)

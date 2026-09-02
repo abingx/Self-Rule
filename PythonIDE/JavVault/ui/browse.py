@@ -5,11 +5,10 @@ from urllib.parse import quote
 
 import appui
 
-from core import cache
+from core import runtime
 from core import state as st
 from core.config import APP_TITLE, BASE
 from core.net import fill_base
-from parser.movies import fetch_movie_page
 from ui import components
 from ui.detail import detail_destination, sample_destination
 from ui.sublist import cur_base, sub_destination
@@ -26,25 +25,19 @@ def movie_url(page):
 
 
 def load_first():
-    """同步加载第一页（启动/切码等场景；与原始可用版本一致）。"""
+    """加载第一页（后台抓取，不再阻塞点击）。"""
     st.state.movies_page = 1
-    res = fetch_movie_page(movie_url(1), st.state.all_flag)
-    st.state.movies = (res if res != "empty" else [])[:st.MAX_LIST_ITEMS]
-    for m in st.state.movies:
-        cache.request_img(m["img"])
+    st.state.browse_loading = True
+    runtime.request_page(movie_url(1), "browse", all_flag=st.state.all_flag)
 
 
 def load_more():
-    """同步加载下一页并追加。"""
+    """追加下一页（后台抓取）。"""
     if len(st.state.movies) >= st.MAX_LIST_ITEMS:
         return
-    res = fetch_movie_page(movie_url(st.state.movies_page + 1), st.state.all_flag)
-    if res != "empty":
-        st.state.movies_page += 1
-        st.state.movies = (st.state.movies + res)[:st.MAX_LIST_ITEMS]
-        for m in res:
-            # 新追加的封面优先下载，避免排在旧封面队列之后导致迟迟不显示
-            cache.request_img(m["img"], priority=True)
+    st.state.browse_loading = True
+    runtime.request_page(movie_url(st.state.movies_page + 1), "browse",
+                         append=True, all_flag=st.state.all_flag)
 
 
 def switch_censor(idx):
@@ -86,6 +79,7 @@ def browse_page():
                     spacing=10,
                     content=[components.movie_cell(m, st.PATH_BROWSE) for m in st.state.movies],
                 ),
+                appui.ProgressView().frame(height=16 if st.state.browse_loading else 0),
                 appui.Button("加载更多", action=load_more),
             ], spacing=12).padding()
         )

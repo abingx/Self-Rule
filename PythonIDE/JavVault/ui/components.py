@@ -41,10 +41,10 @@ def movie_cell(m, path=None, before_open=None):
     )
 
 
-def movie_grid(items, on_more, path=None):
+def movie_grid(items, on_more, path=None, loading=False):
     """统一的影片封面网格（各 tab / 子作品列表共用外观）。"""
     if path is None:
-        path = st.get_active_path()
+        path = st.PATH_BROWSE
     return appui.ScrollView(
         appui.VStack([
             appui.LazyVGrid(
@@ -52,6 +52,7 @@ def movie_grid(items, on_more, path=None):
                 spacing=10,
                 content=[movie_cell(m, path) for m in items],
             ),
+            appui.ProgressView().frame(height=16 if loading else 0),
             appui.Button("加载更多", action=on_more),
         ], spacing=12).padding()
     )
@@ -60,7 +61,7 @@ def movie_grid(items, on_more, path=None):
 def sample_cell(s):
     """详情页样片缩略图（点击查看大图）。"""
     def open():
-        actions.show_sample(s["link"], s["link"], st.get_active_path())
+        actions.show_sample(s["link"], s["link"])
 
     return (
         appui.AsyncImage(url=img_src(s["img"]))

@@ -3,9 +3,9 @@
 
 import appui
 
+from core import runtime
 from core import state as st
 from core.config import APP_TITLE
-from parser.movies import fetch_genres
 from ui import components
 from ui.detail import detail_destination, sample_destination
 from ui.sublist import open_cat, sub_destination
@@ -23,8 +23,9 @@ def genre_cell(c):
 
 
 def load_genres():
-    """重新加载全部分类。"""
-    st.state.genres = fetch_genres()
+    """重新加载全部分类（后台抓取，不阻塞点击）。"""
+    st.state.genre_loading = True
+    runtime.request_page("", "genre")
 
 
 def load_genres_once():
@@ -48,6 +49,7 @@ def genre_page():
             content=[genre_cell(c) for c in group["cats"]],
         ))
         sections.append(appui.VStack(parts, spacing=8))
+    sections.append(appui.ProgressView().frame(height=16 if st.state.genre_loading else 0))
     return appui.NavigationStack(
         appui.ScrollView(
             appui.VStack(sections, spacing=4).padding()

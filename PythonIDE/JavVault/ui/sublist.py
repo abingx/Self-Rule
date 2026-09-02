@@ -2,11 +2,12 @@
 """子作品列表：女优作品、分类作品、详情筛选共用的一套页面与动作。"""
 
 from core import cache
+from core import runtime
 from core import state as st
 from core.config import BASE
 from core.net import fill_base
-from parser.movies import fetch_movie_page
 from ui import components
+from ui.actions import record_nav_action
 
 
 def cur_base():
@@ -21,32 +22,27 @@ def sub_url(page):
 
 
 def load_sub_first():
-    """重新加载子作品列表第一页。"""
+    """重新加载子作品列表第一页（后台抓取，不阻塞点击）。"""
     st.state.sub_page = 1
-    res = fetch_movie_page(sub_url(1), st.state.all_flag)
-    st.state.sub_movies = (res if res != "empty" else [])[:st.MAX_LIST_ITEMS]
-    for m in st.state.sub_movies:
-        cache.request_img(m["img"])
+    st.state.sub_loading = True
+    runtime.request_page(sub_url(1), "sub", all_flag=st.state.all_flag)
 
 
 def load_sub_more():
-    """追加子作品列表下一页。"""
+    """追加子作品列表下一页（后台抓取）。"""
     if len(st.state.sub_movies) >= st.MAX_LIST_ITEMS:
         return
-    res = fetch_movie_page(sub_url(st.state.sub_page + 1), st.state.all_flag)
-    if res != "empty":
-        st.state.sub_page += 1
-        st.state.sub_movies = (st.state.sub_movies + res)[:st.MAX_LIST_ITEMS]
-        for m in res:
-            cache.request_img(m["img"], priority=True)
+    st.state.sub_loading = True
+    runtime.request_page(sub_url(st.state.sub_page + 1), "sub", append=True,
+                         all_flag=st.state.all_flag)
 
 
 def open_sub(path, link, title):
-    """在当前导航栈内 push 一个子作品列表。"""
-    st.set_active_path(path)
+    """在指定导航栈内 push 一个子作品列表。"""
     st.state.sub_title = title
     st.state.sub_link = link
-    st.state.sub_page = 0
+    st.SUB_PATH = path
+    record_nav_action()
     load_sub_first()
     path.append({"tag": "sub"})
 
@@ -62,11 +58,12 @@ def open_filter(link, title):
         st.state.status = "无该字段链接"
         st.state.reload += 1
         return
-    open_sub(st.get_active_path(), link, title)
+    # 只在详情自己的栈内 push，绝不依赖全局活跃栈（跨 tab 时会推错栈）
+    open_sub(st.DETAIL_PATH, link, title)
 
 
 def sub_destination(data):
     """子作品列表页（女优作品、分类作品共用外观）。"""
-    return components.movie_grid(st.state.sub_movies, load_sub_more, st.get_active_path()) \
+    return components.movie_grid(st.state.sub_movies, load_sub_more, st.SUB_PATH, st.state.sub_loading) \
         .navigation_title(st.state.sub_title) \
         .refreshable(action=load_sub_first)

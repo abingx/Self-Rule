@@ -29,7 +29,7 @@ state = appui.State(
     actress_page=1,
     genres=[],
     detail=None,
-    detail_open=False,
+    detail_open=False,      # 详情页当前是否仍在导航栈顶（返回/关闭时由 on_disappear 置 False）
     detail_error=False,
     detail_thumb="",        # 打开详情时列表项自带的缩略图（收藏封面用，详情抓取后保留）
     panel="",
@@ -39,6 +39,10 @@ state = appui.State(
     tab=0,
     reload=0,
     status="",
+    browse_loading=False,   # 影片 tab 列表后台抓取中
+    sub_loading=False,      # 子作品列表后台抓取中
+    actress_loading=False,  # 女优列表后台抓取中
+    genre_loading=False,    # 分类后台抓取中
 )
 
 # 每个 tab 独立的导航栈（详情 / 子列表用 NavigationPath 推送，避免 body 重建丢失路由）
@@ -61,3 +65,10 @@ def set_active_path(path):
 def get_active_path():
     """返回当前活跃的导航栈。"""
     return ACTIVE_PATH
+
+
+# 每个"可推入内容"记住自己所属的导航栈：push/pop 只操作自己的栈，
+# 与当前活跃 tab / ACTIVE_PATH 完全解耦，杜绝跨 tab 推错栈导致的乱跳。
+DETAIL_PATH = PATH_BROWSE   # 当前详情页所属栈
+DETAIL_OPEN_AT = 0.0        # 最近一次进入详情的时刻（详情提交避开返回转场用）
+SUB_PATH = PATH_BROWSE      # 当前子列表所属栈

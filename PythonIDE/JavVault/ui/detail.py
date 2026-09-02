@@ -12,8 +12,8 @@ from ui.sublist import open_filter
 
 
 def detail_destination(data):
-    """路由：详情页。"""
-    return detail_view()
+    """路由：详情页。挂 on_disappear 感知用户离开，防止后台提交撞上返回转场。"""
+    return detail_view().on_disappear(action=actions.on_detail_closed)
 
 
 def _loading_view(d):

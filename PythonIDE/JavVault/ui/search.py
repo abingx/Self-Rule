@@ -5,10 +5,10 @@ from urllib.parse import quote
 
 import appui
 
-from core import cache
+from core import runtime
 from core import state as st
 from core.config import APP_TITLE
-from parser.movies import fetch_movie_page, norm_keyword
+from parser.movies import norm_keyword
 from ui import components
 from ui.detail import detail_destination, sample_destination
 from ui.sublist import cur_base, sub_destination
@@ -26,18 +26,10 @@ def search_url(page):
 
 
 def _search_load_first():
-    """加载搜索第一页。"""
+    """加载搜索第一页（后台抓取）。"""
     st.state.search_page = 1
-    res = fetch_movie_page(search_url(1), st.state.all_flag)
-    if res == "empty":
-        st.state.search_movies = []
-        st.state.search_empty = True
-    else:
-        st.state.search_movies = res[:st.MAX_LIST_ITEMS]
-        st.state.search_empty = False
-    st.state.search_loading = False
-    for m in st.state.search_movies:
-        cache.request_img(m["img"])
+    st.state.search_loading = True
+    runtime.request_page(search_url(1), "search", all_flag=st.state.all_flag)
 
 
 def do_search():
@@ -53,15 +45,12 @@ def do_search():
 
 
 def load_search_more():
-    """追加搜索下一页。"""
+    """追加搜索下一页（后台抓取）。"""
     if len(st.state.search_movies) >= st.MAX_LIST_ITEMS:
         return
-    res = fetch_movie_page(search_url(st.state.search_page + 1), st.state.all_flag)
-    if res != "empty":
-        st.state.search_page += 1
-        st.state.search_movies = (st.state.search_movies + res)[:st.MAX_LIST_ITEMS]
-        for m in res:
-            cache.request_img(m["img"], priority=True)
+    st.state.search_loading = True
+    runtime.request_page(search_url(st.state.search_page + 1), "search",
+                         append=True, all_flag=st.state.all_flag)
 
 
 def search_page():
@@ -85,6 +74,7 @@ def search_page():
         content.append(grid)
     if st.state.search_movies and not st.state.search_empty:
         content.append(appui.Button("加载更多", action=load_search_more))
+    content.append(appui.ProgressView().frame(height=16 if st.state.search_loading else 0))
     body_v = appui.VStack([
         components.app_header(),
         appui.HStack([

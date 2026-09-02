@@ -4,6 +4,7 @@
 import clipboard
 import shortcuts
 import threading
+import time
 from urllib.parse import quote
 
 from core import runtime
@@ -14,33 +15,62 @@ from data import shelf
 from parser.sources import fetch_avgle, fetch_jable
 
 
+def record_nav_action():
+    """任何点击引起的导航/面板转场前调用：开启转场静默窗，
+    期间所有后台定时刷新（图片去抖、详情提交、列表提交）暂缓，
+    使快速点击 / 跨 tab 点击也不会有 reload 打断转场动画。"""
+    runtime.note_nav_action()
+
+
 def open_detail(movie, path=None):
     """打开影片详情：登记后台抓取并在给定导航栈内 push 详情页。
 
     movie: 必含 code / img / link；path 缺省用影片 tab 的导航栈。
+    上次已抓过同一番号、或后台已抓完但用户已返回的，直接复用数据秒开，
+    不再发请求。
     """
     log("open_detail: " + movie["link"])
-    st.state.detail = {
-        "_loading": True,
-        "code": movie["code"],
-        "cover": movie["img"],
-        "name": movie.get("title", ""),
-        "link": movie["link"],
-    }
-    # 固化列表项缩略图（与首页一致封面），收藏时零请求写入收藏记录；
-    # 不随详情 dict 替换而丢失（详情抓取完成会用新 dict 覆盖 detail）。
     st.state.detail_thumb = movie.get("img") or ""
     st.state.detail_error = False
     st.state.panel = ""
     st.state.panel_title = ""
     st.state.play = ""
     st.state.status = ""
-    runtime.request_detail(movie["link"])
-    # 用 NavigationPath 推送详情（稳定路由 ID，body 重建不会破坏 push）
+
+    link = movie["link"]
+    ready = runtime.take_ready(link)
+    cur = st.state.detail
+    if ready:
+        st.state.detail = ready
+    elif (cur and cur.get("link") == link
+          and not cur.get("_loading") and not cur.get("error")):
+        st.state.detail = cur
+    else:
+        st.state.detail = {
+            "_loading": True,
+            "code": movie["code"],
+            "cover": movie["img"],
+            "name": movie.get("title", ""),
+            "link": link,
+        }
+        runtime.request_detail(link)
+    # 详情页在栈中，后台提交可以放心触发刷新；返回后 on_disappear 会复位。
+    st.state.detail_open = True
+    st.DETAIL_OPEN_AT = time.time()
     if path is None:
         path = st.PATH_BROWSE
+    # 记住详情属于哪个栈：之后详情内的筛选/大图 push/pop 都只操作这个栈，
+    # 与全局 ACTIVE_PATH、当前 tab 完全解耦，避免跨 tab 乱跳
+    st.DETAIL_PATH = path
     st.set_active_path(path)
+    record_nav_action()
     path.append({"tag": "detail"})
+
+
+def on_detail_closed():
+    """详情页被返回/关闭：复位标志 + 开启转场静默窗，后台提交转为静默。"""
+    st.state.detail_open = False
+    runtime.note_nav_action()
 
 
 def close_detail():
@@ -166,16 +196,18 @@ def play_missav_preview():
 
 def show_sample(img, link, path=None):
     """点击样片查看大图（在详情所在 NavigationStack 内 push，保持详情滚动位置）。"""
-    st.state.sample_preview = link
     if path is None:
-        path = st.PATH_BROWSE
+        path = st.DETAIL_PATH   # 样片只从详情进入：用它自己的栈，不依赖全局活跃栈
+    st.state.sample_preview = link
+    record_nav_action()
     path.append({"tag": "sample"})
 
 
 def close_sample():
     """关闭大图视图并回到详情。"""
-    ap = st.get_active_path()
+    ap = st.DETAIL_PATH
     if ap:
+        record_nav_action()
         ap.pop(count=1)
     st.state.sample_preview = ""
 

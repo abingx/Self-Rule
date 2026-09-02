@@ -32,6 +32,7 @@ def start():
     state.cat_link = ""
     state.cat_title = ""
     state.detail = None
+    state.detail_open = False
     state.detail_error = False
     state.panel = ""
     state.panel_title = ""
@@ -43,6 +44,10 @@ def start():
     state.sub_movies = []
     state.search_movies = []
     state.search_keyword = ""
+    state.browse_loading = False
+    state.sub_loading = False
+    state.actress_loading = False
+    state.genre_loading = False
     # 各 tab 导航栈回到根
     PATH_BROWSE.pop_to_root()
     PATH_ACT.pop_to_root()
