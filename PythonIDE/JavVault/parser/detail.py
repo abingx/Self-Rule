@@ -90,7 +90,8 @@ def fetch_detail(url):
                                    "img": fill_base(img.group(1)) if img else ""})
     for i in re.findall(r'<a class="sample-box" href="([^"]*)"[\s\S]*?<img src="([^"]*)"', html, re.S):
         d["samples"].append({"link": i[0], "img": i[1]})
-    d["magnets"] = fetch_magnets(d["code"])
+    # 完整视频走 Jable m3u8，磁链用不到；跳过 fetch_magnets 的第二次串行请求，
+    # 详情只等一页 HTML 即返回，加载更快。
     # Fanza 预告：原 JS 将第一个 "-" 替换为 "00" 后拼接
     code = d["code"].lower()
     fanza = code.replace("-", "00", 1)

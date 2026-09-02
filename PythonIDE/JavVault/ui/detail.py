@@ -16,6 +16,39 @@ def detail_destination(data):
     return detail_view()
 
 
+def _loading_view(d):
+    """详情加载中的占位视图：有封面则立刻展示真实布局骨架，无封面回退纯进度条。"""
+    code = d.get("code") or ""
+    name = d.get("name") or ""
+    cover = d.get("cover") or ""
+    if not cover:
+        return appui.VStack([
+            appui.ProgressView(),
+            appui.Text("加载中..." + name).foreground_color("secondaryLabel"),
+        ], spacing=12).padding()
+
+    info = appui.VStack([
+        appui.Text(code).font("title3").bold(),
+        appui.Text(name).font("caption").foreground_color("secondaryLabel").line_limit(2),
+        appui.HStack([
+            appui.ProgressView().frame(height=14),
+            appui.Text("正在加载详情...").font("caption").foreground_color("secondaryLabel"),
+        ], spacing=6),
+    ], spacing=4, alignment="leading")
+
+    header = appui.HStack([
+        appui.AsyncImage(url=img_src(cover))
+            .frame(width=160, height=108).clipped()
+            .background("secondarySystemBackground", corner_radius=8),
+        info,
+    ], spacing=12)
+
+    return appui.List([
+        appui.Section([header.padding()]),
+        appui.Section([appui.ProgressView()], header="详情"),
+    ]).navigation_title(code)
+
+
 def sample_destination(data):
     """路由：大图页。"""
     return sample_preview_view()
@@ -27,10 +60,9 @@ def detail_view():
     if not d:
         return appui.Text("载入中...")
     if d.get("_loading"):
-        return appui.VStack([
-            appui.ProgressView(),
-            appui.Text("加载中...").foreground_color("secondaryLabel"),
-        ], spacing=12).padding()
+        # 占位骨架：进入页面瞬间先用列表项已有的封面/番号/片名撑满布局，
+        # 剩余资料在此后进行补全，视觉上"秒进"。
+        return _loading_view(d)
     if d.get("error"):
         return appui.VStack([
             appui.Text("加载失败，请返回重试").foreground_color("secondaryLabel"),
