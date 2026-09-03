@@ -363,19 +363,13 @@ MAX_LIST_ITEMS = 1000
 
 # 全局界面状态（唯一实例，由 main.py 传入 appui.run）
 state = appui.State(
-    censor=0,           # 0 有码 1 无码
     all_flag=False,
-    mode="home",        # home / search / cat
+    mode="home",        # home 首页 / search 首页内搜索（共用 movies 列表）
     keyword="",
     cat_link="",
     cat_title="",
     movies=[],
     movies_page=1,
-    search_keyword="",
-    search_movies=[],
-    search_page=1,
-    search_empty=False,
-    search_loading=False,
     sub_title="",
     sub_link="",
     sub_movies=[],
@@ -404,7 +398,6 @@ state = appui.State(
 PATH_BROWSE = appui.NavigationPath()
 PATH_ACT = appui.NavigationPath()
 PATH_CAT = appui.NavigationPath()
-PATH_SEARCH = appui.NavigationPath()
 PATH_SHELF = appui.NavigationPath()
 
 # 详情/大图当前所在的导航栈（跨模块共享，通过函数读写避免 stale 引用）
@@ -561,7 +554,7 @@ def fetch_movie_page(url, all_flag=False):
     return parse_movies(html)
 
 def fetch_actresses(page, homepage):
-    """抓取女优一页（homepage 为当前有码/无码基础路径）。"""
+    """抓取女优一页（homepage 为站点基础路径）。"""
     url = homepage.rstrip("/") + "/actresses/" + str(page)
     html = get(url)
     if not html:
@@ -898,7 +891,7 @@ def _page_worker(url, kind, append, all_flag, seq):
             page = int(page)
         except Exception:
             page = 0
-        home = BASE.rstrip("/") + ("/uncensored/" if state.censor == 1 else "/")
+        home = BASE + "/"
         args = (page, home)
     else:
         fetcher = fetch_movie_page
@@ -906,7 +899,7 @@ def _page_worker(url, kind, append, all_flag, seq):
     try:
         result = fetcher(*args)
     except Exception:
-        result = "empty" if kind in ("browse", "sub", "search") else []
+        result = "empty" if kind in ("browse", "sub") else []
     if seq == _PAGE_SEQ:
         _PAGE_READY = (kind, append, result)
 
@@ -944,21 +937,6 @@ def _commit_page():
             for m in items:
                 request_img(m["img"], priority=append)
             state.sub_loading = False
-        elif kind == "search":
-            items = (res if res != "empty" else [])[:MAX_LIST_ITEMS]
-            if res == "empty":
-                state.search_empty = True
-            elif append:
-                if items:
-                    state.search_page += 1
-                    state.search_movies = (state.search_movies + items)[:MAX_LIST_ITEMS]
-            else:
-                state.search_page = 1
-                state.search_movies = items
-                state.search_empty = False
-            for m in items:
-                request_img(m["img"], priority=append)
-            state.search_loading = False
         elif kind == "actress":
             items = (res if isinstance(res, list) else [])[:MAX_LIST_ITEMS]
             if append:
@@ -1364,7 +1342,6 @@ def movie_grid(items, on_more, path=None, loading=False):
                 spacing=10,
                 content=[movie_cell(m, path) for m in items],
             ),
-            appui.ProgressView().frame(height=16 if loading else 0),
             appui.Button("加载更多", action=on_more),
         ], spacing=12).padding()
     )
@@ -1397,8 +1374,8 @@ def magnet_row(m):
 
 
 def cur_base():
-    """当前有码/无码模式的基础路径。"""
-    return BASE + "/uncensored/" if state.censor == 1 else BASE + "/"
+    """站点基础路径。"""
+    return BASE + "/"
 
 def sub_url(page):
     """子作品列表分页 URL。"""
@@ -1691,12 +1668,12 @@ def sample_preview_view():
 
 
 # ============================================================
-#  UI 层：影片 tab
+#  UI 层：影片 tab（首页 + 搜索框，搜索与首页共用结果列表）
 # ============================================================
 
 
 def movie_url(page):
-    """首页/搜索/分类共用的分页地址组装。"""
+    """首页/搜索共用的分页地址组装。"""
     h = cur_base()
     if state.mode == "search":
         return h + "search/" + quote(state.keyword) + "/" + str(page)
@@ -1705,7 +1682,7 @@ def movie_url(page):
     return h + "page/" + str(page)
 
 def load_first():
-    """加载第一页（后台抓取，不再阻塞点击）。"""
+    """加载第一页（后台抓取，不阻塞点击）。"""
     state.movies_page = 1
     state.browse_loading = True
     request_page(movie_url(1), "browse", all_flag=state.all_flag)
@@ -1716,46 +1693,55 @@ def load_more():
         return
     state.browse_loading = True
     request_page(movie_url(state.movies_page + 1), "browse",
-                         append=True, all_flag=state.all_flag)
+                 append=True, all_flag=state.all_flag)
 
-def switch_censor(idx):
-    """切换有码/无码并回到首页。"""
-    state.censor = idx
-    state.mode = "home"
-    state.keyword = ""
+def set_home_kw(v):
+    """首页搜索框输入回调：写入搜索关键词。"""
+    state.keyword = v
+
+def do_search():
+    """在首页发起搜索：进入 search 模式并加载第一页（结果渲染在首页同一网格）。"""
+    kw = norm_keyword(state.keyword)
+    state.keyword = kw
+    if not kw:
+        clear_search()
+        return
+    state.mode = "search"
+    state.movies = []
+    state.reload += 1
     load_first()
 
-def set_censor0():
-    switch_censor(0)
-
-def set_censor1():
-    switch_censor(1)
-
-def toggle_all(v):
-    """全量开关（含无码与否的 legacy 开关）。"""
-    state.all_flag = v
+def clear_search():
+    """退出搜索，回到首页影片列表。"""
+    state.keyword = ""
+    state.mode = "home"
+    state.movies = []
+    state.reload += 1
     load_first()
 
 def browse_page():
-    """影片 tab 根页面。"""
+    """影片 tab 根页面：版本号下方放搜索框；搜索与首页共用下方影片网格。"""
+    field = (appui.TextField("番号或演员", text=state.keyword, on_change=set_home_kw)
+             .text_field_style("rounded_border")
+             .on_submit(do_search))
+    buttons = [appui.Button("搜索", action=do_search).button_style("bordered_prominent")]
+    if state.mode == "search":
+        buttons.append(appui.Button("取消", action=clear_search).button_style("bordered"))
+    search_row = appui.HStack([field, *buttons], spacing=8)
+
+    content = [app_header(), search_row]
+    if state.mode == "search" and not state.movies and not state.browse_loading:
+        content.append(appui.Text("未找到结果").foreground_color("secondaryLabel"))
+    if state.movies:
+        content.append(appui.LazyVGrid(
+            columns=[appui.adaptive(minimum=104)],
+            spacing=10,
+            content=[movie_cell(m, PATH_BROWSE) for m in state.movies],
+        ))
+        content.append(appui.Button("加载更多", action=load_more))
     return appui.NavigationStack(
         appui.ScrollView(
-            appui.VStack([
-                app_header(),
-                appui.HStack([
-                    appui.Button("有码", action=set_censor0)
-                        .button_style("bordered" if state.censor != 0 else "bordered_prominent"),
-                    appui.Button("无码", action=set_censor1)
-                        .button_style("bordered" if state.censor != 1 else "bordered_prominent"),
-                ], spacing=10),
-                appui.LazyVGrid(
-                    columns=[appui.adaptive(minimum=104)],
-                    spacing=10,
-                    content=[movie_cell(m, PATH_BROWSE) for m in state.movies],
-                ),
-                appui.ProgressView().frame(height=16 if state.browse_loading else 0),
-                appui.Button("加载更多", action=load_more),
-            ], spacing=12).padding()
+            appui.VStack(content, spacing=12).padding()
         )
         .refreshable(action=load_first)
         .navigation_title(APP_TITLE),
@@ -1824,7 +1810,6 @@ def actress_page():
                     spacing=10,
                     content=[actress_cell(a) for a in state.actresses],
                 ),
-                appui.ProgressView().frame(height=16 if state.actress_loading else 0),
                 appui.Button("加载更多", action=load_actresses_more),
             ], spacing=10).padding()
         ).refreshable(action=load_actresses)
@@ -1876,7 +1861,6 @@ def genre_page():
             content=[genre_cell(c) for c in group["cats"]],
         ))
         sections.append(appui.VStack(parts, spacing=8))
-    sections.append(appui.ProgressView().frame(height=16 if state.genre_loading else 0))
     return appui.NavigationStack(
         appui.ScrollView(
             appui.VStack(sections, spacing=4).padding()
@@ -1886,89 +1870,6 @@ def genre_page():
                       "sample": sample_destination,
                       "sub": sub_destination},
     ).on_appear(action=load_genres_once)
-
-
-# ============================================================
-#  UI 层：搜索 tab
-# ============================================================
-
-
-def set_search(v):
-    """输入框回调：写入搜索关键词。"""
-    state.search_keyword = v
-
-def search_url(page):
-    """搜索分页地址。"""
-    h = cur_base()
-    return h + "search/" + quote(state.search_keyword) + "/" + str(page)
-
-def _search_load_first():
-    """加载搜索第一页（后台抓取）。"""
-    state.search_page = 1
-    state.search_loading = True
-    request_page(search_url(1), "search", all_flag=state.all_flag)
-
-def do_search():
-    """发起搜索（规整关键词后加载第一页）。"""
-    kw = norm_keyword(state.search_keyword)
-    state.search_keyword = kw
-    state.search_movies = []
-    state.search_page = 0
-    state.search_empty = False
-    state.search_loading = True
-    _search_load_first()
-    state.reload += 1
-
-def load_search_more():
-    """追加搜索下一页（后台抓取）。"""
-    if len(state.search_movies) >= MAX_LIST_ITEMS:
-        return
-    state.search_loading = True
-    request_page(search_url(state.search_page + 1), "search",
-                         append=True, all_flag=state.all_flag)
-
-def search_page():
-    """搜索 tab 根页面。"""
-    def submit():
-        do_search()
-
-    content = []
-    if not state.search_movies and not state.search_loading:
-        if state.search_keyword:
-            content.append(appui.Text("未找到结果").foreground_color("secondaryLabel"))
-        else:
-            content.append(appui.Text("输入番号或演员进行搜索")
-                           .foreground_color("secondaryLabel"))
-    if state.search_movies:
-        grid = appui.LazyVGrid(
-            columns=[appui.adaptive(minimum=104)],
-            spacing=10,
-            content=[movie_cell(m, PATH_SEARCH) for m in state.search_movies],
-        )
-        content.append(grid)
-    if state.search_movies and not state.search_empty:
-        content.append(appui.Button("加载更多", action=load_search_more))
-    content.append(appui.ProgressView().frame(height=16 if state.search_loading else 0))
-    body_v = appui.VStack([
-        app_header(),
-        appui.HStack([
-            appui.TextField("番号或演员", text=state.search_keyword, on_change=set_search)
-                .text_field_style("rounded_border")
-                .on_submit(submit),
-            appui.Button("搜索", action=do_search).button_style("bordered_prominent"),
-        ], spacing=8),
-        *content,
-    ], spacing=12).padding()
-
-    return appui.NavigationStack(
-        appui.ScrollView(body_v)
-        .refreshable(action=do_search)
-        .navigation_title(APP_TITLE),
-        path=PATH_SEARCH,
-        destinations={"detail": detail_destination,
-                      "sample": sample_destination,
-                      "sub": sub_destination},
-    ).id("search")
 
 
 # ============================================================
@@ -2160,7 +2061,6 @@ def start():
     reset_pending()
     # 清掉上次会话的搜索/分类/详情/播放状态
     state.tab = 0
-    state.censor = 0
     state.mode = "home"
     state.keyword = ""
     state.cat_link = ""
@@ -2176,8 +2076,6 @@ def start():
     state.movies_page = 1
     state.actress_page = 1
     state.sub_movies = []
-    state.search_movies = []
-    state.search_keyword = ""
     state.browse_loading = False
     state.sub_loading = False
     state.actress_loading = False
@@ -2186,19 +2084,17 @@ def start():
     PATH_BROWSE.pop_to_root()
     PATH_ACT.pop_to_root()
     PATH_CAT.pop_to_root()
-    PATH_SEARCH.pop_to_root()
     PATH_SHELF.pop_to_root()
     load_first()
 
 def make_body():
-    """组装五个 tab。"""
+    """组装四个 tab。"""
     return appui.TabView(
         tabs=[
             appui.Tab("影片", system_image="play.rectangle", content=browse_page(), tag=0),
             appui.Tab("女优", system_image="person.2", content=actress_page(), tag=1),
             appui.Tab("分类", system_image="tag", content=genre_page(), tag=2),
-            appui.Tab("搜索", system_image="magnifyingglass", content=search_page(), tag=3),
-            appui.Tab("收藏", system_image="star", content=shelf_page(), tag=4),
+            appui.Tab("收藏", system_image="star", content=shelf_page(), tag=3),
         ],
         selection=state.bind.tab,
     )
