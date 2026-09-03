@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-#  JavBus 播放器 · PythonIDE AppUI  (单文件版)
+#  JavBus 播放器 · PythonIDE AppUI  
 #  移植自 JSBox 版 (核心功能 + 多源预览)
 #  数据来源: https://www.javbus.com
-#  所有代码已合并进 main.py：基础层 / 解析层 / 数据层 / UI 层
 # ============================================================
 
 import json
@@ -17,7 +16,7 @@ import zlib
 from collections import OrderedDict
 import datetime
 import re
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 import network
 import appui
@@ -98,20 +97,6 @@ def fill_base(src):
         return src
     return BASE + src
 
-def is_video_url(url):
-    """探测 URL 是否指向可直接播放的视频（用于 Missav 预览校验）。"""
-    try:
-        with network.stream("GET", url, headers=dict(HEADERS), timeout=12) as resp:
-            if not resp.ok:
-                return False
-            h = resp.headers or {}
-            ct = (h.get("content-type") or h.get("Content-Type") or "").lower()
-            return "video/mp4" in ct or "application/octet-stream" in ct
-    except Exception as e:
-        log("is_video err: " + str(e))
-        return False
-
-
 # ============================================================
 #  基础层：封面后台下载与磁盘/内存缓存
 # ============================================================
@@ -119,6 +104,11 @@ def is_video_url(url):
 
 # 已成功下载到磁盘的 url（有界，防止长时间运行持续占用内存）
 _DOWNLOADED = OrderedDict()
+# img_src 结果缓存：src -> "file://" 本地路径。路径恒定、首建即存在，
+# 缓存后可避免整树重建时为每个单元格重复做 md5 + 文件系统访问
+# （iOS 低性能 Python 环境下列表重建收益明显）。
+_SRC_CACHE = {}
+_SRC_CACHE_MAX = 4096
 # 待下载队列和成功记录的内存上限
 MAX_QUEUE = 1024
 MAX_DOWNLOADED = 2048
@@ -132,8 +122,8 @@ _DOWNLOAD_ATTEMPTS = {}
 _QUEUED = []
 # 队列锁
 _LOCK = threading.Lock()
-# 并发下载线程数
-WORKERS = 4
+# 并发下载线程数：iOS 低配机降低并发，避免瞬时下载风暴抢占主线程/造成卡顿
+WORKERS = 3
 # 本次循环中是否有图片下载完成（主线程据此决定是否刷新列表）
 _RELOAD_DIRTY = False
 # 最近一次图片下载活动时刻（用于去抖：一段时间无新下载完成才刷新）
@@ -270,9 +260,13 @@ def img_src(src):
 
     未下载完成时显示占位色块，下载完成后路径相同、文件被真实封面原子替换，
     由一次去抖 reload 触发 AsyncImage 重新读取；url 不变故不会闪烁。
+    结果按 src 缓存，重复重建不再做 md5/stat/写盘。
     """
     if not src:
         return ""
+    hit = _SRC_CACHE.get(src)
+    if hit:
+        return hit
     url = _to_abs(src)
     path = _local_path(url)
     if not os.path.exists(path):
@@ -283,6 +277,10 @@ def img_src(src):
                 f.write(_placeholder_bytes())
         except Exception:
             pass
+    if os.path.exists(path):
+        if len(_SRC_CACHE) >= _SRC_CACHE_MAX:
+            _SRC_CACHE.clear()
+        _SRC_CACHE[src] = "file://" + path
     return "file://" + path
 
 def _worker():
@@ -367,7 +365,6 @@ state = appui.State(
     mode="home",        # home 首页 / search 首页内搜索（共用 movies 列表）
     keyword="",
     cat_link="",
-    cat_title="",
     movies=[],
     movies_page=1,
     sub_title="",
@@ -379,7 +376,6 @@ state = appui.State(
     genres=[],
     detail=None,
     detail_open=False,      # 详情页当前是否仍在导航栈顶（返回/关闭时由 on_disappear 置 False）
-    detail_error=False,
     detail_thumb="",        # 打开详情时列表项自带的缩略图（收藏封面用，详情抓取后保留）
     panel="",
     panel_title="",
@@ -391,7 +387,6 @@ state = appui.State(
     browse_loading=False,   # 影片 tab 列表后台抓取中
     sub_loading=False,      # 子作品列表后台抓取中
     actress_loading=False,  # 女优列表后台抓取中
-    genre_loading=False,    # 分类后台抓取中
 )
 
 # 每个 tab 独立的导航栈（详情 / 子列表用 NavigationPath 推送，避免 body 重建丢失路由）
@@ -401,19 +396,8 @@ PATH_CAT = appui.NavigationPath()
 PATH_SHELF = appui.NavigationPath()
 
 # 详情/大图当前所在的导航栈（跨模块共享，通过函数读写避免 stale 引用）
-ACTIVE_PATH = PATH_BROWSE
-
-def set_active_path(path):
-    """切换到目标导航栈（详情、筛选列表在当前栈内 push）。"""
-    global ACTIVE_PATH
-    ACTIVE_PATH = path
-
-def get_active_path():
-    """返回当前活跃的导航栈。"""
-    return ACTIVE_PATH
-
 # 每个"可推入内容"记住自己所属的导航栈：push/pop 只操作自己的栈，
-# 与当前活跃 tab / ACTIVE_PATH 完全解耦，杜绝跨 tab 推错栈导致的乱跳。
+# 与当前活跃 tab 完全解耦，杜绝跨 tab 推错栈导致的乱跳。
 DETAIL_PATH = PATH_BROWSE   # 当前详情页所属栈
 DETAIL_OPEN_AT = 0.0        # 最近一次进入详情的时刻（详情提交避开返回转场用）
 SUB_PATH = PATH_BROWSE      # 当前子列表所属栈
@@ -424,15 +408,26 @@ SUB_PATH = PATH_BROWSE      # 当前子列表所属栈
 # ============================================================
 
 
-BACKUP_FILE = os.path.join(os.getcwd(), "JavVault_Backup.json")
-_NEEDS_SAVE = False
+# 收藏持久化文件（放在 MiniApp 包目录，便于同步与备份）
+FAV_FILE = os.path.join(os.getcwd(), "favorites.json")
+# 旧版备份文件名：首次运行时把已有收藏迁移到 favorites.json
+_LEGACY_FAV_FILE = os.path.join(os.getcwd(), "JavVault_Backup.json")
+def _fav_path():
+    """返回收藏文件路径；若旧版文件仍存在则先迁移到新文件名。"""
+    if not os.path.exists(FAV_FILE) and os.path.exists(_LEGACY_FAV_FILE):
+        try:
+            os.replace(_LEGACY_FAV_FILE, FAV_FILE)
+        except Exception:
+            pass
+    return FAV_FILE
+
 
 def load_shelf():
-    """从备份文件读取收藏数据；文件缺失/损坏时返回空结构。"""
-    global _NEEDS_SAVE
+    """从收藏文件读取数据；文件缺失/损坏时返回空结构。"""
     try:
-        if os.path.exists(BACKUP_FILE):
-            with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+        path = _fav_path()
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         else:
             data = {"fav": []}
@@ -457,17 +452,14 @@ def load_shelf():
 SHELF = load_shelf()
 
 def save_shelf():
-    """原子写回备份文件（先写临时文件再替换）。"""
+    """原子写回收藏文件（先写临时文件再替换）。"""
     try:
-        tmp = BACKUP_FILE + ".tmp"
+        tmp = FAV_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(SHELF, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, BACKUP_FILE)
+        os.replace(tmp, FAV_FILE)
     except Exception as e:
         log("save_shelf err: " + str(e))
-
-if _NEEDS_SAVE:
-    save_shelf()
 
 def in_fav(code):
     """判断番号是否已收藏。"""
@@ -493,17 +485,6 @@ def add_fav(code, img=""):
 def remove_fav(code):
     """按番号移除收藏。"""
     SHELF["fav"] = [x for x in SHELF["fav"] if x.get("code") != code]
-
-def set_fav_img(code, img):
-    """为缺失封面的收藏补全 img（低频补全成功后回写并落盘）。返回是否更新。"""
-    if not img:
-        return False
-    for item in SHELF["fav"]:
-        if item.get("code") == code and not item.get("img"):
-            item["img"] = img
-            save_shelf()
-            return True
-    return False
 
 def toggle_bookmark(d, img=""):
     """切换收藏状态并保存；d 为当前详情 dict。img 为列表缩略图（零请求缓存封面）。"""
@@ -587,37 +568,10 @@ def fetch_genres():
                            "cats": [{"link": l, "name": n} for l, n in cats]})
     return groups
 
-def fetch_actress_movies(url):
-    """抓取某女优的作品列表。"""
-    return parse_movies(get(url))
-
-
 # ============================================================
-#  解析层：影片详情页与磁链
+#  解析层：影片详情页
 # ============================================================
 
-
-def fetch_magnets(code):
-    """按番号请求磁链 AJAX 接口，解析出磁链列表。"""
-    if not code:
-        return []
-    url = BASE + "/uncledatoolsbyajax.php?lang=cn&code=" + quote(code)
-    html = get(url)
-    mags = []
-    if not html:
-        return mags
-    for i in re.findall(r"<tr onmouseover[\s\S]*?</tr>", html, re.S):
-        m = re.search(r"window\.open\('([^']*)'", i)
-        if not m:
-            continue
-        maglink = m.group(1)
-        m_name = re.search(r"dn=(.*)", maglink)
-        size_m = re.findall(r"href[\s\S]*?>([^<]*)</a>", i)
-        mags.append({"info": maglink,
-                     "name": unquote(m_name.group(1)) if m_name else "",
-                     "size": size_m[1].strip() if len(size_m) > 1 else "",
-                     "time": size_m[2].strip() if len(size_m) > 2 else ""})
-    return mags
 
 def fetch_detail(url):
     """抓取并解析详情页，返回完整详情 dict（含磁链与预告地址）。"""
@@ -677,8 +631,7 @@ def fetch_detail(url):
                                    "img": fill_base(img.group(1)) if img else ""})
     for i in re.findall(r'<a class="sample-box" href="([^"]*)"[\s\S]*?<img src="([^"]*)"', html, re.S):
         d["samples"].append({"link": i[0], "img": i[1]})
-    # 完整视频走 Jable m3u8，磁链用不到；跳过 fetch_magnets 的第二次串行请求，
-    # 详情只等一页 HTML 即返回，加载更快。
+    # 完整视频走 Jable m3u8，详情只需请求一页 HTML 即可返回。
     # Fanza 预告：原 JS 将第一个 "-" 替换为 "00" 后拼接
     code = d["code"].lower()
     fanza = code.replace("-", "00", 1)
@@ -747,32 +700,12 @@ def fetch_jable(code):
         log("jable err: " + str(e))
         return "", ""
 
-def fetch_avgle(code):
-    """Avgle 预览：返回 preview_video_url；失败返回 ''。"""
-    try:
-        url = ("https://api.avgle.com/v1/search/" + quote(code) +
-               "/0?limit=5&t=a&o=bw")
-        resp = network.get(url, headers=dict(HEADERS), timeout=8)
-        if not resp or not resp.ok:
-            return ""
-        data = resp.json()
-        if not data.get("success"):
-            return ""
-        videos = data.get("response", {}).get("videos", [])
-        if videos:
-            return videos[0].get("preview_video_url", "")
-        return ""
-    except Exception:
-        return ""
-
-
 # ============================================================
 #  调度层：后台任务（详情 / 列表抓取、图片刷新、播放提交）
 # ============================================================
 
 
 # 详情抓取请求/结果（由后台线程写入，主线程 _sync_dirty 提交）
-_DETAIL_REQUEST = None     # 待抓取详情链接
 _DETAIL_READY = None       # 已抓取的详情 dict
 _DETAIL_ERROR = False
 _DETAIL_SEQ = 0            # 使旧详情线程的结果失效
@@ -781,31 +714,38 @@ _DETAIL_SEQ = 0            # 使旧详情线程的结果失效
 # 期间所有后台驱动的整树刷新（图片去抖、详情提交、列表提交）暂缓，
 # 使快速点击 / 跨 tab 点击也不会出现 reload 打断转场动画的乱跳。
 _RELOAD_SILENT_UNTIL = 0.0
-_NAV_SILENCE = 0.5         # 秒；导航转场动画约 0.35s，留 0.15s 余量即可
+_NAV_SILENCE = 0.8         # 秒；iOS 转场动画比 macOS 略长，放宽静默窗避免撞上动画
+
+# tab 切换宽限期：切 tab 后的一段时间内不整树刷新，
+# 避免新 tab 大树刚挂载/动画期间被 reload 打断导致卡顿。
+_LAST_TAB = -1
+_LAST_TAB_SWITCH = 0.0
+TAB_RELOAD_GRACE = 0.6
 
 # 播放请求（后台抓取成功后由主线程提交给播放器）
 _PLAY_REQUEST = None       # (url, title, source)
 _PLAY_ERROR = ""           # 后台抓取失败时的提示
 
-# 图片刷新：下载完成后需静默多久才整树重建（去抖，防止闪烁）
+# 图片刷新：下载完成后需静默多久才整树重建（去抖，防止闪烁）。
+# 数值偏大以压低 iOS 上整树重建频率（每次 reload 都会重建全部 tab）。
 _LAST_IMG_RELOAD = 0.0
-IMG_SILENCE_INTERVAL = 0.5
-IMG_MAX_RELOAD_INTERVAL = 2.0
+IMG_SILENCE_INTERVAL = 0.9
+IMG_MAX_RELOAD_INTERVAL = 3.0
 # 任意两次整树刷新之间的最小间隔（压住下载风暴期高频刷新，
 # 大幅降低刷新撞上返回转场窗口的概率）
-IMG_RELOAD_MIN_GAP = 1.2
-# 详情页打开期间 overdue 触发刷新的最大等待：详情页读图不急于整树重建，
-# 避免 20 张大图下载期间反复刷新导致持续闪烁
-IMG_MAX_RELOAD_LONG = 8.0
+IMG_RELOAD_MIN_GAP = 2.0
+# 详情页打开期间：overdue 触发刷新的最大等待，及两次刷新的最小间隔。
+# 详情页大图/样图/头像成批下载，阅读期间用更长间隔，避免反复整树重建卡顿。
+IMG_MAX_RELOAD_LONG = 6.0
+IMG_RELOAD_MIN_GAP_DETAIL = 2.5
 
 _BG_STARTED = False
 
 def request_detail(link):
     """登记详情抓取请求并启动后台线程。"""
-    global _DETAIL_REQUEST, _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ
+    global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ
     _DETAIL_SEQ += 1
     seq = _DETAIL_SEQ
-    _DETAIL_REQUEST = link
     _DETAIL_READY = None
     _DETAIL_ERROR = False
     threading.Thread(target=_detail_worker, args=(link, seq), daemon=True).start()
@@ -815,12 +755,11 @@ def take_ready(link):
 
     失败结果的详情不返回：重进时走重新抓取。取走后清除，避免下次误复用。
     """
-    global _DETAIL_READY, _DETAIL_REQUEST
+    global _DETAIL_READY
     if _DETAIL_READY and _DETAIL_READY.get("link") == link \
             and not _DETAIL_READY.get("error"):
         r = _DETAIL_READY
         _DETAIL_READY = None
-        _DETAIL_REQUEST = None
         return r
     return None
 
@@ -839,8 +778,8 @@ def reload_allowed():
 
 # 详情提交专用门控：只避开"返回转场"。进入详情超过 _DETAIL_SAFE_AFTER 后，
 # 顶部视图上整树刷新与转场动画不再冲突，抓取一完成即可立刻提交，
-# 不再被进入时的静默窗拖慢。
-_DETAIL_SAFE_AFTER = 0.5
+# 不再被进入时的静默窗拖慢。取值略大于 push 动画时长即可。
+_DETAIL_SAFE_AFTER = 0.6
 
 def detail_commit_allowed():
     """详情提交是否允许立即刷新（已避开所有转场窗口）。"""
@@ -865,16 +804,14 @@ def _detail_worker(link, seq):
             _DETAIL_ERROR = True
 
 # 列表页抓取（影片 / 子列表 / 女优 / 分类共用后台通道）
-_PAGE_REQUEST = None       # (url, kind, append, all_flag)
 _PAGE_READY = None         # (kind, append, result)
 _PAGE_SEQ = 0
 
 def request_page(url, kind, append=False, all_flag=False):
     """登记列表页抓取请求并启动后台线程（主线程不再同步阻塞网络）。"""
-    global _PAGE_REQUEST, _PAGE_READY, _PAGE_SEQ
+    global _PAGE_READY, _PAGE_SEQ
     _PAGE_SEQ += 1
     seq = _PAGE_SEQ
-    _PAGE_REQUEST = (url, kind, append, all_flag)
     _PAGE_READY = None
     threading.Thread(target=_page_worker, args=(url, kind, append, all_flag, seq), daemon=True).start()
 
@@ -905,11 +842,10 @@ def _page_worker(url, kind, append, all_flag, seq):
 
 def _commit_page():
     """主线程 Timer：提交后台抓回的列表页数据（转场静默窗内暂缓）。"""
-    global _PAGE_READY, _PAGE_REQUEST
+    global _PAGE_READY
     if _PAGE_READY is not None:
         kind, append, res = _PAGE_READY
         _PAGE_READY = None
-        _PAGE_REQUEST = None
         if not reload_allowed():
             _PAGE_READY = (kind, append, res)
             return
@@ -951,7 +887,6 @@ def _commit_page():
             state.actress_loading = False
         elif kind == "genre":
             state.genres = res if isinstance(res, list) else []
-            state.genre_loading = False
         state.reload += 1
 
 def set_play_request(url, title, source):
@@ -966,7 +901,7 @@ def set_play_error(message):
     _PLAY_REQUEST = None
     _PLAY_ERROR = message
 
-def play_url(url, title="", referer=None, source=""):
+def play_url(url, title="", source=""):
     """直接播放 URL（与原始 JS play(url) 一致）。source 标记当前来源用于按键高亮。"""
     log("play: " + str(title) + " -> " + str(url)[:120])
     state.panel = url
@@ -978,35 +913,47 @@ def play_url(url, title="", referer=None, source=""):
 def _sync_dirty():
     """主线程周期任务：图片刷新 + 播放请求 + 详情提交。"""
     global _PLAY_REQUEST, _PLAY_ERROR, _LAST_IMG_RELOAD
+    global _LAST_TAB, _LAST_TAB_SWITCH
+    now = time.time()
+    # 记录 tab 切换时刻：切 tab 后的宽限期内不做整树刷新，
+    # 避免新 tab 大树挂载/切换动画期间被 reload 打断造成卡顿。
+    if state.tab != _LAST_TAB:
+        _LAST_TAB = state.tab
+        _LAST_TAB_SWITCH = now
+    settled = reload_allowed() and (now - _LAST_TAB_SWITCH) >= TAB_RELOAD_GRACE
     # 图片刷新用"去抖"：下载高峰期间不刷新，等这一批全部下载完、静默一段
     # 时间后再整树重建一次，避免多张封面连续完成导致列表不停闪烁。
     if is_dirty():
-        now = time.time()
         quiet = now - last_activity() >= IMG_SILENCE_INTERVAL
-        # 详情页打开期间：overdue 用长间隔，避免下载风暴反复整树重建
-        max_wait = IMG_MAX_RELOAD_LONG if state.detail_open else IMG_MAX_RELOAD_INTERVAL
+        detail = state.detail_open
+        # 详情页打开期间：overdue / 两次刷新最小间隔都用更长值，
+        # 大图/样图/头像成批下载时避免反复整树重建导致阅读卡顿
+        max_wait = IMG_MAX_RELOAD_LONG if detail else IMG_MAX_RELOAD_INTERVAL
+        min_gap = IMG_RELOAD_MIN_GAP_DETAIL if detail else IMG_RELOAD_MIN_GAP
         overdue = now - _LAST_IMG_RELOAD >= max_wait
-        if (quiet or overdue) and reload_allowed() \
-                and now - _LAST_IMG_RELOAD >= IMG_RELOAD_MIN_GAP:
+        if (quiet or overdue) and settled and now - _LAST_IMG_RELOAD >= min_gap:
             clear_dirty()
             _LAST_IMG_RELOAD = now
             state.reload += 1
     # 提交后台线程抓到的待播放链接（转场静默窗内暂缓，避免撞上返回动画）
-    if _PLAY_REQUEST and reload_allowed():
+    if _PLAY_REQUEST and settled:
         url, title, source = _PLAY_REQUEST
         _PLAY_REQUEST = None
         state.status = ""
         play_url(url, title, source=source)
-    elif _PLAY_ERROR and reload_allowed():
+    elif _PLAY_ERROR and settled:
         state.status = _PLAY_ERROR
         _PLAY_ERROR = ""
         state.reload += 1
-    _commit_page()
+    if settled:
+        _commit_page()
+    # 详情提交不受 settled 门控：进入详情后只要过了转场安全窗就立刻提交，
+    # 让详情内容尽快填上（抓取完成越早，进入体验越快）。
     _commit_detail()
 
 def _commit_detail():
     """主线程 Timer：若后台详情已就绪则提交到 state。"""
-    global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_REQUEST
+    global _DETAIL_READY, _DETAIL_ERROR
     if _DETAIL_READY is not None:
         d = _DETAIL_READY
         _DETAIL_READY = None
@@ -1016,10 +963,8 @@ def _commit_detail():
         if not state.detail_open:
             if cur and cur.get("link") == d.get("link"):
                 _DETAIL_READY = d
-                _DETAIL_REQUEST = None
             return
         # 若用户已切换到别的详情，则不强制覆盖当前占位
-        _DETAIL_REQUEST = None
         if cur and cur.get("link") != d.get("link"):
             return
         # 详情提交只避开"返回转场"；仍在详情阅读中则立即提交，不拖慢展示
@@ -1057,7 +1002,6 @@ def _commit_detail():
         state.reload += 1
     elif _DETAIL_ERROR:
         _DETAIL_ERROR = False
-        _DETAIL_REQUEST = None
         log("detail fetch error")
         # 用户已返回：静默丢弃错误（重进会重新抓取），不触发整树刷新
         if not state.detail_open:
@@ -1070,9 +1014,8 @@ def _commit_detail():
 
 def reset_pending():
     """冷启动清空所有后台待办。"""
-    global _DETAIL_REQUEST, _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
+    global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
     _DETAIL_SEQ += 1
-    _DETAIL_REQUEST = None
     _DETAIL_READY = None
     _DETAIL_ERROR = False
     _PLAY_REQUEST = None
@@ -1086,19 +1029,13 @@ def init_background():
     _BG_STARTED = True
     # 多线程并发下载 + 主线程周期刷新
     start_workers()
-    appui.Timer(interval=0.4, action=_sync_dirty).start()
+    appui.Timer(interval=0.5, action=_sync_dirty).start()
 
 
 # ============================================================
 #  UI 层：业务动作（打开详情 / 播放 / 复制 / 收藏）
 # ============================================================
 
-
-def record_nav_action():
-    """任何点击引起的导航/面板转场前调用：开启转场静默窗，
-    期间所有后台定时刷新（图片去抖、详情提交、列表提交）暂缓，
-    使快速点击 / 跨 tab 点击也不会有 reload 打断转场动画。"""
-    note_nav_action()
 
 def open_detail(movie, path=None):
     """打开影片详情：登记后台抓取并在给定导航栈内 push 详情页。
@@ -1108,16 +1045,21 @@ def open_detail(movie, path=None):
     不再发请求。
     """
     log("open_detail: " + movie["link"])
-    state.detail_thumb = movie.get("img") or ""
-    state.detail_error = False
-    state.panel = ""
-    state.panel_title = ""
-    state.play = ""
-    state.status = ""
+    global DETAIL_OPEN_AT, DETAIL_PATH
+    thumb = movie.get("img") or ""
+    if state.detail_thumb != thumb:
+        state.detail_thumb = thumb
+    # 避免点击详情时无条件写入多个 State 字段，减少 iOS 上的重复 body 重建。
+    if state.panel or state.panel_title or state.play or state.status:
+        state.panel = ""
+        state.panel_title = ""
+        state.play = ""
+        state.status = ""
 
     link = movie["link"]
     ready = take_ready(link)
     cur = state.detail
+    need_fetch = False
     if ready:
         state.detail = ready
     elif (cur and cur.get("link") == link
@@ -1131,7 +1073,7 @@ def open_detail(movie, path=None):
             "name": movie.get("title", ""),
             "link": link,
         }
-        request_detail(link)
+        need_fetch = True
     # 详情页在栈中，后台提交可以放心触发刷新；返回后 on_disappear 会复位。
     state.detail_open = True
     DETAIL_OPEN_AT = time.time()
@@ -1140,18 +1082,16 @@ def open_detail(movie, path=None):
     # 记住详情属于哪个栈：之后详情内的筛选/大图 push/pop 都只操作这个栈，
     # 与全局 ACTIVE_PATH、当前 tab 完全解耦，避免跨 tab 乱跳
     DETAIL_PATH = path
-    set_active_path(path)
-    record_nav_action()
+    note_nav_action()
     path.append({"tag": "detail"})
+    # 先完成 iOS 导航转场，再启动网络线程，避免点击时被请求初始化拖慢。
+    if need_fetch:
+        request_detail(link)
 
 def on_detail_closed():
     """详情页被返回/关闭：复位标志 + 开启转场静默窗，后台提交转为静默。"""
     state.detail_open = False
     note_nav_action()
-
-def close_detail():
-    """保留占位（详情返回由系统导航处理）。"""
-    pass
 
 def clear_panel():
     """关闭当前播放器。"""
@@ -1193,8 +1133,7 @@ def copy_video_link():
 def play_trailer():
     """播放 Fanza 预告。"""
     if state.detail and state.detail.get("trailer"):
-        play_url(state.detail["trailer"], "Fanza 预告",
-                         "https://www.dmm.co.jp/", source="预告")
+        play_url(state.detail["trailer"], "Fanza 预告", source="预告")
 
 def _spawn_play_fetch(task, fetching_msg, fail_msg):
     """启动后台抓取任务；成功后 set_play_request，失败 set_play_error。
@@ -1237,42 +1176,19 @@ def play_jable():
 
     _spawn_play_fetch(_fetch, "正在获取 Jable 完整视频...", "Jable 未找到完整视频")
 
-def play_avgle():
-    """播放 Avgle 预览。"""
-    code = state.detail.get("code") if state.detail else ""
-    if not code:
-        return
-
-    def _fetch():
-        url = fetch_avgle(code)
-        return (url, "Avgle 预览", "预览") if url else None
-
-    _spawn_play_fetch(_fetch, "正在获取 Avgle 预览...", "Avgle 无预览")
-
-def play_missav_preview():
-    """播放 Missav 预览（先探测 URL 是否为视频）。"""
-    if not (state.detail and state.detail.get("trailer2")):
-        return
-    url = state.detail["trailer2"]
-
-    def _fetch():
-        return (url, "Missav 预览", "预览") if is_video_url(url) else None
-
-    _spawn_play_fetch(_fetch, "正在获取 Missav 预览...", "Missav 预览不可用")
-
-def show_sample(img, link, path=None):
+def show_sample(link, path=None):
     """点击样片查看大图（在详情所在 NavigationStack 内 push，保持详情滚动位置）。"""
     if path is None:
         path = DETAIL_PATH   # 样片只从详情进入：用它自己的栈，不依赖全局活跃栈
     state.sample_preview = link
-    record_nav_action()
+    note_nav_action()
     path.append({"tag": "sample"})
 
 def close_sample():
     """关闭大图视图并回到详情。"""
     ap = DETAIL_PATH
     if ap:
-        record_nav_action()
+        note_nav_action()
         ap.pop(count=1)
     state.sample_preview = ""
 
@@ -1283,10 +1199,6 @@ def copy_code():
         clipboard.set(code)
         state.status = "番号 " + code + " 已复制"
         state.reload += 1
-
-def copy_magnet(mag):
-    """复制磁链地址。"""
-    clipboard.set(mag["info"])
 
 def toggle_fav():
     """切换当前详情的收藏状态并落盘。"""
@@ -1331,7 +1243,7 @@ def movie_cell(m, path=None, before_open=None):
         ], spacing=3).on_tap(open).id(_cell_id(m))
     )
 
-def movie_grid(items, on_more, path=None, loading=False):
+def movie_grid(items, on_more, path=None):
     """统一的影片封面网格（各 tab / 子作品列表共用外观）。"""
     if path is None:
         path = PATH_BROWSE
@@ -1349,7 +1261,7 @@ def movie_grid(items, on_more, path=None, loading=False):
 def sample_cell(s):
     """详情页样片缩略图（点击查看大图）。"""
     def open():
-        show_sample(s["link"], s["link"])
+        show_sample(s["link"])
 
     return (
         appui.AsyncImage(url=img_src(s["img"]))
@@ -1379,7 +1291,6 @@ def cur_base():
 
 def sub_url(page):
     """子作品列表分页 URL。"""
-    h = cur_base()
     return fill_base(state.sub_link) + ("/" if not state.sub_link.endswith("/") else "") + str(page)
 
 def load_sub_first():
@@ -1401,7 +1312,7 @@ def open_sub(path, link, title):
     state.sub_title = title
     state.sub_link = link
     SUB_PATH = path
-    record_nav_action()
+    note_nav_action()
     load_sub_first()
     path.append({"tag": "sub"})
 
@@ -1420,7 +1331,7 @@ def open_filter(link, title):
 
 def sub_destination(data):
     """子作品列表页（女优作品、分类作品共用外观）。"""
-    return movie_grid(state.sub_movies, load_sub_more, SUB_PATH, state.sub_loading) \
+    return movie_grid(state.sub_movies, load_sub_more, SUB_PATH) \
         .navigation_title(state.sub_title) \
         .refreshable(action=load_sub_first)
 
@@ -1567,7 +1478,7 @@ def detail_view():
             appui.Text(state.status).font("caption").foreground_color("secondaryLabel"),
         ], spacing=4)
 
-    def filter_row(label, value, link):
+    def filter_row(value, link):
         def open():
             open_filter(link, value)
 
@@ -1583,7 +1494,7 @@ def detail_view():
         return appui.HStack([
             appui.Text(label).font("body").foreground_color("secondaryLabel"),
             appui.Spacer(min_length=8),
-            filter_row(label, value, link),
+            filter_row(value, link),
         ], spacing=8)
 
     def cat_chip(genre):
@@ -1838,7 +1749,6 @@ def genre_cell(c):
 
 def load_genres():
     """重新加载全部分类（后台抓取，不阻塞点击）。"""
-    state.genre_loading = True
     request_page("", "genre")
 
 def load_genres_once():
@@ -2064,10 +1974,8 @@ def start():
     state.mode = "home"
     state.keyword = ""
     state.cat_link = ""
-    state.cat_title = ""
     state.detail = None
     state.detail_open = False
-    state.detail_error = False
     state.panel = ""
     state.panel_title = ""
     state.play = ""
@@ -2079,7 +1987,6 @@ def start():
     state.browse_loading = False
     state.sub_loading = False
     state.actress_loading = False
-    state.genre_loading = False
     # 各 tab 导航栈回到根
     PATH_BROWSE.pop_to_root()
     PATH_ACT.pop_to_root()
