@@ -1233,15 +1233,16 @@ def movie_cell(m, path=None, before_open=None):
             before_open()
         open_detail(m, path)
 
-    return (
-        appui.VStack([
+    return appui.Button(
+        action=open,
+        content=appui.VStack([
             appui.AsyncImage(url=img_src(m["img"]))
                 .frame(height=165).clipped()
                 .background("secondarySystemBackground", corner_radius=6),
             appui.Text(m["code"]).font("caption").line_limit(1),
             appui.Text(m["date"]).font("caption2").foreground_color("secondaryLabel"),
-        ], spacing=3).on_tap(open).id(_cell_id(m))
-    )
+        ], spacing=3),
+    ).button_style("plain").id(_cell_id(m))
 
 def movie_grid(items, on_more, path=None):
     """统一的影片封面网格（各 tab / 子作品列表共用外观）。"""
@@ -1263,12 +1264,12 @@ def sample_cell(s):
     def open():
         show_sample(s["link"])
 
-    return (
-        appui.AsyncImage(url=img_src(s["img"]))
+    return appui.Button(
+        action=open,
+        content=appui.AsyncImage(url=img_src(s["img"]))
             .frame(height=110).clipped()
-            .background("secondarySystemBackground", corner_radius=6)
-            .on_tap(open)
-    )
+            .background("secondarySystemBackground", corner_radius=6),
+    ).button_style("plain")
 
 def magnet_row(m):
     """磁链行（左滑可复制）。"""
@@ -1676,14 +1677,15 @@ def actress_cell(a):
     def open():
         open_sub(PATH_ACT, a["link"], a["name"])
 
-    return (
-        appui.VStack([
+    return appui.Button(
+        action=open,
+        content=appui.VStack([
             appui.AsyncImage(url=img_src(a["img"]))
                 .frame(height=130).clipped()
                 .background("secondarySystemBackground", corner_radius=6),
             appui.Text(a["name"]).font("caption").line_limit(1),
-        ], spacing=3).on_tap(open).id(a.get("link") or a.get("name") or "")
-    )
+        ], spacing=3),
+    ).button_style("plain").id(a.get("link") or a.get("name") or "")
 
 def actress_url(page):
     """女优列表分页 URL。"""
