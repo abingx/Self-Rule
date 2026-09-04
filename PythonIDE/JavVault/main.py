@@ -2186,7 +2186,11 @@ def detail_page_view():
         .navigation_title("")
 
 def sample_preview_view():
-    """样片大图浏览：左右滑动可依次查看其他样片，关闭按钮略微上移。"""
+    """样片大图浏览：左右滑动查看其他样片。
+
+    页码指示器紧贴图片下方（独占一行），关闭按钮单独放在底部，
+    两者不再同排，避免互相挤占。
+    """
     samples = (state.detail or {}).get("samples") or []
     pages = []
     for i, s in enumerate(samples):
@@ -2198,19 +2202,20 @@ def sample_preview_view():
     if not pages:
         return appui.VStack([
             appui.Text("没有样片").foreground_color("secondaryLabel"),
-            appui.Button("关闭", action=close_sample).padding(bottom=24),
-        ], spacing=12)
+            appui.Button("关闭", action=close_sample),
+        ], spacing=12).padding(bottom=24)
     index = max(0, min(int(state.sample_index), len(pages) - 1))
-    return appui.VStack([
+    gallery = appui.VStack([
         appui.TabView(tabs=pages, selection=state.bind.sample_index)
             .tab_view_style("page")
             .frame(max_width=appui.infinity, max_height=appui.infinity),
-        appui.HStack([
-            appui.Text(str(index + 1) + " / " + str(len(pages)))
-                .font("caption").foreground_color("secondaryLabel"),
-            appui.Button("关闭", action=close_sample).padding(bottom=24),
-        ], spacing=12),
-    ], spacing=12)
+        appui.Text(str(index + 1) + " / " + str(len(pages)))
+            .font("caption").foreground_color("secondaryLabel"),
+    ], spacing=6)
+    return appui.VStack([
+        gallery,
+        appui.Button("关闭", action=close_sample),
+    ], spacing=14).padding(bottom=24)
 
 
 # ============================================================
