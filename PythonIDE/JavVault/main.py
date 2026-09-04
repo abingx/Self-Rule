@@ -1927,8 +1927,12 @@ def genre_display(vid):
         sections.append(appui.VStack(parts, spacing=8))
     return appui.VStack(sections, spacing=4).padding()
 
-def display_page_view(vid):
-    """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。"""
+def display_page_view(vid, titled=True):
+    """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
+
+    titled=False 用于各 tab 根页：不显示顶部标题；
+    推入的跳转列表仍保留标题（作为页面说明与返回键文字）。
+    """
     v = VIEWS.get(vid)
     if not v:
         return appui.Text("")
@@ -1940,7 +1944,9 @@ def display_page_view(vid):
     sv = appui.ScrollView(content)
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
-    return sv.navigation_title(view_title(vid))
+    if titled:
+        sv = sv.navigation_title(view_title(vid))
+    return sv
 
 
 # ============================================================
@@ -2235,7 +2241,7 @@ _LIST_DESTINATIONS = {"detail": detail_destination,
 
 def movies_tab():
     return appui.NavigationStack(
-        display_page_view(HOME_VID),
+        display_page_view(HOME_VID, titled=False),
         path=PATH_MOVIES,
         destinations=_LIST_DESTINATIONS,
     ).id("movies")
@@ -2243,7 +2249,7 @@ def movies_tab():
 def actress_tab():
     """女优 tab：头像网格 + 翻页，点击进入该女优的作品列表。"""
     return appui.NavigationStack(
-        display_page_view(ACTRESS_VID),
+        display_page_view(ACTRESS_VID, titled=False),
         path=PATH_ACT,
         destinations=_LIST_DESTINATIONS,
     ).on_appear(action=load_actresses_once).id("actress")
@@ -2251,7 +2257,7 @@ def actress_tab():
 def genre_tab():
     """类型 tab：按主题分组的分类按钮，点击进入该分类的影片列表。"""
     return appui.NavigationStack(
-        display_page_view(GENRE_VID),
+        display_page_view(GENRE_VID, titled=False),
         path=PATH_GENRE,
         destinations=_LIST_DESTINATIONS,
     ).on_appear(action=load_genres_once).id("genre")
@@ -2259,7 +2265,7 @@ def genre_tab():
 def fav_tab():
     """收藏 tab：封面网格 + 翻页，长按可从收藏移除。"""
     return appui.NavigationStack(
-        display_page_view(FAV_VID),
+        display_page_view(FAV_VID, titled=False),
         path=PATH_FAV,
         destinations=_LIST_DESTINATIONS,
     ).id("fav")
@@ -2314,7 +2320,7 @@ def settings_tab():
                 appui.LabeledContent("数据来源", value="javbus.com"),
             ], header="关于",
                footer="JavBus.js移植版"),
-        ]).navigation_title("设置"),
+        ]),
         path=PATH_SETTINGS,
     ).id("settings")
 
