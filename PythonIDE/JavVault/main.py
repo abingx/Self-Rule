@@ -330,6 +330,9 @@ state = appui.State(
     panel="",
     panel_title="",
     play="",                # 当前播放来源："" / 预览 / 预告 / 完整视频
+    src_preview="",         # 详情页预览链接（进入详情即并行预取，空表示还没取到）
+    src_trailer="",         # 详情页预告链接
+    src_video="",           # 详情页完整视频链接
     sample_index=0,         # 样片大图当前页（可左右滑动翻看）
     show_page_input=False,  # 页码跳转弹层（由原生 coordinator 快路径呈现/关闭）
     name_text="",           # 详情页标题的中文译文（空表示尚未翻译完成）
@@ -699,6 +702,20 @@ def fetch_genres():
                            "cats": [{"link": l, "name": n} for l, n in cats]})
     return groups
 
+def build_trailer_urls(code):
+    """按番号拼出候选预告链接：DMM 优先，eightcha 兜底。"""
+    c = str(code or "").strip().lower()
+    if not c:
+        return []
+    urls = []
+    fanza = c.replace("-", "00", 1)
+    if fanza:
+        urls.append("https://cc3001.dmm.co.jp/litevideo/freepv/"
+                    + fanza[0] + "/" + fanza[:3] + "/" + fanza
+                    + "/" + fanza + "_sm_w.mp4")
+        urls.append("https://eightcha.com/" + c + "/preview.mp4")
+    return urls
+
 def fetch_detail(url):
     """抓取并解析详情页，返回完整详情 dict。"""
     d = {"code": "", "name": "", "cover": "", "time": "????-??-??",
@@ -763,12 +780,11 @@ def fetch_detail(url):
                                    "img": fill_base(img.group(1)) if img else ""})
     for i in re.findall(r'<a class="sample-box" href="([^"]*)"[\s\S]*?<img src="([^"]*)"', html, re.S):
         d["samples"].append({"link": i[0], "img": i[1]})
-    code = d["code"].lower()
-    fanza = code.replace("-", "00", 1)
-    if fanza:
-        d["trailer"] = (f"https://cc3001.dmm.co.jp/litevideo/freepv/{fanza[0]}/"
-                        f"{fanza[:3]}/{fanza}/{fanza}_sm_w.mp4")
-        d["trailer2"] = "https://eightcha.com/" + code + "/preview.mp4"
+    urls = build_trailer_urls(d["code"])
+    if urls:
+        d["trailer"] = urls[0]
+    if len(urls) > 1:
+        d["trailer2"] = urls[1]
     return d
 
 def fetch_jable(code):
@@ -813,6 +829,144 @@ def fetch_jable(code):
     except Exception as e:
         log("jable err: " + str(e))
         return "", ""
+
+
+# ============================================================
+#  数据层：详情页播放源并行预取
+#  进入详情就按番号同时去取「预览 / 预告 / 完整视频」三条链接：
+#  Jable 一次搜索即可解析出预览与完整视频，预告由候选链接探测，
+#  两路线程并行；只有取到的链接才点亮对应按钮，取不到的保持空串（按钮置灰）。
+# ============================================================
+
+
+# 来源名 -> 对应的 State 字段
+SOURCE_FIELDS = {"preview": "src_preview",
+                 "trailer": "src_trailer",
+                 "video": "src_video"}
+# 每次预取同时开几路任务（Jable 一路 + 预告探测一路）
+SOURCE_TASK_COUNT = 2
+# 链接缓存条数与有效期（秒）：重进同一番号直接复用，不再重复请求
+_LINK_CACHE = {}
+_LINK_CACHE_MAX = 64
+_LINK_TTL = 30 * 60
+_LINK_INFLIGHT = {}     # 番号 -> seq（正在预取）
+_LINK_PENDING = {}      # seq -> {"code":..., "values":{...}, "left":n}
+_LINK_SEQ = 0
+_LINK_LOCK = threading.Lock()
+
+def _url_alive(url, timeout=10):
+    """探测链接是否可用：HEAD 优先，不支持时退回只读一小段的 GET。"""
+    if not url:
+        return False
+    try:
+        resp = network.request("HEAD", url, headers=dict(HEADERS), timeout=timeout)
+        if resp is not None and resp.ok:
+            return True
+    except Exception:
+        pass
+    try:
+        with network.stream("GET", url, headers=dict(HEADERS), timeout=timeout) as resp:
+            if resp is None or not resp.ok:
+                return False
+            resp.read(max_bytes=1024)
+            return True
+    except Exception:
+        return False
+    return False
+
+def _submit_sources(code, seq, values):
+    """后台线程收口：结果写入缓存，并交给主线程提交到界面。"""
+    with _LINK_LOCK:
+        if _LINK_INFLIGHT.get(code) != seq:
+            return
+        rec = _LINK_CACHE.get(code) or {"preview": "", "trailer": "", "video": ""}
+        for key, value in values.items():
+            # 只缓存取到的链接，避免把上一次的结果冲掉
+            if value:
+                rec[key] = value
+        rec["ts"] = time.time()
+        _LINK_CACHE[code] = rec
+        while len(_LINK_CACHE) > _LINK_CACHE_MAX:
+            _LINK_CACHE.pop(next(iter(_LINK_CACHE)))
+        item = _LINK_PENDING.get(seq)
+        if item is None:
+            item = {"code": code, "values": {}, "left": SOURCE_TASK_COUNT}
+            _LINK_PENDING[seq] = item
+        item["values"].update(values)
+        item["left"] -= 1
+        if item["left"] <= 0:
+            _LINK_INFLIGHT.pop(code, None)
+
+def _jable_sources_worker(code, seq):
+    """Jable：一次搜索同时解析出预览与完整视频。"""
+    try:
+        preview, full = fetch_jable(code.lower())
+    except Exception as e:
+        log("jable prefetch err: " + str(e))
+        preview, full = "", ""
+    _submit_sources(code, seq, {"preview": preview or "", "video": full or ""})
+
+def _trailer_source_worker(code, seq):
+    """预告：候选链接逐个探测，取第一个可用的。"""
+    url = ""
+    for cand in build_trailer_urls(code):
+        if _url_alive(cand):
+            url = cand
+            break
+    _submit_sources(code, seq, {"trailer": url})
+
+def prefetch_play_sources(code):
+    """进入详情页时并行预取三条播放链接；取不到的保持空串（按钮置灰）。"""
+    global _LINK_SEQ
+    state.src_preview = ""
+    state.src_trailer = ""
+    state.src_video = ""
+    code = str(code or "").strip().upper()
+    if not code:
+        return
+    with _LINK_LOCK:
+        cached = _LINK_CACHE.get(code)
+        # 缓存里至少有一条链接且未过期才复用，否则重新去取（避免一次失败就长期置灰）
+        if cached and time.time() - cached.get("ts", 0) <= _LINK_TTL \
+                and (cached.get("preview") or cached.get("trailer") or cached.get("video")):
+            state.src_preview = cached.get("preview", "")
+            state.src_trailer = cached.get("trailer", "")
+            state.src_video = cached.get("video", "")
+            return
+        if _LINK_INFLIGHT.get(code):
+            return          # 同一番号正在预取，结果回来后由主线程统一提交
+        _LINK_SEQ += 1
+        seq = _LINK_SEQ
+        _LINK_INFLIGHT[code] = seq
+    threading.Thread(target=_jable_sources_worker, args=(code, seq), daemon=True).start()
+    threading.Thread(target=_trailer_source_worker, args=(code, seq), daemon=True).start()
+
+def _commit_sources():
+    """主线程：把后台取到的链接写回 State（只认当前详情的番号）。"""
+    global _LINK_PENDING
+    with _LINK_LOCK:
+        if not _LINK_PENDING:
+            return
+        items = list(_LINK_PENDING.values())
+        _LINK_PENDING = {}
+    if not state.detail_open:
+        return
+    code = str((state.detail or {}).get("code") or "").strip().upper()
+    if not code:
+        return
+    changed = False
+    for item in items:
+        if str(item.get("code") or "") != code:
+            continue
+        for key, value in (item.get("values") or {}).items():
+            field = SOURCE_FIELDS.get(key)
+            if not field or not value:
+                continue
+            if state.get(field) != value:
+                state[field] = value
+                changed = True
+    if changed:
+        state.reload += 1
 
 
 # ============================================================
@@ -1350,6 +1504,7 @@ def _sync_dirty():
 
     _commit_detail()
     _commit_translation()
+    _commit_sources()
 
 def _commit_detail():
     global _DETAIL_READY, _DETAIL_ERROR
@@ -1557,9 +1712,10 @@ def open_detail(movie, vid):
           and not cur.get("_loading") and not cur.get("error")):
         state.detail = cur
     else:
+        # 加载期间不展示列表封面：留空，等详情抓到后再整体渲染
         state.detail = {"_loading": True,
                         "code": movie.get("code", ""),
-                        "cover": movie.get("img", ""),
+                        "cover": "",
                         "name": movie.get("title", ""),
                         "link": link}
         need_fetch = True
@@ -1570,6 +1726,8 @@ def open_detail(movie, vid):
     state.title_trans = False
     if not need_fetch and state.name_text:
         translate_title_async(state.detail)
+    # 进入详情即并行预取预览 / 预告 / 视频链接
+    prefetch_play_sources((state.detail or {}).get("code"))
     # 详情与它内部的跳转列表都推入「打开它的那个展示位」的导航栈
     DETAIL_HOST = vid if vid in VIEWS else HOME_VID
     DETAIL_PATH = VIEWS[DETAIL_HOST]["path"]
@@ -1644,44 +1802,20 @@ def copy_video_link():
         state.status = "请先播放视频"
     state.reload += 1
 
+def play_preview():
+    """播放预览：链接在进入详情时就已并行取好。"""
+    if state.src_preview:
+        play_url(state.src_preview, "预览", source="预览")
+
 def play_trailer():
-    if state.detail and state.detail.get("trailer"):
-        play_url(state.detail["trailer"], "Fanza 预告", source="预告")
+    """播放预告：链接在进入详情时就已并行取好（DMM / eightcha 取可用的那个）。"""
+    if state.src_trailer:
+        play_url(state.src_trailer, "预告", source="预告")
 
-def _spawn_play_fetch(task, fetching_msg, fail_msg):
-    state.status = fetching_msg
-    state.reload += 1
-
-    def _work():
-        result = task()
-        if result:
-            set_play_request(*result)
-        else:
-            set_play_error(fail_msg)
-
-    threading.Thread(target=_work, daemon=True).start()
-
-def play_jable_preview():
-    code = state.detail.get("code") if state.detail else ""
-    if not code:
-        return
-
-    def _fetch():
-        preview, _ = fetch_jable(code)
-        return (preview, "Jable 预览", "预览") if preview else None
-
-    _spawn_play_fetch(_fetch, "正在获取 Jable 预览...", "Jable 无预览")
-
-def play_jable():
-    code = state.detail.get("code") if state.detail else ""
-    if not code:
-        return
-
-    def _fetch():
-        _, full = fetch_jable(code)
-        return (full, "Jable 完整视频", "完整视频") if full else None
-
-    _spawn_play_fetch(_fetch, "正在获取 Jable 完整视频...", "Jable 未找到完整视频")
+def play_video():
+    """播放完整视频：链接在进入详情时就已并行取好。"""
+    if state.src_video:
+        play_url(state.src_video, "完整视频", source="完整视频")
 
 def show_sample(link):
     """点击样片：定位到该样片页码后推入大图浏览，可左右滑动翻看其他样片。"""
@@ -1722,21 +1856,44 @@ def toggle_fav():
 # ============================================================
 
 
+# 封面网格列宽下限：同时用作叠在封面上的文字的最大宽度，
+# 保证文字再长也不会把单元格撑得比列还宽（adaptive 的列宽一定 >= 该值）
+GRID_MIN_COLUMN = 104
+# 封面网格间距：行间距与列间距取同一个值，
+# 配合「番号 | 日期 叠在封面内」，图片行与行、列与列的空隙完全一致
+GRID_SPACING = 10
+
+
 def movie_cell(m, vid):
-    """影片封面单元格（封面 + 番号 + 日期）。"""
+    """影片封面单元格：番号 | 发布日期 叠在封面底部（下对齐 + 左右居中）。
+
+    信息叠在图片内而不是排在图片下方，行与行的空隙就等于列与列的空隙。
+    """
 
     def open():
         open_detail(m, vid)
 
+    code = m.get("code") or ""
+    date = m.get("date") or ""
+    meta = code + " | " + date if date else code
+    caption = appui.Text(meta) \
+        .font("caption2") \
+        .foreground_color("white") \
+        .line_limit(1) \
+        .minimum_scale_factor(0.6) \
+        .padding(horizontal=6, vertical=3) \
+        .frame(max_width=GRID_MIN_COLUMN) \
+        .background("black", corner_radius=4, opacity=0.55) \
+        .padding(bottom=6) \
+        .z_index(1)      # 提升层级，保证叠在封面之上而不是被封面盖住
+    cover = appui.AsyncImage(url=img_src(m["img"])) \
+        .frame(height=165).clipped() \
+        .background("secondarySystemBackground", corner_radius=6) \
+        .z_index(0)
+    # ZStack：后声明的子视图绘制在上层，再配 z_index 保证文字一定压在封面之上
     return appui.Button(
         action=open,
-        content=appui.VStack([
-            appui.AsyncImage(url=img_src(m["img"]))
-                .frame(height=165).clipped()
-                .background("secondarySystemBackground", corner_radius=6),
-            appui.Text(m["code"]).font("caption").line_limit(1),
-            appui.Text(m["date"]).font("caption2").foreground_color("secondaryLabel"),
-        ], spacing=3),
+        content=appui.ZStack([cover, caption], alignment="bottom"),
     ).button_style("plain").id(m.get("code") or m.get("link") or "")
 
 def actress_cell(a):
@@ -1877,8 +2034,8 @@ def movie_display(vid):
     items = page_items(vid)
     if items:
         parts.append(appui.LazyVGrid(
-            columns=[appui.adaptive(minimum=104)],
-            spacing=10,
+            columns=[appui.adaptive(minimum=GRID_MIN_COLUMN)],
+            spacing=GRID_SPACING,
             content=[grid_cell(m, vid) for m in items],
         ))
         # 翻到已加载内容的末尾：在已有内容下方追加加载指示，不替换当前页
@@ -1988,35 +2145,10 @@ def _cover_view(url):
         .background("secondarySystemBackground", corner_radius=8)
 
 def _loading_view(d):
-    """详情加载中的占位视图：与加载完成后的布局骨架保持一致。"""
-    code = d.get("code") or ""
-    name = d.get("name") or ""
-    cover = d.get("cover") or ""
-    if not cover:
-        return appui.VStack([
-            appui.ProgressView(),
-            appui.Text("加载中..." + name).foreground_color("secondaryLabel"),
-        ], spacing=12).padding()
-
-    top = appui.VStack([
-        appui.Button(
-            content=appui.Text(code).font("title2").bold().line_limit(1),
-            action=copy_code,
-        ).button_style("plain"),
-        _cover_view(cover),
-        appui.VStack([
-            appui.Text(name).font("caption").foreground_color("secondaryLabel").line_limit(2),
-            appui.HStack([
-                appui.ProgressView().frame(height=14),
-                appui.Text("正在加载详情...").font("caption").foreground_color("secondaryLabel"),
-            ], spacing=6),
-        ], spacing=4, alignment="leading"),
-    ], spacing=12, alignment="leading")
-
-    return appui.List([
-        appui.Section([top.padding()]),
-        appui.Section([appui.ProgressView()], header="详情"),
-    ]).navigation_title("")
+    """详情加载中：不预显示列表封面，只留空白与一个加载指示，数据到位后再整体渲染。"""
+    return appui.VStack([
+        appui.ProgressView(),
+    ], spacing=0).frame(max_width=appui.infinity, max_height=appui.infinity)
 
 def detail_page_view():
     """影片详情页 —— 唯一的详情实现（公共函数）。
@@ -2071,10 +2203,11 @@ def detail_page_view():
             .frame(min_height=34, max_width=appui.infinity)
 
     fav_title = "已收藏" if in_fav(d["code"]) else "收藏"
+    # 链接没取到的按钮保持置灰：进入详情时就已并行预取，取到后自动点亮
     action_btns = appui.HStack([
-        eq_btn("预览", play_jable_preview, "预览"),
-        eq_btn("预告", play_trailer, "预告"),
-        eq_btn("视频", play_jable, "完整视频"),
+        eq_btn("预览", play_preview, "预览").disabled(not state.src_preview),
+        eq_btn("预告", play_trailer, "预告").disabled(not state.src_trailer),
+        eq_btn("视频", play_video, "完整视频").disabled(not state.src_video),
         eq_btn(fav_title, toggle_fav, prominent=in_fav(d["code"])),
     ], spacing=8)
 
@@ -2347,6 +2480,9 @@ def start():
     state.panel = ""
     state.panel_title = ""
     state.play = ""
+    state.src_preview = ""
+    state.src_trailer = ""
+    state.src_video = ""
     state.status = ""
     state.sample_index = 0
     state.show_page_input = False
