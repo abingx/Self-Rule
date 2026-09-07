@@ -439,11 +439,16 @@ SET_FILE = os.path.join(os.getcwd(), "settings.json")
 # 继续加到 24 及以上时，单次重建的节点数、以及预加载窗口内并发下载的
 # 封面数都会明显上升，图片下载完成后的去抖整树重建在老设备上容易掉帧。
 PAGE_SIZE_OPTIONS = [6, 9, 12, 15, 18]
+# Picker 的选项文本（三个 picker 共用同一份）
+_PAGE_SIZE_OPTIONS_TEXT = [str(x) for x in PAGE_SIZE_OPTIONS]
 
+# 每页项数按 tab 分开设置：影片 / 女优 / 收藏 各自一个值
 DEFAULT_SETTINGS = {
-    "page_size": 9,         # 每页显示多少项
-    "player": "SenPlayer",  # 外部播放器
-    "mute": True,           # 视频播放是否默认静音
+    "page_size_movie": 9,     # 影片 tab（含搜索、跳转出来的影片列表）
+    "page_size_actress": 12,  # 女优 tab（头像网格）
+    "page_size_fav": 9,       # 收藏 tab
+    "player": "SenPlayer",    # 外部播放器
+    "mute": True,             # 视频播放是否默认静音
 }
 
 def load_settings():
@@ -457,13 +462,17 @@ def load_settings():
                 for k in data:
                     if k in saved:
                         data[k] = saved[k]
+                # 旧版本只有统一的 page_size：迁移成影片的设置
+                if "page_size_movie" not in saved and "page_size" in saved:
+                    data["page_size_movie"] = saved["page_size"]
     except Exception:
         pass
-    try:
-        size = int(data["page_size"])
-    except Exception:
-        size = DEFAULT_SETTINGS["page_size"]
-    data["page_size"] = size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS["page_size"]
+    for key in ("page_size_movie", "page_size_actress", "page_size_fav"):
+        try:
+            size = int(data[key])
+        except Exception:
+            size = DEFAULT_SETTINGS[key]
+        data[key] = size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS[key]
     if data["player"] not in EXTERNAL_PLAYERS:
         data["player"] = DEFAULT_SETTINGS["player"]
     data["mute"] = bool(data["mute"])
@@ -480,12 +489,30 @@ def save_settings():
 
 SETTINGS = load_settings()
 
-def page_size():
-    """当前每页项数。"""
+def page_size_key(kind):
+    """展示位的 filter.kind -> 使用哪一套每页项数。
+
+    女优 tab 用女优的设置，收藏 tab 用收藏的设置，
+    其余（首页 / 搜索 / 演员、分类等跳转出来的影片列表）都用影片的设置。
+    """
+    if kind == "actress":
+        return "page_size_actress"
+    if kind == "fav":
+        return "page_size_fav"
+    return "page_size_movie"
+
+def page_size_of_kind(kind):
+    """按展示位类型取每页项数。"""
+    key = page_size_key(kind)
     try:
-        return max(1, int(SETTINGS["page_size"]))
+        size = int(SETTINGS[key])
     except Exception:
-        return 9
+        size = DEFAULT_SETTINGS[key]
+    return size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS[key]
+
+def page_size(vid=None):
+    """每页项数：按展示位类型取；vid 为空时取影片的设置。"""
+    return page_size_of_kind(view_kind(vid) if vid else "home")
 
 
 # ============================================================
@@ -683,7 +710,7 @@ def _fav_window_items():
     """
     v = VIEWS.get(FAV_VID)
     page = v["page"] if v else 1
-    size = page_size()
+    size = page_size(FAV_VID)
     lo = max(0, (page - 2) * size)      # 当前页前 1 页
     hi = (page + 1) * size              # 当前页 + 后 1 页
     return fav_items()[lo:hi]
@@ -1298,7 +1325,7 @@ def page_items(vid):
     v = VIEWS.get(vid)
     if not v:
         return []
-    size = page_size()
+    size = page_size(vid)
     with _VIEWS_LOCK:      # 短临界区：切片即快照，锁外不再访问共享字段
         start = (v["page"] - 1) * size - v["base"]
         if start < 0:
@@ -1311,13 +1338,13 @@ def page_loading(vid):
     if not v:
         return False
     with _VIEWS_LOCK:
-        return pool_end(v) < v["page"] * page_size() and not v["exhausted"]
+        return pool_end(v) < v["page"] * page_size(vid) and not v["exhausted"]
 
 def can_next(vid):
     """是否还能往后翻。"""
     v = VIEWS[vid]
     with _VIEWS_LOCK:
-        if pool_end(v) > v["page"] * page_size():
+        if pool_end(v) > v["page"] * page_size(vid):
             return True
         return not v["exhausted"]
 
@@ -1367,13 +1394,14 @@ def mark_views_dirty(vid=None):
     else:
         _DIRTY_VIDS.add(vid)
 
-def preload_ahead():
+def preload_ahead(v):
     """预加载页数：每页项数越大，预加载页数越少，控制同时下载与渲染的封面量。"""
-    return 1 if page_size() >= 12 else 2
+    return 1 if page_size_of_kind(v["filter"]["kind"]) >= 12 else 2
 
 def load_window_end(v):
     """预加载窗口末尾（全局序号，不含）。"""
-    return (v["page"] + preload_ahead()) * page_size()
+    size = page_size_of_kind(v["filter"]["kind"])
+    return (v["page"] + preload_ahead(v)) * size
 
 def _trim(v, size):
     """数据池超过上限时，从头部回收当前页之前的旧数据。
@@ -1482,7 +1510,7 @@ def _pump_worker(vid, gen):
                 # 增量追加：新数据排在已有数据之后，已翻过的页码内容不受影响
                 v["pool"].extend(sort_new_items(res))
                 v["remote"] += 1
-                _trim(v, page_size())
+                _trim(v, page_size(vid))
             fetched += 1
             for m in res:
                 request_img(m.get("img") or "")
@@ -1532,7 +1560,7 @@ def apply_page(vid, page):
         return False
     page = max(1, int(page))
     with _VIEWS_LOCK:
-        size = page_size()
+        size = page_size(vid)
         if (page - 1) * size < v["base"]:
             # 该页已被回收，回到第 1 页重新累积，避免一次性回抓大量历史页
             page = 1
@@ -1561,7 +1589,7 @@ def max_page(vid):
         return 1
     with _VIEWS_LOCK:
         if v["exhausted"]:
-            size = page_size()
+            size = page_size(vid)
             return max(1, (pool_end(v) + size - 1) // size)
     return None
 
@@ -2260,6 +2288,22 @@ GRID_SPACING = 3
 # adaptive 保证实际列宽一定 >= GRID_MIN_COLUMN，因此文字框永远落在封面边框之内，
 # 不会横向溢出到列间距里（否则会让横向空隙看起来比行间距小）
 GRID_CAPTION_WIDTH = 104
+# 已收藏的强调色：与原 JS recGra（colorData[9]）一致，
+# 整张封面盖一层蓝紫渐变，透明度 0.4（原 JS 的 alpha）。
+FAV_GRADIENT = ["#2f74e0", "#5d44e0"]
+FAV_TINT_ALPHA = 0.4
+COVER_CELL_RADIUS = 6
+
+def fav_tint_layer(height):
+    """已收藏标记：铺满封面的一层强调色渐变（对齐原 JS recGra）。
+
+    层级夹在封面与「番号 | 日期」之间：封面 0 -> 强调色 0.5 -> 文字 1。
+    """
+    return appui.Spacer(min_length=0) \
+        .frame(max_width=appui.infinity, height=height) \
+        .background(gradient=FAV_GRADIENT, gradient_type="linear",
+                    corner_radius=COVER_CELL_RADIUS, opacity=FAV_TINT_ALPHA) \
+        .z_index(0.5)
 
 def grid_columns():
     """列规格：显式带上列间距，使其与 LazyVGrid 的行间距一致。"""
@@ -2293,12 +2337,17 @@ def movie_cell(m, vid):
     # 封面撑满整列宽度；文字框宽度 <= 列宽下限，因此一定包含在封面边框内
     cover = appui.AsyncImage(url=img_src(m["img"])) \
         .frame(max_width=appui.infinity, height=165).clipped() \
-        .background("secondarySystemBackground", corner_radius=6) \
+        .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
         .z_index(0)
+    # 已收藏的影片盖一层强调色（收藏 tab 里全是收藏，无需再标记）
+    layers = [cover]
+    if code and in_fav(code) and view_kind(vid) != "fav":
+        layers.append(fav_tint_layer(165))
+    layers.append(caption)
     # ZStack：后声明的子视图绘制在上层，再配 z_index 保证文字一定压在封面之上
     return appui.Button(
         action=open,
-        content=appui.ZStack([cover, caption], alignment="bottom"),
+        content=appui.ZStack(layers, alignment="bottom"),
     ).button_style("plain").id(m.get("code") or m.get("link") or "")
 
 def actress_cell(a):
@@ -2946,18 +2995,22 @@ def fav_tab():
         destinations=_LIST_DESTINATIONS,
     ).id("fav")
 
-def set_page_size(v):
+def set_page_size(kind, v):
+    """修改某一类展示位的每页项数：只重置受影响的展示位。"""
     try:
         size = int(v)
     except Exception:
         return
     if size not in PAGE_SIZE_OPTIONS:
         return
-    SETTINGS["page_size"] = size
+    key = page_size_key(kind)
+    SETTINGS[key] = size
     save_settings()
     for vid in list(VIEWS):
         item = VIEWS[vid]
         with _VIEWS_LOCK:
+            if page_size_key(item["filter"]["kind"]) != key:
+                continue        # 该展示位不受这项设置影响，保持原样
             item["page"] = 1
             if item["base"]:
                 # 每页项数变了，旧的分页偏移失效，回到起点重新累积
@@ -2968,6 +3021,15 @@ def set_page_size(v):
                 item["generation"] += 1     # 在途 worker 结果作废
         _pump(vid)
     state.reload += 1
+
+def set_page_size_movie(v):
+    set_page_size("movie", v)
+
+def set_page_size_actress(v):
+    set_page_size("actress", v)
+
+def set_page_size_fav(v):
+    set_page_size("fav", v)
 
 def set_player(name):
     if name not in EXTERNAL_PLAYERS:
@@ -2985,12 +3047,22 @@ def settings_tab():
     return appui.NavigationStack(
         appui.Form([
             appui.Section([
-                appui.Picker("每页显示",
-                             selection=str(page_size()),
-                             options=[str(x) for x in PAGE_SIZE_OPTIONS],
-                             on_change=set_page_size),
+                appui.Picker("影片每页",
+                             selection=str(page_size(HOME_VID)),
+                             options=_PAGE_SIZE_OPTIONS_TEXT,
+                             on_change=set_page_size_movie),
+                appui.Picker("女优每页",
+                             selection=str(page_size(ACTRESS_VID)),
+                             options=_PAGE_SIZE_OPTIONS_TEXT,
+                             on_change=set_page_size_actress),
+                appui.Picker("收藏每页",
+                             selection=str(page_size(FAV_VID)),
+                             options=_PAGE_SIZE_OPTIONS_TEXT,
+                             on_change=set_page_size_fav),
             ], header="展示",
-               footer="每页项数对所有影片列表生效；列表顺序固定为发布时间从新到旧。"),
+               footer="影片 / 女优 / 收藏 三个 tab 的每页项数分别设置；"
+                      "影片的设置同时作用于搜索结果和演员、分类等跳转出来的影片列表。"
+                      "列表顺序固定为发布时间从新到旧。"),
             appui.Section([
                 appui.Toggle("视频默认静音", is_on=SETTINGS["mute"],
                              on_change=set_mute),
