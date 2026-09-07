@@ -2443,6 +2443,17 @@ def pager_row(vid):
         next_btn,
     ], spacing=8)
 
+def fav_count_row():
+    """收藏页顶部「共XX部」：占位位置与高度与影片 tab 的搜索栏一致，文字居中。
+
+    搜索栏是展示 VStack 的首个元素（外层 .padding() 相同），默认高度约
+    36pt，这里用 min_height=36 复刻同一占位，文字水平居中。
+    """
+    return appui.Text("共 %d 部" % len(SHELF["fav"])) \
+        .font("body") \
+        .foreground_color("secondaryLabel") \
+        .frame(min_height=36, max_width=appui.infinity, alignment="center")
+
 def movie_display(vid):
     """通用影片展示：封面网格 + 翻页条。
 
@@ -2458,6 +2469,10 @@ def movie_display(vid):
 
     if ex.get("search"):
         parts.append(search_row(vid))
+
+    if view_kind(vid) == "fav":
+        # 收藏 tab 顶部：已收藏总数（占位与搜索栏一致）
+        parts.append(fav_count_row())
 
     loading = page_loading(vid)
     items = page_items(vid)
