@@ -337,6 +337,8 @@ state = appui.State(
     show_page_input=False,  # 页码跳转弹层（由原生 coordinator 快路径呈现/关闭）
     name_text="",           # 详情页标题的中文译文（空表示尚未翻译完成）
     title_trans=False,      # 标题是否已翻译成中文
+    rating_text="",         # 详情页评分文本（JavDB）
+    genre_group="全部",     # 类型 tab 当前选中的一级分类
     reload=0,
 )
 
@@ -351,6 +353,10 @@ PATH_SETTINGS = appui.NavigationPath()
 DETAIL_HOST = "home"
 DETAIL_PATH = PATH_MOVIES
 DETAIL_OPEN_AT = 0.0
+# 打开详情时的导航栈深度：on_disappear 时用于区分「返回列表」与「进入全屏」
+_DETAIL_PATH_DEPTH = 0
+# 每个 tab 各自的详情状态栈：[{detail, depth}, ...]，切换 tab 时同步显示该 tab 自己的详情
+DETAIL_STACKS = {}
 
 
 # ============================================================
@@ -372,6 +378,7 @@ PAGE_SIZE_OPTIONS = [6, 9, 12, 15, 18]
 DEFAULT_SETTINGS = {
     "page_size": 9,         # 每页显示多少项
     "player": "SenPlayer",  # 外部播放器
+    "mute": True,           # 视频播放是否默认静音
 }
 
 def load_settings():
@@ -394,6 +401,7 @@ def load_settings():
     data["page_size"] = size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS["page_size"]
     if data["player"] not in EXTERNAL_PLAYERS:
         data["player"] = DEFAULT_SETTINGS["player"]
+    data["mute"] = bool(data["mute"])
     return data
 
 def save_settings():
@@ -1459,6 +1467,9 @@ def _sync_dirty():
     global _LAST_TAB, _LAST_TAB_SWITCH, _FAV_DIRTY
     now = time.time()
     if state.tab != _LAST_TAB:
+        # 兜底复位：若 on_change 回调未触发（纯绑定同步），这里也能
+        # 检测到切换并把停在详情页的旧 tab 退回主页面
+        leave_tab_reset(_LAST_TAB)
         _LAST_TAB = state.tab
         _LAST_TAB_SWITCH = now
     settled = reload_allowed() and (now - _LAST_TAB_SWITCH) >= TAB_RELOAD_GRACE
@@ -1504,6 +1515,7 @@ def _sync_dirty():
 
     _commit_detail()
     _commit_translation()
+    _commit_rating()
     _commit_sources()
 
 def _commit_detail():
@@ -1541,14 +1553,17 @@ def _commit_detail():
             state.detail = d
         for a in d["actresses"]:
             request_img(a["img"], priority=True)
+        request_img(d["cover"], priority=True)
+        # 缩略图进入详情即加载；大图不预取，点击查看大图时才加载（见 show_sample）
         for s in d["samples"]:
             request_img(s["img"], priority=True)
-            request_img(s["link"], priority=True)
-        request_img(d["cover"], priority=True)
         # 标题默认翻译成中文展示（封面下方那一行）
         state.name_text = d.get("name") or ""
         state.title_trans = False
         translate_title_async(d)
+        # JavDB 评分（发行日期下一行展示）
+        state.rating_text = ""
+        rating_async(d)
         state.reload += 1
     elif _DETAIL_ERROR:
         _DETAIL_ERROR = False
@@ -1631,6 +1646,70 @@ def _commit_translation():
         state.name_text = text
         state.title_trans = True
 
+
+# ============================================================
+#  调度层：JavDB 评分（与原 JS javdbRate() 一致）
+# ============================================================
+
+
+JAVDB_SEARCH_URL = "https://javdb.com/search?q={code}&f=all"
+
+_RATING_READY = None      # (link, 评分文本)
+_RATING_SEQ = 0
+
+def fetch_rating(code):
+    """按原 JS javdbRate() 抓取 JavDB 评分；失败返回空串。"""
+    try:
+        url = JAVDB_SEARCH_URL.replace("{code}", quote(code, safe=""))
+        resp = network.get(url, headers=dict(HEADERS), timeout=15)
+        if not resp or not resp.ok:
+            return ""
+        html = resp.text or ""
+        block = re.search(r'class="score">[\s\S]*?div>', html)
+        if not block:
+            return ""
+        score = re.search(r"([0-9.]+)分", block.group(0))
+        count = re.search(r"由(\d+)人評價", block.group(0))
+        if not score:
+            return ""
+        text = "评分：" + score.group(1)
+        if count:
+            text += "（" + count.group(1) + " 人评价）"
+        return text
+    except Exception as e:
+        log("rating err: " + str(e))
+        return ""
+
+def rating_async(d):
+    """发起评分抓取（后台线程，结果由主线程提交）。"""
+    global _RATING_SEQ
+    code = str(d.get("code") or "").strip()
+    if not code:
+        return
+    state.rating_text = "评分：获取中..."
+    _RATING_SEQ += 1
+    seq = _RATING_SEQ
+    link = d.get("link") or ""
+    threading.Thread(target=_rating_worker, args=(link, code, seq),
+                     daemon=True).start()
+
+def _rating_worker(link, code, seq):
+    global _RATING_READY
+    result = fetch_rating(code)
+    if seq == _RATING_SEQ and result:
+        _RATING_READY = (link, result)
+
+def _commit_rating():
+    """主线程提交评分（转场静默期内暂缓，下一轮再试）。"""
+    global _RATING_READY
+    if _RATING_READY is None or not reload_allowed():
+        return
+    link, text = _RATING_READY
+    _RATING_READY = None
+    cur = state.detail
+    if cur and cur.get("link") == link and state.detail_open:
+        state.rating_text = text
+
 def reset_pending():
     global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
     _DETAIL_SEQ += 1
@@ -1656,12 +1735,34 @@ def init_background():
 _PLAYER = None
 
 def get_player():
-    """详情页内嵌播放器（唯一实例，便于统一暂停/停止/关闭画中画）。"""
+    """详情页内嵌播放器（唯一实例，便于统一控制播放/静音/画中画）。
+
+    autoplay=True：加载后自动开始播放。
+    volume=0.0：默认静音（播放后可用系统控件自行开声）。
+    pause_on_disappear=False：必须为 False。进入全屏时内联视图会被移除，
+    开启它会导致全屏瞬间被暂停；改为在真正离开详情页时显式暂停（见
+    on_detail_closed），进出全屏不会改变播放状态与进度。
+    """
     global _PLAYER
     if _PLAYER is None:
-        _PLAYER = appui.PlayerController(id="main", url="", autoplay=False,
-                                         allows_pip=True, pause_on_disappear=True)
+        _PLAYER = appui.PlayerController(id="main", url="", autoplay=True,
+                                         volume=0.0, allows_pip=True,
+                                         pause_on_disappear=False)
     return _PLAYER
+
+def start_playback(url):
+    """加载并自动开始播放；音量按设置（默认静音）。"""
+    player = get_player()
+    player.load(url, autoplay=True)
+    player.set_volume(0.0 if SETTINGS["mute"] else 1.0)
+    player.play()
+
+def pause_local_playback():
+    """暂停本地播放，保留播放进度与播放面板。"""
+    try:
+        get_player().pause()
+    except Exception as e:
+        log("pause player err: " + str(e))
 
 def stop_local_playback():
     """暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放。"""
@@ -1677,7 +1778,7 @@ def stop_local_playback():
 def play_url(url, title="", source=""):
     log("play: " + str(title) + " -> " + str(url)[:120])
     try:
-        get_player().load(url, autoplay=True)
+        start_playback(url)      # 自动播放 + 默认静音
     except Exception as e:
         log("player load err: " + str(e))
     state.panel = url
@@ -1724,22 +1825,49 @@ def open_detail(movie, vid):
     # 标题显示复位为日文原文，随后自动翻译成中文
     state.name_text = str((state.detail or {}).get("name") or "")
     state.title_trans = False
+    state.rating_text = ""
     if not need_fetch and state.name_text:
         translate_title_async(state.detail)
+        rating_async(state.detail)
     # 进入详情即并行预取预览 / 预告 / 视频链接
     prefetch_play_sources((state.detail or {}).get("code"))
     # 详情与它内部的跳转列表都推入「打开它的那个展示位」的导航栈
     DETAIL_HOST = vid if vid in VIEWS else HOME_VID
     DETAIL_PATH = VIEWS[DETAIL_HOST]["path"]
     note_nav_action()
-    DETAIL_PATH.append({"tag": "detail"})
+    DETAIL_PATH.append({"tag": "detail", "host": DETAIL_HOST})
+    global _DETAIL_PATH_DEPTH
+    _DETAIL_PATH_DEPTH = DETAIL_PATH.count
+    # 记入该 tab 自己的详情栈（含栈深基准），切回这个 tab 时恢复显示它的详情
+    DETAIL_STACKS.setdefault(DETAIL_HOST, []).append(
+        {"detail": state.detail, "depth": _DETAIL_PATH_DEPTH})
     if need_fetch:
         request_detail(link)
 
-def on_detail_closed():
-    """详情被返回/关闭：复位标志并开启转场静默窗。"""
-    state.detail_open = False
+def on_detail_closed(host):
+    """某 tab 的详情视图消失：区分「用户返回列表」与「被覆盖」。
+
+    进入全屏、切换 tab、推入大图时详情视图同样会收到 on_disappear，
+    但该 tab 自己的导航栈深度不变；只有该 tab 的栈变浅（用户返回列表）
+    才暂停播放并复位，被覆盖的情况不做 State 修改，避免视频被暂停。
+    """
+    if host not in VIEWS:
+        return
+    stack = DETAIL_STACKS.get(host)
+    if not stack:
+        return
+    if VIEWS[host]["path"].count >= stack[-1]["depth"]:
+        return      # 该 tab 导航栈未变浅：详情仍在使用中
+    stack.pop()
+    if stack:
+        # 同一 tab 内连续打开两层详情：返回时恢复上一层
+        state.detail = stack[-1]["detail"]
+    else:
+        DETAIL_STACKS.pop(host, None)
+        state.detail_open = False
     note_nav_action()
+    if state.panel:
+        pause_local_playback()
 
 def open_filter_at(path, link, value):
     """在指定导航栈推入一个按 link 筛选的影片列表（通用展示）。"""
@@ -1818,10 +1946,10 @@ def play_video():
         play_url(state.src_video, "完整视频", source="完整视频")
 
 def show_sample(link):
-    """点击样片：定位到该样片页码后推入大图浏览，可左右滑动翻看其他样片。"""
-    if not link:
-        return
+    """查看样片大图：加载全部样片大图后推入浏览（可左右滑动翻看）。"""
     samples = (state.detail or {}).get("samples") or []
+    for s in samples:
+        request_img(s["link"], priority=True)
     idx = 0
     for i, s in enumerate(samples):
         if s.get("link") == link:
@@ -1859,9 +1987,20 @@ def toggle_fav():
 # 封面网格列宽下限：同时用作叠在封面上的文字的最大宽度，
 # 保证文字再长也不会把单元格撑得比列还宽（adaptive 的列宽一定 >= 该值）
 GRID_MIN_COLUMN = 104
-# 封面网格间距：行间距与列间距取同一个值，
-# 配合「番号 | 日期 叠在封面内」，图片行与行、列与列的空隙完全一致
-GRID_SPACING = 10
+# 封面网格间距：原 10，取三分之一 -> 3
+# 行间距由 LazyVGrid 的 spacing 控制，列间距在 grid_columns() 里显式写进列规格，
+# 两者取同一个值，保证横向与纵向空隙完全一致
+GRID_SPACING = 3
+# 叠在封面上的文字框最大宽度：必须 <= GRID_MIN_COLUMN。
+# adaptive 保证实际列宽一定 >= GRID_MIN_COLUMN，因此文字框永远落在封面边框之内，
+# 不会横向溢出到列间距里（否则会让横向空隙看起来比行间距小）
+GRID_CAPTION_WIDTH = 104
+
+def grid_columns():
+    """列规格：显式带上列间距，使其与 LazyVGrid 的行间距一致。"""
+    col = appui.adaptive(minimum=GRID_MIN_COLUMN)
+    col["spacing"] = GRID_SPACING
+    return [col]
 
 
 def movie_cell(m, vid):
@@ -1881,13 +2020,14 @@ def movie_cell(m, vid):
         .foreground_color("white") \
         .line_limit(1) \
         .minimum_scale_factor(0.6) \
-        .padding(horizontal=6, vertical=3) \
-        .frame(max_width=GRID_MIN_COLUMN) \
+        .padding(horizontal=4, vertical=3) \
+        .frame(max_width=GRID_CAPTION_WIDTH) \
         .background("black", corner_radius=4, opacity=0.55) \
         .padding(bottom=6) \
         .z_index(1)      # 提升层级，保证叠在封面之上而不是被封面盖住
+    # 封面撑满整列宽度；文字框宽度 <= 列宽下限，因此一定包含在封面边框内
     cover = appui.AsyncImage(url=img_src(m["img"])) \
-        .frame(height=165).clipped() \
+        .frame(max_width=appui.infinity, height=165).clipped() \
         .background("secondarySystemBackground", corner_radius=6) \
         .z_index(0)
     # ZStack：后声明的子视图绘制在上层，再配 z_index 保证文字一定压在封面之上
@@ -1897,29 +2037,46 @@ def movie_cell(m, vid):
     ).button_style("plain").id(m.get("code") or m.get("link") or "")
 
 def actress_cell(a):
-    """女优头像单元格（与原 JS 一致：头像 + 名字，点击进入其作品列表）。"""
+    """女优头像单元格：名字叠在头像底部，样式与封面的「番号 | 日期」一致。"""
 
     def open():
         open_actress(a["link"], a["name"])
 
+    caption = appui.Text(a.get("name") or "") \
+        .font("caption2") \
+        .foreground_color("white") \
+        .line_limit(1) \
+        .minimum_scale_factor(0.6) \
+        .padding(horizontal=4, vertical=3) \
+        .frame(max_width=GRID_CAPTION_WIDTH) \
+        .background("black", corner_radius=4, opacity=0.55) \
+        .padding(bottom=6) \
+        .z_index(1)
+    cover = appui.AsyncImage(url=img_src(a["img"])) \
+        .frame(max_width=appui.infinity, height=130).clipped() \
+        .background("secondarySystemBackground", corner_radius=6) \
+        .z_index(0)
     return appui.Button(
         action=open,
-        content=appui.VStack([
-            appui.AsyncImage(url=img_src(a["img"]))
-                .frame(height=130).clipped()
-                .background("secondarySystemBackground", corner_radius=6),
-            appui.Text(a["name"]).font("caption").line_limit(1),
-        ], spacing=3),
+        content=appui.ZStack([cover, caption], alignment="bottom"),
     ).button_style("plain").id(a.get("link") or a.get("name") or "")
 
 def genre_cell(c):
-    """分类按钮（与原 JS 一致）。"""
+    """二级分类按钮：等宽 + 背景色，点击按该分类筛选影片。"""
 
     def open():
         open_genre(c["link"], c["name"])
 
-    return appui.Button(content=appui.Label(c["name"], system_image="tag"),
-                        action=open)
+    return appui.Button(
+        action=open,
+        content=appui.Label(c["name"], system_image="tag")
+            .font("caption")
+            .line_limit(1)
+            .minimum_scale_factor(0.7)
+            .frame(max_width=appui.infinity)
+            .padding(vertical=9)
+            .background("secondarySystemBackground", corner_radius=8),
+    ).button_style("plain")
 
 def fav_cell(m):
     """收藏封面单元格：外观与首页一致，封面缺失时用后台解析结果，长按可移除。"""
@@ -1947,7 +2104,7 @@ def grid_cell(item, vid):
     return movie_cell(item, vid)
 
 def sample_cell(s):
-    """详情页样片缩略图（点击查看大图）。"""
+    """详情页样图格：缩略图随详情加载，点击查看大图（大图此时才加载）。"""
 
     def open():
         show_sample(s["link"])
@@ -2034,7 +2191,7 @@ def movie_display(vid):
     items = page_items(vid)
     if items:
         parts.append(appui.LazyVGrid(
-            columns=[appui.adaptive(minimum=GRID_MIN_COLUMN)],
+            columns=grid_columns(),
             spacing=GRID_SPACING,
             content=[grid_cell(m, vid) for m in items],
         ))
@@ -2062,7 +2219,7 @@ def movie_display(vid):
     return appui.VStack(parts, spacing=12).padding()
 
 def genre_display(vid):
-    """类型展示：按主题分组的分类按钮（与原 JS 一致，单次抓取无翻页）。"""
+    """类型展示：顶部一级分类下拉 + 所选分组的二级分类（一行 3 个，等宽背景）。"""
     v = VIEWS.get(vid)
     if not v:
         return appui.Text("")
@@ -2073,16 +2230,32 @@ def genre_display(vid):
         ], spacing=8).padding()
     if not v["pool"]:
         return appui.Text("没有找到分类").foreground_color("secondaryLabel").padding()
-    sections = []
-    for group in v["pool"]:
-        parts = [appui.Text(group["tag"]).font("headline").padding(top=10)]
-        parts.append(appui.LazyVGrid(
-            columns=[appui.adaptive(minimum=100)],
+
+    groups = v["pool"]
+    tags = ["全部"] + [g["tag"] for g in groups]
+    sel = state.genre_group if state.genre_group in tags else "全部"
+    shown = [g for g in groups if sel == "全部" or g["tag"] == sel]
+
+    parts = [appui.HStack([
+        appui.Text("类型").font("body").foreground_color("secondaryLabel"),
+        appui.Spacer(min_length=8),
+        appui.Picker("类型", selection=sel, options=tags,
+                     on_change=set_genre_group).picker_style("menu"),
+    ], spacing=8)]
+    for group in shown:
+        block = [appui.Text(group["tag"]).font("headline").padding(top=10)]
+        block.append(appui.LazyVGrid(
+            columns=[appui.flexible() for _ in range(3)],   # 一行固定 3 个，等宽
             spacing=8,
             content=[genre_cell(c) for c in group["cats"]],
         ))
-        sections.append(appui.VStack(parts, spacing=8))
-    return appui.VStack(sections, spacing=4).padding()
+        parts.append(appui.VStack(block, spacing=8))
+    return appui.VStack(parts, spacing=12).padding()
+
+def set_genre_group(v):
+    """切换一级分类。"""
+    state.genre_group = v
+    state.reload += 1
 
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
@@ -2112,8 +2285,29 @@ def display_page_view(vid, titled=True):
 
 
 def detail_destination(data):
-    """详情路由：所有入口统一走 detail_page_view()，展示完全一致。"""
-    return detail_page_view().on_disappear(action=on_detail_closed)
+    """详情路由：所有入口统一走 detail_page_view()，展示完全一致。
+
+    每个 tab 的详情状态互相独立：按推送载荷里的 host 恢复该 tab 自己的
+    详情，切换 tab 时同步切换到对应 tab 的详情内容。
+    """
+    host = data.get("host") if isinstance(data, dict) else None
+    global DETAIL_HOST, DETAIL_PATH, _DETAIL_PATH_DEPTH
+    if host not in VIEWS:
+        host = DETAIL_HOST if DETAIL_HOST in VIEWS else HOME_VID
+    stack = DETAIL_STACKS.get(host)
+    if stack:
+        entry = stack[-1]
+        if entry["detail"] is not state.detail:
+            state.detail = entry["detail"]      # 切回该 tab：显示它自己的详情
+        state.detail_open = True
+        DETAIL_HOST = host
+        DETAIL_PATH = VIEWS[host]["path"]
+        _DETAIL_PATH_DEPTH = entry["depth"]
+
+    def on_closed():
+        on_detail_closed(host)
+
+    return detail_page_view().on_disappear(action=on_closed)
 
 def sample_destination(data):
     return sample_preview_view()
@@ -2149,6 +2343,45 @@ def _loading_view(d):
     return appui.VStack([
         appui.ProgressView(),
     ], spacing=0).frame(max_width=appui.infinity, max_height=appui.infinity)
+
+# ============================================================
+#  UI 层：友商连接（与原 JS 详情页菜单一致，磁链除外）
+#  选择站点后用 Safari 打开对应搜索页（$app.openURL 的等价实现）
+# ============================================================
+
+
+PARTNER_SITES = [
+    ("JavDB", "https://javdb.com/search?q={code}&f=all"),
+    ("JavLibrary", "http://www.javlibrary.com/cn/vl_searchbyid.php?keyword={code}"),
+    ("Fanza",
+     "https://www.dmm.co.jp/mono/dvd/-/detail/=/cid={code_lower_nodash}/?dmmref=aMonoDvd_List"),
+    ("Netflav", "https://netflav.com/search?type=title&keyword={code}"),
+    ("JAV.GURU", "https://jav.guru/zh/?s={code}"),
+    ("Jable.TV", "https://jable.tv/search/{code}/"),
+    ("Missav", "https://missav.com/{code}"),
+    ("JavDay", "https://javday.tv/videos/{code_nodash}"),
+]
+
+def build_partner_url(pattern, code):
+    """按原 JS 规则生成链接：Fanza 小写并去掉连字符，JavDay 去掉连字符。"""
+    return (pattern
+            .replace("{code_lower_nodash}", code.lower().replace("-", "", 1))
+            .replace("{code_nodash}", code.replace("-", "", 1))
+            .replace("{code}", code))
+
+def partner_menu(code):
+    """友商链接：系统下拉，默认显示「选择源」，选择后用 Safari 打开。"""
+    def make_open(pattern, name):
+        def open_site():
+            url = build_partner_url(pattern, code)
+            if url:
+                log("partner: " + name + " -> " + url[:120])
+                shortcuts.open_url(url)
+        return open_site
+
+    return appui.Menu("选择源",
+                      content=[appui.Button(title=name, action=make_open(pattern, name))
+                               for name, pattern in PARTNER_SITES])
 
 def detail_page_view():
     """影片详情页 —— 唯一的详情实现（公共函数）。
@@ -2189,6 +2422,11 @@ def detail_page_view():
         appui.Spacer(min_length=12),
         appui.Text("时长：" + str(d["last"])).font("caption"),
     ], spacing=8)
+    # 评分（JavDB）：发行日期下一行，左对齐；颜色与发行日期保持一致
+    rating_rows = []
+    if state.rating_text:
+        rating_rows.append(appui.Text(state.rating_text).font("caption"))
+    meta_block = appui.VStack([meta] + rating_rows, spacing=4, alignment="leading")
 
     def eq_btn(label, action, source=None, prominent=False):
         """等宽按钮：文字不折行（自动缩字号），同排均分宽度、间距一致。"""
@@ -2211,7 +2449,7 @@ def detail_page_view():
         eq_btn(fav_title, toggle_fav, prominent=in_fav(d["code"])),
     ], spacing=8)
 
-    top = appui.VStack([code_btn, cover, title_block, meta, action_btns],
+    top = appui.VStack([code_btn, cover, title_block, meta_block, action_btns],
                        spacing=12, alignment="leading")
 
     if state.panel:
@@ -2224,7 +2462,8 @@ def detail_page_view():
             ]
         panel_rows = [
             appui.Text(state.panel_title).font("caption").foreground_color("secondaryLabel"),
-            appui.VideoPlayer(player=get_player()).frame(height=220),
+            appui.VideoPlayer(player=get_player(), autoplay=True,
+                              pause_on_disappear=False).frame(height=220),
             appui.HStack(op_buttons, spacing=8),
         ]
         top = appui.VStack([top] + panel_rows, spacing=8)
@@ -2252,13 +2491,6 @@ def detail_page_view():
             filter_row(value, link),
         ], spacing=8)
 
-    def cat_chip(genre):
-        def open():
-            open_filter(genre["link"], genre["name"])
-
-        return appui.Button(content=appui.Text(genre["name"]).line_limit(1),
-                            action=open).button_style("bordered")
-
     def actress_block(a):
         def open():
             open_filter(a["link"], a["name"])
@@ -2283,14 +2515,30 @@ def detail_page_view():
     if d["director"]:
         detail_rows.append(who_row("导演", d["director"], d["director_link"]))
     if d["genres"]:
-        detail_rows.append(appui.VStack([
+        # 类别：系统下拉，默认显示「X类」（X 为类别总数），展开后选择
+        genre_btns = []
+        seen = set()
+        for g in d["genres"]:
+            if g["name"] in seen:
+                continue
+            seen.add(g["name"])
+
+            def pick_genre(link=g["link"], name=g["name"]):
+                open_filter(link, name)
+
+            genre_btns.append(appui.Button(title=g["name"], action=pick_genre))
+        detail_rows.append(appui.HStack([
             appui.Text("类别").font("body").foreground_color("secondaryLabel"),
-            appui.LazyVGrid(
-                columns=[appui.adaptive(minimum=90)],
-                spacing=6,
-                content=[cat_chip(g) for g in d["genres"]],
-            ),
-        ], spacing=8, alignment="leading"))
+            appui.Spacer(min_length=8),
+            appui.Menu("%d类" % len(genre_btns), content=genre_btns),
+        ], spacing=8))
+    # 友商链接：类别下一行，下拉选择站点后用 Safari 打开
+    if d["code"]:
+        detail_rows.append(appui.HStack([
+            appui.Text("友商链接").font("body").foreground_color("secondaryLabel"),
+            appui.Spacer(min_length=8),
+            partner_menu(d["code"]),
+        ], spacing=8))
     if d["actresses"]:
         detail_rows.append(appui.VStack([
             appui.Text("女优").font("body").foreground_color("secondaryLabel"),
@@ -2309,7 +2557,7 @@ def detail_page_view():
                 spacing=8,
                 content=[sample_cell(s) for s in d["samples"]],
             )
-        ], header="样片(点击看大图)"))
+        ], header="样图"))
     if d["magnets"]:
         sections.append(appui.Section(
             [magnet_row(m) for m in d["magnets"]], header="磁链"))
@@ -2436,6 +2684,11 @@ def set_player(name):
     save_settings()
     state.reload += 1
 
+def set_mute(v):
+    SETTINGS["mute"] = bool(v)
+    save_settings()
+    state.reload += 1
+
 def settings_tab():
     return appui.NavigationStack(
         appui.Form([
@@ -2447,6 +2700,8 @@ def settings_tab():
             ], header="展示",
                footer="每页项数对所有影片列表生效；列表顺序固定为发布时间从新到旧。"),
             appui.Section([
+                appui.Toggle("视频默认静音", is_on=SETTINGS["mute"],
+                             on_change=set_mute),
                 appui.Picker("外部播放器",
                              selection=SETTINGS["player"],
                              options=list(EXTERNAL_PLAYERS.keys()),
@@ -2488,6 +2743,7 @@ def start():
     state.show_page_input = False
     state.name_text = ""
     state.title_trans = False
+    DETAIL_STACKS.clear()      # 全部栈复位：各 tab 的详情状态一并清空
     PATH_MOVIES.pop_to_root()
     PATH_ACT.pop_to_root()
     PATH_GENRE.pop_to_root()
@@ -2514,6 +2770,41 @@ def load_genres_once():
     _GENRE_LOADED = True
     _pump(GENRE_VID)
 
+# tab 序号 → 根页展示位（切换 tab 时复位详情用）
+TAB_ROOT_VIDS = {0: HOME_VID, 1: ACTRESS_VID, 2: GENRE_VID, 3: FAV_VID}
+
+def leave_tab_reset(prev):
+    """离开某 tab 时复位：若该 tab 停在详情页（含多层），整条导航链退回主页面。
+
+    prev 是我们自行记录的上一个标签页序号（不能用 state.tab 取：
+    双向绑定在回调触发前就已把它写成新值）。
+    """
+    root = TAB_ROOT_VIDS.get(prev)
+    if root not in VIEWS:
+        return
+    path = VIEWS[root]["path"]
+    # 找出属于该 tab 导航栈的所有详情（宿主可能是栈内的跳转列表）
+    hosts = [h for h in DETAIL_STACKS
+             if h in VIEWS and VIEWS[h]["path"] is path]
+    if not hosts:
+        return      # 该 tab 未停在详情页：保留它的导航位置
+    for h in hosts:
+        DETAIL_STACKS.pop(h, None)
+    state.detail_open = False
+    note_nav_action()
+    path.pop_to_root()      # 整条导航链（含多层详情）回到主页面
+
+def set_tab(v):
+    """记录当前标签页：确保 State 与界面选择一致，重建时停留在最后切换的标签页。"""
+    global _LAST_TAB
+    try:
+        v = int(v)
+    except Exception:
+        pass
+    leave_tab_reset(_LAST_TAB)
+    _LAST_TAB = v
+    state.tab = v
+
 def make_body():
     return appui.TabView(
         tabs=[
@@ -2524,6 +2815,7 @@ def make_body():
             appui.Tab("设置", system_image="gear", content=settings_tab(), tag=4),
         ],
         selection=state.bind.tab,
+        on_change=set_tab,
     ).sheet(
         is_presented=state.bind.show_page_input,
         content=page_input_view,
