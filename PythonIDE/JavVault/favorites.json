@@ -1,6 +1,342 @@
 {
   "fav": [
     {
+      "code": "IPX-580",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "STARS-804",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABP-984",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "CAWD-365",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "CJOD-439",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "DASS-092",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-536",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MEYD-605",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "EBWH-090",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-465",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABP-159",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SONE-576",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-643",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "JUL-179",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIDV-530",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "CAWD-243",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABF-017",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "PRED-193",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-515",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-697",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-247",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-588",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABW-324",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SHKD-724",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SDDE-625",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "STARS-256",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-726",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "STARS-979",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "PRED-483",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIAB-317",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "LULU-234",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "URE-091",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-620",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABP-968",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIDE-776",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-867",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPZZ-037",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SNIS-352",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIAB-043",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-177",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "STARS-734",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MEYD-831",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABF-087",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-633",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MXGS-784",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPZZ-003",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SHKD-546",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SONE-855",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-622",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "JUR-020",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABW-124",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABW-244",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-469",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "FSDSS-077",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-698",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-082",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-437",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "START-046",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "FSDSS-272",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "IPX-118",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIDV-682",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSNI-424",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MEYD-951",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABW-032",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIAB-259",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SHKD-744",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSNI-369",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIDE-906",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-338",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSIS-743",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "START-169",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "CAWD-628",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "URE-055",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SSNI-865",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "PRED-743",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MEYD-947",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SONE-012",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SDNM-305",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "LULU-249",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIAA-548",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "START-164",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "SDNM-256",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "ABW-043",
+      "fav_time": "2026-09-07"
+    },
+    {
+      "code": "MIDV-229",
+      "fav_time": "2026-09-07"
+    },
+    {
       "code": "IPZZ-934",
       "fav_time": "2026-09-01"
     },

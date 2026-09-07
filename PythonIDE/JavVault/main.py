@@ -16,13 +16,15 @@ import datetime
 import hashlib
 import json
 import os
+import queue
 import re
 import struct
 import tempfile
 import threading
 import time
 import zlib
-from collections import OrderedDict
+from collections import deque, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
 import appui
@@ -57,9 +59,6 @@ def _app_version():
 
 APP_TITLE = "JavVault"
 APP_VERSION = _app_version()
-
-# 收藏条数上限
-MAX_LIST_ITEMS = 1000
 
 # 详情页封面宽高比（JavBus 封面标准比例 400x560）。
 # 配合 content_mode="fill" 让封面撑满整个容器，上下不留空白。
@@ -115,15 +114,74 @@ def fill_base(src):
 
 
 _DOWNLOADED = OrderedDict()
-_SRC_CACHE = {}
+_SRC_CACHE = OrderedDict()     # src -> file:// 路径 的 LRU 缓存（满时逐出最旧，不再整表清空）
 _SRC_CACHE_MAX = 4096
 MAX_QUEUE = 1024
 MAX_DOWNLOADED = 2048
 MAX_DOWNLOAD_ATTEMPTS = 5
 _SEEN = set()
+_INFLIGHT = set()      # 已出队、正在下载中的 url：防止重复排队与重复下载
 _DOWNLOAD_ATTEMPTS = {}
-_QUEUED = []
+_QUEUED = deque()              # 待下载队列（priority=True 时 appendleft 插队首）
 _LOCK = threading.Lock()
+_QUEUE_NONEMPTY = threading.Condition(_LOCK)   # 空闲 worker 阻塞等待，不再轮询
+
+# 磁盘缓存维护：_DOWNLOADED 只是内存索引 LRU，磁盘文件必须单独设上限
+IMAGE_CACHE_LIMIT_MB = 250     # 磁盘缓存上限（MB）
+CACHE_GC_EVERY = 100           # 每下载 100 张做一次清理
+CACHE_GC_INTERVAL = 600.0      # 或每 10 分钟（双条件先到先清）
+_CACHE_GC_STAMP = {"count": 0, "last": 0.0}
+
+def image_cache_maintenance():
+    """磁盘图片缓存清理：超过上限时按 mtime 从旧到新删除。
+
+    由下载 worker 低频触发（每 CACHE_GC_EVERY 次下载或每 CACHE_GC_INTERVAL
+    秒先到者），不逐张下载都扫描目录。删除后同步核对内存索引并清空
+    _SRC_CACHE，避免 img_src 返回指向已删文件的陈旧路径。
+    """
+    now = time.time()
+    st = _CACHE_GC_STAMP
+    st["count"] += 1
+    if st["count"] < CACHE_GC_EVERY and now - st["last"] < CACHE_GC_INTERVAL:
+        return
+    st["count"] = 0
+    st["last"] = now
+    d = _image_dir()
+    entries = []
+    total = 0
+    try:
+        for name in os.listdir(d):
+            p = os.path.join(d, name)
+            try:
+                info = os.stat(p)
+            except Exception:
+                continue
+            entries.append((info.st_mtime, info.st_size, p))
+            total += info.st_size
+    except Exception:
+        return
+    limit = IMAGE_CACHE_LIMIT_MB * 1024 * 1024
+    if total <= limit:
+        return
+    entries.sort()      # mtime 从旧到新
+    removed = 0
+    for _, size, p in entries:
+        if total <= limit:
+            break
+        try:
+            os.remove(p)
+            total -= size
+            removed += 1
+        except Exception:
+            continue
+    if removed:
+        with _LOCK:
+            # 清掉指向已删文件的索引（含占位图路径），让下次访问按需重建
+            for u in [u for u in list(_DOWNLOADED)
+                      if not os.path.exists(_local_path(u))]:
+                _DOWNLOADED.pop(u, None)
+            _SRC_CACHE.clear()
+        mark_dirty()
 WORKERS = 3
 _RELOAD_DIRTY = False
 _LAST_ACTIVITY = 0.0
@@ -222,17 +280,19 @@ def request_img(src, priority=False):
         if url in _DOWNLOADED:
             _DOWNLOADED.move_to_end(url)
             return "file://" + _local_path(url)
-        if url in _SEEN:
+        if url in _SEEN or url in _INFLIGHT:
+            # 已排队或正在下载：不重复入队（QUEUED → INFLIGHT → DOWNLOADED）
             return "file://" + _local_path(url)
         if len(_QUEUED) >= MAX_QUEUE:
             if not priority:
                 return "file://" + _local_path(url)
-            _SEEN.discard(_QUEUED.pop())
+            _SEEN.discard(_QUEUED.pop())    # 挤掉队尾（最旧）的待下载项
         _SEEN.add(url)
         if priority:
-            _QUEUED.insert(0, url)
+            _QUEUED.appendleft(url)
         else:
             _QUEUED.append(url)
+        _QUEUE_NONEMPTY.notify()            # 唤醒空闲的下载 worker
     return "file://" + _local_path(url)
 
 def img_src(src):
@@ -241,6 +301,7 @@ def img_src(src):
         return ""
     hit = _SRC_CACHE.get(src)
     if hit:
+        _SRC_CACHE.move_to_end(src)     # LRU：命中即续期
         return hit
     url = _to_abs(src)
     path = _local_path(url)
@@ -254,41 +315,45 @@ def img_src(src):
             pass
     if os.path.exists(path):
         if len(_SRC_CACHE) >= _SRC_CACHE_MAX:
-            _SRC_CACHE.clear()
+            _SRC_CACHE.popitem(last=False)      # 逐出最旧一条，而不是整表清空
         _SRC_CACHE[src] = "file://" + path
     return "file://" + path
 
 def _worker():
     while True:
+        # 队列空时阻塞在条件变量上（有新任务才唤醒），不再 sleep 轮询空转
+        with _QUEUE_NONEMPTY:
+            while not _QUEUED:
+                _QUEUE_NONEMPTY.wait(timeout=2.0)   # 超时兜底，防唤醒丢失
+            url = _QUEUED.popleft()
+            _SEEN.discard(url)
+            _INFLIGHT.add(url)      # 出队即标记在途，下载完成前不会重复排队
+        ok = _download_one(url)     # 网络下载在锁外
         with _LOCK:
-            if _QUEUED:
-                url = _QUEUED.pop(0)
-                _SEEN.discard(url)
-            else:
-                url = None
-        if url is None:
-            time.sleep(0.15)
-            continue
-        if _download_one(url):
-            with _LOCK:
+            _INFLIGHT.discard(url)
+            if ok:
                 _DOWNLOADED[url] = None
                 _DOWNLOADED.move_to_end(url)
                 while len(_DOWNLOADED) > MAX_DOWNLOADED:
                     _DOWNLOADED.popitem(last=False)
                 _DOWNLOAD_ATTEMPTS.pop(url, None)
-            global _RELOAD_DIRTY, _LAST_ACTIVITY
-            _RELOAD_DIRTY = True
-            _LAST_ACTIVITY = time.time()
-            time.sleep(0.05)
-        else:
-            with _LOCK:
+            else:
                 attempts = _DOWNLOAD_ATTEMPTS.get(url, 0) + 1
                 _DOWNLOAD_ATTEMPTS[url] = attempts
                 if attempts < MAX_DOWNLOAD_ATTEMPTS:
+                    # 失败退回队列，允许重试
                     _SEEN.add(url)
                     _QUEUED.append(url)
+                    _QUEUE_NONEMPTY.notify()
                 else:
                     _DOWNLOAD_ATTEMPTS.pop(url, None)
+        if ok:
+            global _RELOAD_DIRTY, _LAST_ACTIVITY
+            _RELOAD_DIRTY = True
+            _LAST_ACTIVITY = time.time()
+            image_cache_maintenance()   # 低频磁盘缓存清理（每 100 张/10 分钟）
+            time.sleep(0.05)
+        else:
             time.sleep(0.3 + (attempts * 0.2))
 
 def start_workers():
@@ -449,7 +514,6 @@ def load_shelf():
                 # 去掉日期前后空格，避免字符串排序时被排到所有人后面
                 item["fav_time"] = str(item.get("fav_time") or "").strip()
             data["fav"].sort(key=lambda x: x.get("fav_time", ""), reverse=True)
-            data["fav"] = data["fav"][:MAX_LIST_ITEMS]
         return data
     except Exception:
         return {"fav": []}
@@ -483,7 +547,6 @@ def mark_fav_dirty():
 
 def add_fav(code, img=""):
     SHELF["fav"].insert(0, {"code": code, "img": img, "fav_time": now_time()})
-    del SHELF["fav"][MAX_LIST_ITEMS:]
     mark_fav_dirty()
 
 def remove_fav(code):
@@ -532,7 +595,7 @@ def _save_movie_cache(movies):
 _MOVIES = _load_movie_cache()
 _MOVIE_PENDING = set()
 _MOVIE_ATTEMPTS = {}
-_MOVIE_QUEUE = []
+_MOVIE_QUEUE = queue.Queue()   # 待解析番号队列（阻塞等待，不再轮询）
 _MOVIE_LOCK = threading.Lock()
 _MOVIE_MAX_ATTEMPTS = 5
 _MOVIE_WORKERS = 2          # 低频补全：低并发，避免洪泛触发站点限流
@@ -549,11 +612,13 @@ _MOVIE_GIVEUP_COOL = 600
 def _movie_worker():
     global _MOVIE_UNSAVED
     while True:
-        with _MOVIE_LOCK:
-            ready = time.time() >= _MOVIE_PAUSE_UNTIL
-            code = _MOVIE_QUEUE.pop(0) if _MOVIE_QUEUE and ready else ""
-        if not code:
-            time.sleep(0.15)
+        # 暂停期（详情页打开等）不取任务，队列里的番号原位保留
+        if time.time() < _MOVIE_PAUSE_UNTIL:
+            time.sleep(0.2)
+            continue
+        try:
+            code = _MOVIE_QUEUE.get(timeout=0.5)    # 阻塞等待，不再轮询空转
+        except queue.Empty:
             continue
         try:
             result = fetch_movie_page(BASE + "/search/" + quote(code) + "/1")
@@ -574,7 +639,7 @@ def _movie_worker():
                 _MOVIE_PENDING.discard(code)
                 _MOVIE_UNSAVED += 1
             elif attempts < _MOVIE_MAX_ATTEMPTS:
-                _MOVIE_QUEUE.append(code)
+                _MOVIE_QUEUE.put(code)
                 retry_sleep = _MOVIE_RETRY_SLEEP * attempts
             else:
                 _MOVIE_PENDING.discard(code)
@@ -608,14 +673,29 @@ def pause_fav_movies():
     with _MOVIE_LOCK:
         _MOVIE_PAUSE_UNTIL = time.time() + 3.0
 
+def _fav_window_items():
+    """收藏可视窗口内的条目：当前页 ± 1 页（约 3 页屏幕内容）。
+
+    只对窗口内的收藏做封面检查 / 缺失解析 / 下载排队，
+    而不是一次处理全部收藏导致大量
+    磁盘 I/O 与网络请求——屏幕上一页往往只有 9 个。
+    翻页 / 收藏变动会重新触发 _pump(FAV_VID)，窗口随之前后滑动。
+    """
+    v = VIEWS.get(FAV_VID)
+    page = v["page"] if v else 1
+    size = page_size()
+    lo = max(0, (page - 2) * size)      # 当前页前 1 页
+    hi = (page + 1) * size              # 当前页 + 后 1 页
+    return fav_items()[lo:hi]
+
 def load_fav_movies():
-    """收藏里缺封面的番号排入后台补全队列；已有封面的直接请求下载。"""
+    """收藏可视窗口内缺封面的番号排入后台补全队列；已有封面的直接请求下载。"""
     global _MOVIE_PAUSE_UNTIL
     _start_movie_workers()
     cached_images = []
     with _MOVIE_LOCK:
         _MOVIE_PAUSE_UNTIL = 0.0
-        for item in SHELF["fav"][:MAX_LIST_ITEMS]:
+        for item in _fav_window_items():
             code = str(item.get("code") or "").strip().upper()
             img = item.get("img") or ""
             if not img and code in _MOVIES:
@@ -629,7 +709,7 @@ def load_fav_movies():
                     _MOVIE_GIVEUP.pop(code, None)
                 _MOVIE_PENDING.add(code)
                 _MOVIE_ATTEMPTS[code] = 0
-                _MOVIE_QUEUE.append(code)
+                _MOVIE_QUEUE.put(code)
     for image in reversed(cached_images):
         request_img(image, priority=True)
 
@@ -651,27 +731,85 @@ def norm_keyword(kw):
     s = re.sub(r"(\d)(?=[a-zA-Z])(?!-)", r"\1-", s)
     return s
 
+# ============================================================
+#  解析层：预编译正则（模块级编译一次，热路径不再反复编译/查缓存）
+# ============================================================
+
+# 列表卡片：整卡区块 + 卡内字段
+_RE_MOVIE_CHUNK = re.compile(r'<a class="movie-box"[\s\S]*?</span>\s', re.S)
+_RE_HREF = re.compile(r'href="([^"]*)"')
+_RE_IMG = re.compile(r'<img[^>]*?src="([^"]*)"')     # 允许 src 前有其它属性（懒加载等）
+_RE_DATE = re.compile(r"<date>(.*?)</date>")          # 卡内第 1 条=番号，第 2 条=发行日期
+_RE_GENRE_LINK = re.compile(r'href="([^"]*)">([^<]*)</a>')
+_RE_GENRE_LINKS = re.compile(r'href="([^"]*)">([^<]*)</a>', re.S)
+# 女优头像（详情页 avatar-box / 女优列表页 avatar-box text-center）
+_RE_AVATAR_CHUNK = re.compile(r'<a class="avatar-box"[\s\S]*?</a>', re.S)
+_RE_AVATAR_LIST_CHUNK = re.compile(r'<a class="avatar-box text-center"[\s\S]*?</span>', re.S)
+_RE_SPAN_TEXT = re.compile(r"<span>(.*?)</span>")
+_RE_TITLE_ATTR = re.compile(r'title="([^"]*)"')
+# 详情页：封面/标题一次定位（常规 + 兜底）
+_RE_BIGIMAGE_FULL = re.compile(r'<a class="bigImage" href="([^"]*)" title="([^"]*)"')
+_RE_BIGIMAGE_HREF = re.compile(r'<a class="bigImage" href="([^"]*)"')
+_RE_BIGIMAGE_TITLE = re.compile(r'<a class="bigImage"[\s\S]{0,200}?<img[^>]*title="([^"]*)"')
+# 详情页：樣圖区块（大图 href + 缩略图 src 成对）
+_RE_SAMPLE_PAIR = re.compile(
+    r'<a class="sample-box" href="([^"]*)"[\s\S]*?<img src="([^"]*)"', re.S)
+# 详情页：影片信息面板各行（"發行日期/長度/發行商/製作商/系列/導演/識別碼"）
+_RE_INFO_ROWS = {key: re.compile(pat, re.S) for key, pat in {
+    "time": r'<span class="header">發行日期:</span>([\s\S]*?)</p>',
+    "last": r'<span class="header">長度:</span>([\s\S]*?)</p>',
+    "estab": r'<span class="header">發行商:[\s\S]*?"([^"]*)">([^<]*)</a>',
+    "maker": r'<span class="header">製作商:[\s\S]*?"([^"]*)">([^<]*)</a>',
+    "series": r'<span class="header">系列:[\s\S]*?"([^"]*)">([^<]*)</a>',
+    "director": r'<span class="header">導演:[\s\S]*?"([^"]*)">([^<]*)</a>',
+    "code": r'<span class="header">識別碼:[\s\S]*?">([^<]*)</span>',
+}.items()}
+_RE_MINUTES = re.compile(r"(\d+)\s*分鐘")
+_RE_GENRE_BLOCK = re.compile(r"類別:[\s\S]*?button", re.S)
+# 类型页分组
+_GENRE_GROUP_TAGS = ["主題", "角色", "服裝", "體型", "行為", "玩法", "類別"]
+_RE_GENRE_GROUPS = {tag: re.compile(tag + r"</h4>([\s\S]*?)</div>", re.S)
+                    for tag in _GENRE_GROUP_TAGS}
+# 评分（JavDB）
+_RE_SCORE_BLOCK = re.compile(r'class="score">[\s\S]*?div>')
+_RE_SCORE = re.compile(r"([0-9.]+)分")
+_RE_SCORE_COUNT = re.compile(r"由(\d+)人評價")
+
 def parse_movies(html):
-    """解析卡片网格 HTML，返回影片列表 dict。"""
+    """解析卡片网格 HTML，返回影片列表 dict。
+
+    健壮性（相对原实现的边界修补）：
+      - 只把「番号 + 链接」视为必需字段，缺 img 的卡片不再整卡丢弃；
+      - 图片允许 src 前带其它属性（懒加载 / 防爬参数）；
+      - 发行日期取卡内第二个 <date>，不再依赖 "/ <date>..</span>" 的
+        相邻格式（站点标记顺序一变就会整列日期丢失）。
+    """
     items = []
-    for i in re.compile(r'<a class="movie-box"[\s\S]*?</span>\s', re.S).findall(html):
-        m = re.search(r'href="([^"]*)"', i)
-        im = re.search(r'<img src="([^"]*)"', i)
-        code = re.search(r"<date>(.*?)</date>", i)
-        date = re.search(r"/\s<date>(.*?)</date></span>", i)
-        if not (m and im and code):
-            continue
-        items.append({"code": code.group(1),
-                      "date": date.group(1) if date else "",
-                      "img": im.group(1),
+    for i in _RE_MOVIE_CHUNK.findall(html):
+        m = _RE_HREF.search(i)
+        dates = _RE_DATE.findall(i)
+        if not (m and dates):
+            continue        # 无链接或无番号的区块无法成为列表项
+        im = _RE_IMG.search(i)
+        items.append({"code": dates[0],
+                      "date": dates[1] if len(dates) > 1 else "",
+                      "img": im.group(1) if im else "",
                       "link": m.group(1),
                       "hd": "高清" in i, "sub": "字幕" in i})
     return items
 
 def fetch_movie_page(url):
-    """抓取一页影片列表；无结果时返回 'empty'。"""
+    """抓取一页影片列表。
+
+    返回值严格区分三种情况：
+      list     请求成功（可为空列表 = 这一页确实没有内容）
+      "empty"  请求成功但确认没有更多数据（404 / 空结果页）→ 可置 exhausted
+      None     网络失败 → 不代表列表结束，允许重试
+    """
     html = get(url)
-    if not html or "404 Page Not Found" in html:
+    if not html:
+        return None
+    if "404 Page Not Found" in html:
         return "empty"
     if "沒有您要的結果" in html:
         return "empty"
@@ -683,10 +821,10 @@ def fetch_actresses(page):
     if not html:
         return []
     items = []
-    for i in re.findall(r'<a class="avatar-box text-center"[\s\S]*?</span>', html, re.S):
-        m = re.search(r'href="([^"]*)"', i)
-        im = re.search(r'<img src="([^"]*)"', i)
-        title = re.search(r'title="([^"]*)"', i)
+    for i in _RE_AVATAR_LIST_CHUNK.findall(html):
+        m = _RE_HREF.search(i)
+        im = _RE_IMG.search(i)
+        title = _RE_TITLE_ATTR.search(i)
         if not (m and title):
             continue
         items.append({"link": m.group(1),
@@ -700,11 +838,11 @@ def fetch_genres():
     groups = []
     if not html:
         return groups
-    for tag in ["主題", "角色", "服裝", "體型", "行為", "玩法", "類別"]:
-        g = re.search(tag + r"</h4>([\s\S]*?)</div>", html, re.S)
+    for tag in _GENRE_GROUP_TAGS:
+        g = _RE_GENRE_GROUPS[tag].search(html)
         if not g:
             continue
-        cats = re.findall(r'href="([^"]*)">([^<]*)</a>', g.group(1))
+        cats = _RE_GENRE_LINK.findall(g.group(1))
         if cats:
             groups.append({"tag": tag,
                            "cats": [{"link": l, "name": n} for l, n in cats]})
@@ -725,7 +863,15 @@ def build_trailer_urls(code):
     return urls
 
 def fetch_detail(url):
-    """抓取并解析详情页，返回完整详情 dict。"""
+    """抓取并解析详情页，返回完整详情 dict。
+
+    解析策略（把全文扫描次数从 ~15 次降到 ~5 次）：
+      1. 封面 + 标题合并为一次 bigImage 定位；
+      2. 影片信息面板（header 行 + 類別按钮）一次 find 切片，
+         7 行字段与類別都只在切片内解析；
+      3. 女优 / 样图区块结构独立，保持全文各一次 findall。
+    面板定位不可靠时（找不到 / 切片内缺關鍵行）自动回退全文，宁多扫不漏项。
+    """
     d = {"code": "", "name": "", "cover": "", "time": "????-??-??",
          "last": "???", "estab": "", "maker": "", "series": "", "director": "",
          "estab_link": "", "maker_link": "", "series_link": "", "director_link": "",
@@ -736,58 +882,63 @@ def fetch_detail(url):
         log("fetch_detail empty: " + url)
         d["error"] = True
         return d
-    m = re.search(r'<a class="bigImage" href="([^"]*)"', html)
-    if m:
-        d["cover"] = m.group(1)
-    # 标题在 <a class="bigImage" href="..." title="..."> 标签上（与原 JS 一致）
-    t = re.search(r'<a class="bigImage" href="[^"]*" title="([^"]*)"', html)
+
+    # 封面 + 标题（标题在 <a class="bigImage" href="..." title="..."> 上，与原 JS 一致）
+    t = _RE_BIGIMAGE_FULL.search(html)
     if t:
-        d["name"] = t.group(1).strip()
+        d["cover"] = t.group(1)
+        d["name"] = t.group(2).strip()
     else:
+        t = _RE_BIGIMAGE_HREF.search(html)
+        if t:
+            d["cover"] = t.group(1)
         # 兜底：个别页面 title 属性在 <a> 内的 <img> 上
-        t = re.search(r'<a class="bigImage"[\s\S]{0,200}?<img[^>]*title="([^"]*)"', html)
+        t = _RE_BIGIMAGE_TITLE.search(html)
         if t:
             d["name"] = t.group(1).strip()
-    t = re.search(r'<span class="header">發行日期:</span>([\s\S]*?)</p>', html)
+
+    # 大区块定位：影片信息面板（header 行与類別按钮都在其中）
+    panel_start = html.find('<div class="movie-info">')
+    if panel_start >= 0:
+        panel_end = html.find("sample-box", panel_start)
+        info = html[panel_start:panel_end if panel_end > panel_start else len(html)]
+        # 切片内缺关键行说明结构有变：退回全文，宁可多扫不可漏项
+        if not _RE_INFO_ROWS["code"].search(info):
+            info = html
+    else:
+        info = html
+
+    t = _RE_INFO_ROWS["time"].search(info)
     if t:
         d["time"] = t.group(1).strip()
-    t = re.search(r'<span class="header">長度:</span>([\s\S]*?)</p>', html)
+    t = _RE_INFO_ROWS["last"].search(info)
     if t:
-        dm = re.search(r"(\d+)\s*分鐘", t.group(1))
+        dm = _RE_MINUTES.search(t.group(1))
         d["last"] = dm.group(1) if dm else t.group(1).strip()
-    t = re.search(r'<span class="header">發行商:[\s\S]*?"([^"]*)">([^<]*)</a>', html)
-    if t:
-        d["estab"] = t.group(2)
-        d["estab_link"] = t.group(1)
-    t = re.search(r'<span class="header">製作商:[\s\S]*?"([^"]*)">([^<]*)</a>', html)
-    if t:
-        d["maker"] = t.group(2)
-        d["maker_link"] = t.group(1)
-    t = re.search(r'<span class="header">系列:[\s\S]*?"([^"]*)">([^<]*)</a>', html)
-    if t:
-        d["series"] = t.group(2)
-        d["series_link"] = t.group(1)
-    t = re.search(r'<span class="header">導演:[\s\S]*?"([^"]*)">([^<]*)</a>', html)
-    if t:
-        d["director"] = t.group(2)
-        d["director_link"] = t.group(1)
-    t = re.search(r'<span class="header">識別碼:[\s\S]*?">([^<]*)</span>', html)
+    for key, field in (("estab", "estab"), ("maker", "maker"),
+                       ("series", "series"), ("director", "director")):
+        t = _RE_INFO_ROWS[key].search(info)
+        if t:
+            d[field] = t.group(2)
+            d[field + "_link"] = t.group(1)
+    t = _RE_INFO_ROWS["code"].search(info)
     if t:
         d["code"] = t.group(1)
-    tg = re.search(r"類別:[\s\S]*?button", html, re.S)
+    tg = _RE_GENRE_BLOCK.search(info) or _RE_GENRE_BLOCK.search(html)
     if tg and "label" in tg.group(0):
         d["genres"] = [{"link": l, "name": n} for l, n in
-                       re.findall(r'href="([^"]*)">([^<]*)</a>', tg.group(0))]
-    for i in re.findall(r'<a class="avatar-box"[\s\S]*?</a>', html, re.S):
-        name = re.search(r"<span>(.*?)</span>", i)
-        link = re.search(r'href="([^"]*)"', i)
-        img = re.search(r'<img src="([^"]*)"', i)
+                       _RE_GENRE_LINKS.findall(tg.group(0))]
+
+    for i in _RE_AVATAR_CHUNK.findall(html):
+        name = _RE_SPAN_TEXT.search(i)
+        link = _RE_HREF.search(i)
+        img = _RE_IMG.search(i)
         if name and link:
             d["actresses"].append({"name": name.group(1),
                                    "link": link.group(1),
                                    "img": fill_base(img.group(1)) if img else ""})
-    for i in re.findall(r'<a class="sample-box" href="([^"]*)"[\s\S]*?<img src="([^"]*)"', html, re.S):
-        d["samples"].append({"link": i[0], "img": i[1]})
+    for big, thumb in _RE_SAMPLE_PAIR.findall(html):
+        d["samples"].append({"link": big, "img": thumb})
     urls = build_trailer_urls(d["code"])
     if urls:
         d["trailer"] = urls[0]
@@ -946,8 +1097,8 @@ def prefetch_play_sources(code):
         _LINK_SEQ += 1
         seq = _LINK_SEQ
         _LINK_INFLIGHT[code] = seq
-    threading.Thread(target=_jable_sources_worker, args=(code, seq), daemon=True).start()
-    threading.Thread(target=_trailer_source_worker, args=(code, seq), daemon=True).start()
+    _TASK_POOL.submit(_jable_sources_worker, code, seq)
+    _TASK_POOL.submit(_trailer_source_worker, code, seq)
 
 def _commit_sources():
     """主线程：把后台取到的链接写回 State（只认当前详情的番号）。"""
@@ -1007,6 +1158,7 @@ def new_view(flt, extras, path):
         "remote": 1,        # 下一个待抓的远程页码
         "loading": False,
         "exhausted": False, # 远程已无更多内容
+        "generation": 0,    # 递增代号：筛选/数据池重置后 +1，在途 worker 结果作废
     }
 
 VIEWS = {
@@ -1044,6 +1196,36 @@ def push_list(path, vid):
     if len(_PUSHED_VIDS) > 50:
         del _PUSHED_VIDS[:25]
     path.append({"tag": "list", "data": {"vid": vid}})
+
+# 根展示位永不回收；动态展示位（详情内跳转的筛选列表）超过上限时回收最旧的
+ROOT_VIDS = {HOME_VID, ACTRESS_VID, GENRE_VID, FAV_VID}
+MAX_DYNAMIC_VIEWS = 12
+
+def gc_views():
+    """动态展示位生命周期回收（简单上限法，不做 LRU）。
+
+    只删除同时满足以下条件的展示位：
+      - 非根展示位；
+      - 已不在导航链上（不在 _PUSHED_VIDS / DETAIL_STACKS / DETAIL_HOST）；
+      - 没有在途 worker（loading=False）。
+    回收顺序从最旧开始，保留最新的 MAX_DYNAMIC_VIEWS 个。
+    """
+    dynamic = [vid for vid in VIEWS if vid not in ROOT_VIDS]
+    if len(dynamic) <= MAX_DYNAMIC_VIEWS:
+        return
+    keep = set(_PUSHED_VIDS) | set(DETAIL_STACKS)
+    if DETAIL_HOST:
+        keep.add(DETAIL_HOST)
+    with _VIEWS_LOCK:
+        for vid in dynamic[:-MAX_DYNAMIC_VIEWS]:    # dict 保持插入序：最旧优先
+            if vid in keep:
+                continue
+            v = VIEWS.get(vid)
+            if not v or v["loading"]:
+                continue      # 在途 worker 结束后，下一轮再回收
+            del VIEWS[vid]
+        # 同步清掉指向已回收展示位的陈旧引用
+        _PUSHED_VIDS[:] = [vid for vid in _PUSHED_VIDS if vid in VIEWS]
 
 def view_title(vid):
     """展示位标题（导航栏）。"""
@@ -1104,7 +1286,11 @@ def sort_new_items(items):
     return sorted(items, key=lambda x: x.get("date") or "", reverse=True)
 
 def pool_end(v):
-    """数据池末尾对应的全局序号（不含）。"""
+    """数据池末尾对应的全局序号（不含）。
+
+    注意：裸读不持锁；需要跨多个字段的一致性快照时，
+    由调用方持有 _VIEWS_LOCK 后调用（所有调用方均已如此）。
+    """
     return v["base"] + len(v["pool"])
 
 def page_items(vid):
@@ -1113,24 +1299,27 @@ def page_items(vid):
     if not v:
         return []
     size = page_size()
-    start = (v["page"] - 1) * size - v["base"]
-    if start < 0:
-        return []
-    return list(v["pool"][start:start + size])
+    with _VIEWS_LOCK:      # 短临界区：切片即快照，锁外不再访问共享字段
+        start = (v["page"] - 1) * size - v["base"]
+        if start < 0:
+            return []
+        return list(v["pool"][start:start + size])
 
 def page_loading(vid):
     """当前页还没被数据池完整覆盖（用于在网格下方显示加载指示）。"""
     v = VIEWS.get(vid)
     if not v:
         return False
-    return pool_end(v) < v["page"] * page_size() and not v["exhausted"]
+    with _VIEWS_LOCK:
+        return pool_end(v) < v["page"] * page_size() and not v["exhausted"]
 
 def can_next(vid):
     """是否还能往后翻。"""
     v = VIEWS[vid]
-    if pool_end(v) > v["page"] * page_size():
-        return True
-    return not v["exhausted"]
+    with _VIEWS_LOCK:
+        if pool_end(v) > v["page"] * page_size():
+            return True
+        return not v["exhausted"]
 
 
 # ============================================================
@@ -1148,11 +1337,35 @@ FETCH_GAP = 0.3
 POOL_LIMIT_PAGES = 24
 
 _VIEWS_DIRTY = False
+# 按展示位隔离的脏标记：不可见展示位的数据变化不触发整树重建，
+# 标记保留到该展示位可见时（翻回该 tab / 关闭详情）再消费
+_DIRTY_VIDS = set()
 
-def mark_views_dirty():
-    """标记展示数据已变化，等主线程刷新。"""
+def _view_visible(vid):
+    """展示位当前是否可能显示在屏幕上（属于当前 tab，或它正承载详情）。"""
+    v = VIEWS.get(vid)
+    if not v:
+        return True       # 未知展示位：保守视为可见
+    root = TAB_ROOT_VIDS.get(state.tab)
+    cur_path = VIEWS[root]["path"] if root in VIEWS else None
+    if cur_path is not None and v["path"] is cur_path:
+        return True       # 属于当前 tab 的导航栈
+    return vid == DETAIL_HOST and vid in VIEWS
+# VIEWS 共享字段的短临界区锁：只保护 pool/base/remote/exhausted/loading 的
+# 一致性读写，不包裹网络请求与 UI 计算（避免 UI 线程与 worker 互相阻塞）
+_VIEWS_LOCK = threading.Lock()
+
+def mark_views_dirty(vid=None):
+    """标记展示数据已变化，等主线程刷新。
+
+    指明 vid 时按展示位隔离：_sync_dirty 只在展示位可见时才触发重建，
+    后台为隐藏 tab 预加载 / 补数据不再引起界面重建。
+    """
     global _VIEWS_DIRTY
-    _VIEWS_DIRTY = True
+    if vid is None:
+        _VIEWS_DIRTY = True     # 未指明来源：保守处理，无条件刷新
+    else:
+        _DIRTY_VIDS.add(vid)
 
 def preload_ahead():
     """预加载页数：每页项数越大，预加载页数越少，控制同时下载与渲染的封面量。"""
@@ -1185,77 +1398,104 @@ def _pump(vid, force=False):
     kind = v["filter"]["kind"]
     if kind == "fav":
         # 收藏：本地数据一次取全；已加载且非显式要求时不重复重建
-        if v["exhausted"] and not force:
-            return
-        v["pool"] = fav_items()
-        v["base"] = 0
-        v["remote"] = 1
-        v["exhausted"] = True
-        v["loading"] = False
-        # 自动补全封面：已有封面的直接下载，缺失的按番号后台解析
+        with _VIEWS_LOCK:
+            if not (v["exhausted"] and not force):
+                v["pool"] = fav_items()
+                v["base"] = 0
+                v["remote"] = 1
+                v["exhausted"] = True
+                v["loading"] = False
+        # 可视窗口的封面检查 / 解析 / 下载：数据池未重建（仅翻页）时也要滑动窗口
         load_fav_movies()
-        mark_views_dirty()
+        mark_views_dirty(vid)
         return
     if kind == "genre":
         # 分类：单次抓取全部分组，无翻页
-        if v["exhausted"] and not force:
+        with _VIEWS_LOCK:
+            if v["exhausted"] and not force:
+                return
+            if v["loading"]:
+                return
+            v["loading"] = True
+            gen = v["generation"]
+        threading.Thread(target=_genre_worker, args=(vid, gen), daemon=True).start()
+        return
+    with _VIEWS_LOCK:
+        if v["loading"] or v["exhausted"]:
             return
-        if v["loading"]:
+        if pool_end(v) >= load_window_end(v):
             return
         v["loading"] = True
-        threading.Thread(target=_genre_worker, args=(vid,), daemon=True).start()
-        return
-    if v["loading"] or v["exhausted"]:
-        return
-    if pool_end(v) >= load_window_end(v):
-        return
-    v["loading"] = True
-    threading.Thread(target=_pump_worker, args=(vid,), daemon=True).start()
+        gen = v["generation"]
+    threading.Thread(target=_pump_worker, args=(vid, gen), daemon=True).start()
 
-def _genre_worker(vid):
-    """后台抓取分类分组（一次抓完，无翻页）。"""
+def _genre_worker(vid, gen):
+    """后台抓取分类分组（一次抓完，无翻页）。gen 校验防止 stale 提交。"""
     v = VIEWS.get(vid)
     if not v:
         return
     try:
         groups = fetch_genres()
-        v["pool"] = groups if isinstance(groups, list) else []
-        v["exhausted"] = True
+        with _VIEWS_LOCK:
+            if VIEWS.get(vid) is not v or v["generation"] != gen:
+                return      # 结果已过期：丢弃
+            v["pool"] = groups if isinstance(groups, list) else []
+            v["exhausted"] = True
     except Exception as e:
         log("genre err: " + str(e))
+        # 失败不置 exhausted：loading 复位后由下轮 _pump 自动重试
     finally:
-        v["loading"] = False
-        mark_views_dirty()
+        with _VIEWS_LOCK:
+            if VIEWS.get(vid) is v and v["generation"] == gen:
+                v["loading"] = False
+        mark_views_dirty(vid)
 
-def _pump_worker(vid):
-    """后台抓远程页：一轮最多抓 MAX_FETCH_PER_ROUND 页，只追加不覆盖。"""
+def _pump_worker(vid, gen):
+    """后台抓远程页：一轮最多抓 MAX_FETCH_PER_ROUND 页，只追加不覆盖。
+
+    与详情页 _DETAIL_SEQ 同一套设计：worker 启动时记录 generation，
+    每次准备提交结果前校验「这个结果还是不是当前状态需要的」，
+    筛选切换 / 数据池重置后的在途结果一律作废。
+    """
     v = VIEWS.get(vid)
     if not v:
         return
     try:
         fetched = 0
         while fetched < MAX_FETCH_PER_ROUND:
-            if pool_end(v) >= load_window_end(v) or v["exhausted"]:
+            with _VIEWS_LOCK:
+                if VIEWS.get(vid) is not v or v["generation"] != gen:
+                    return      # stale：用户已切换筛选或重置数据池
+                if pool_end(v) >= load_window_end(v) or v["exhausted"]:
+                    break
+            res = fetch_view_page(v, v["remote"])       # 网络请求在锁外
+            if res is None:
+                # 网络失败 ≠ 没有更多数据：不置 exhausted，留给下轮 _pump 重试
+                log("pump net err: page " + str(v["remote"]))
                 break
-            res = fetch_view_page(v, v["remote"])
-            if not res or res == "empty":
-                v["exhausted"] = True
-                break
-            # 增量追加：新数据排在已有数据之后，已翻过的页码内容不受影响
-            v["pool"].extend(sort_new_items(res))
-            v["remote"] += 1
+            with _VIEWS_LOCK:
+                if VIEWS.get(vid) is not v or v["generation"] != gen:
+                    return
+                if res == "empty" or not res:
+                    v["exhausted"] = True
+                    break
+                # 增量追加：新数据排在已有数据之后，已翻过的页码内容不受影响
+                v["pool"].extend(sort_new_items(res))
+                v["remote"] += 1
+                _trim(v, page_size())
             fetched += 1
             for m in res:
                 request_img(m.get("img") or "")
-            _trim(v, page_size())
-            mark_views_dirty()
+            mark_views_dirty(vid)
             if fetched < MAX_FETCH_PER_ROUND:
                 time.sleep(FETCH_GAP)
     except Exception as e:
         log("pump err: " + str(e))
     finally:
-        v["loading"] = False
-        mark_views_dirty()
+        with _VIEWS_LOCK:
+            if VIEWS.get(vid) is v and v["generation"] == gen:
+                v["loading"] = False
+        mark_views_dirty(vid)
 
 def pump_all_views():
     """定时补足各展示位的预加载窗口（每轮只抓少量，逐步填充）。"""
@@ -1267,13 +1507,15 @@ def set_filter(vid, flt):
     v = VIEWS.get(vid)
     if not v:
         return
-    v["filter"] = flt
-    v["page"] = 1
-    v["pool"] = []
-    v["base"] = 0
-    v["remote"] = 1
-    v["exhausted"] = False
-    v["loading"] = False
+    with _VIEWS_LOCK:
+        v["filter"] = flt
+        v["page"] = 1
+        v["pool"] = []
+        v["base"] = 0
+        v["remote"] = 1
+        v["exhausted"] = False
+        v["loading"] = False
+        v["generation"] += 1    # 旧筛选的在途 worker 结果全部作废
     _pump(vid)
     state.reload += 1
 
@@ -1289,19 +1531,21 @@ def apply_page(vid, page):
     if not v:
         return False
     page = max(1, int(page))
-    size = page_size()
-    if (page - 1) * size < v["base"]:
-        # 该页已被回收，回到第 1 页重新累积，避免一次性回抓大量历史页
-        page = 1
-        v["pool"] = []
-        v["base"] = 0
-        v["remote"] = 1
-        v["exhausted"] = False
-    elif v["exhausted"]:
-        # 已知列表总长时，不允许跳过最后一页
-        page = min(page, max(1, (pool_end(v) + size - 1) // size))
-    if page != v["page"]:
-        v["page"] = page
+    with _VIEWS_LOCK:
+        size = page_size()
+        if (page - 1) * size < v["base"]:
+            # 该页已被回收，回到第 1 页重新累积，避免一次性回抓大量历史页
+            page = 1
+            v["pool"] = []
+            v["base"] = 0
+            v["remote"] = 1
+            v["exhausted"] = False
+            v["generation"] += 1    # 数据池重置：在途 worker 结果作废
+        elif v["exhausted"]:
+            # 已知列表总长时，不允许跳过最后一页
+            page = min(page, max(1, (pool_end(v) + size - 1) // size))
+        if page != v["page"]:
+            v["page"] = page
     _pump(vid)
     return True
 
@@ -1315,9 +1559,10 @@ def max_page(vid):
     v = VIEWS.get(vid)
     if not v:
         return 1
-    if v["exhausted"]:
-        size = page_size()
-        return max(1, (pool_end(v) + size - 1) // size)
+    with _VIEWS_LOCK:
+        if v["exhausted"]:
+            size = page_size()
+            return max(1, (pool_end(v) + size - 1) // size)
     return None
 
 # 页码弹层的临时输入（普通变量：按键时不写入 State，避免每次按键整树重建闪动）
@@ -1386,6 +1631,10 @@ _DETAIL_SEQ = 0
 _PLAY_REQUEST = None
 _PLAY_ERROR = ""
 _BG_STARTED = False
+# 短任务线程池：详情抓取 / 翻译 / 评分 / 播放源共用。
+# 以前打开一次详情要起约 5 个短生命周期线程，快速进出详情会反复创建；
+# 统一入池（图片下载 ×3、收藏解析 ×2 仍为常驻消费者，不走此池）
+_TASK_POOL = ThreadPoolExecutor(max_workers=6, thread_name_prefix="task")
 
 # 导航转场静默期：push/pop 期间的后台刷新暂缓，避免打断转场动画
 _RELOAD_SILENT_UNTIL = 0.0
@@ -1427,7 +1676,7 @@ def request_detail(link):
     seq = _DETAIL_SEQ
     _DETAIL_READY = None
     _DETAIL_ERROR = False
-    threading.Thread(target=_detail_worker, args=(link, seq), daemon=True).start()
+    _TASK_POOL.submit(_detail_worker, link, seq)
 
 def take_ready(link):
     """取回后台已抓好的同链接详情（重进同一番号时秒开）。"""
@@ -1482,7 +1731,7 @@ def _sync_dirty():
             fv["pool"] = fav_items()
             fv["base"] = 0
             load_fav_movies()
-            mark_views_dirty()
+            mark_views_dirty(FAV_VID)
 
     if is_dirty():
         quiet = now - last_activity() >= IMG_SILENCE_INTERVAL
@@ -1495,9 +1744,14 @@ def _sync_dirty():
             _LAST_IMG_RELOAD = now
             state.reload += 1
 
-    if _VIEWS_DIRTY and settled:
-        _VIEWS_DIRTY = False
-        state.reload += 1
+    if (_VIEWS_DIRTY or _DIRTY_VIDS) and settled:
+        # 可见性隔离：只在本轮有「屏幕上可能显示的」脏展示位时才重建。
+        # 一次重建刷新整棵树，因此可见脏位存在时顺带消费全部标记；
+        # 全部不可见时保留标记，等翻回对应 tab / 关闭详情后再刷新。
+        if _VIEWS_DIRTY or any(_view_visible(vid) for vid in _DIRTY_VIDS):
+            state.reload += 1
+            _VIEWS_DIRTY = False
+            _DIRTY_VIDS.clear()
 
     # 翻到已加载内容的末尾后，继续把预加载窗口填满（每轮只抓少量）
     if settled:
@@ -1588,7 +1842,7 @@ TRANS_HEADERS = {
 }
 
 _TRANS_CACHE = {}          # 日文原文 -> 中文译文
-_TRANS_READY = None        # (link, 译文)，由后台线程写入、主线程提交
+_TRANS_READY = None        # {"seq","ok","text","link"}，后台线程写入、主线程提交
 _TRANS_SEQ = 0
 
 def fetch_translation(text):
@@ -1622,29 +1876,36 @@ def translate_title_async(d):
     _TRANS_SEQ += 1
     seq = _TRANS_SEQ
     link = d.get("link") or ""
-    threading.Thread(target=_translate_worker, args=(link, text, seq),
-                     daemon=True).start()
+    _TASK_POOL.submit(_translate_worker, link, text, seq)
 
 def _translate_worker(link, text, seq):
     global _TRANS_READY
     result = fetch_translation(text)
-    if seq == _TRANS_SEQ and result:
-        _TRANS_READY = (link, result)
+    if seq != _TRANS_SEQ:
+        return
+    # 成功与失败都要回传：失败时恢复原标题，不能永远停在「翻译中...」
+    _TRANS_READY = {"seq": seq, "ok": bool(result),
+                    "text": result or "", "link": link}
 
 def _commit_translation():
     """主线程提交翻译结果（转场静默期内暂缓，下一轮再试）。"""
     global _TRANS_READY
     if _TRANS_READY is None or not reload_allowed():
         return
-    link, text = _TRANS_READY
+    r = _TRANS_READY
     _TRANS_READY = None
     cur = state.detail
-    if cur and cur.get("link") == link and state.detail_open:
-        if len(_TRANS_CACHE) > 200:
-            _TRANS_CACHE.clear()
-        _TRANS_CACHE[str(cur.get("name") or "").strip()] = text
-        state.name_text = text
-        state.title_trans = True
+    if cur and cur.get("link") == r["link"] and state.detail_open:
+        if r["ok"]:
+            if len(_TRANS_CACHE) > 200:
+                _TRANS_CACHE.clear()
+            _TRANS_CACHE[str(cur.get("name") or "").strip()] = r["text"]
+            state.name_text = r["text"]
+            state.title_trans = True
+        else:
+            # 翻译失败：恢复日文原标题
+            state.name_text = str(cur.get("name") or "")
+            state.title_trans = False
 
 
 # ============================================================
@@ -1654,7 +1915,7 @@ def _commit_translation():
 
 JAVDB_SEARCH_URL = "https://javdb.com/search?q={code}&f=all"
 
-_RATING_READY = None      # (link, 评分文本)
+_RATING_READY = None      # {"seq","ok","text","link"}，后台线程写入、主线程提交
 _RATING_SEQ = 0
 
 def fetch_rating(code):
@@ -1665,11 +1926,11 @@ def fetch_rating(code):
         if not resp or not resp.ok:
             return ""
         html = resp.text or ""
-        block = re.search(r'class="score">[\s\S]*?div>', html)
+        block = _RE_SCORE_BLOCK.search(html)
         if not block:
             return ""
-        score = re.search(r"([0-9.]+)分", block.group(0))
-        count = re.search(r"由(\d+)人評價", block.group(0))
+        score = _RE_SCORE.search(block.group(0))
+        count = _RE_SCORE_COUNT.search(block.group(0))
         if not score:
             return ""
         text = "评分：" + score.group(1)
@@ -1690,25 +1951,28 @@ def rating_async(d):
     _RATING_SEQ += 1
     seq = _RATING_SEQ
     link = d.get("link") or ""
-    threading.Thread(target=_rating_worker, args=(link, code, seq),
-                     daemon=True).start()
+    _TASK_POOL.submit(_rating_worker, link, code, seq)
 
 def _rating_worker(link, code, seq):
     global _RATING_READY
     result = fetch_rating(code)
-    if seq == _RATING_SEQ and result:
-        _RATING_READY = (link, result)
+    if seq != _RATING_SEQ:
+        return
+    # 成功与失败都要回传：失败时清空评分行，不能永远停在「获取中...」
+    _RATING_READY = {"seq": seq, "ok": bool(result),
+                     "text": result or "", "link": link}
 
 def _commit_rating():
     """主线程提交评分（转场静默期内暂缓，下一轮再试）。"""
     global _RATING_READY
     if _RATING_READY is None or not reload_allowed():
         return
-    link, text = _RATING_READY
+    r = _RATING_READY
     _RATING_READY = None
     cur = state.detail
-    if cur and cur.get("link") == link and state.detail_open:
-        state.rating_text = text
+    if cur and cur.get("link") == r["link"] and state.detail_open:
+        # 失败 → 不显示评分（rating_text 为空时详情页不渲染该行）
+        state.rating_text = r["text"] if r["ok"] else ""
 
 def reset_pending():
     global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
@@ -1875,6 +2139,7 @@ def open_filter_at(path, link, value):
         state.status = "无该字段链接"
         state.reload += 1
         return
+    gc_views()      # 新建展示位前回收超出上限的旧展示位
     vid = new_vid()
     # 附加设置：跳转列表没有搜索框，只保留下拉刷新
     VIEWS[vid] = new_view({"kind": "link", "link": link, "title": value},
@@ -2126,9 +2391,16 @@ def magnet_row(m):
         appui.Button("复制", action=copy, role="destructive"),
     ])
 
+# 搜索框的临时输入（普通变量：按键时不写入 State，避免每字符整树重建）
+_SEARCH_INPUT = {"value": ""}
+
+def set_search_input(v):
+    _SEARCH_INPUT["value"] = v      # 只记录，不写 State：按键不触发重建
+
 def search_row(vid):
     """搜索栏（只有影片首页这一处展示需要）。"""
-    field = appui.TextField("番号或演员", text=state.keyword, on_change=set_keyword) \
+    field = appui.TextField("番号或演员", text=_SEARCH_INPUT["value"],
+                            on_change=set_search_input) \
         .text_field_style("rounded_border") \
         .on_submit(do_search)
     buttons = [appui.Button("搜索", action=do_search).button_style("bordered_prominent")]
@@ -2604,13 +2876,15 @@ def sample_preview_view():
 # ============================================================
 
 
-def set_keyword(v):
-    state.keyword = v
-
 def do_search():
-    """在影片首页发起搜索：把首页展示位的筛选条件换成关键词。"""
-    kw = norm_keyword(state.keyword)
+    """在影片首页发起搜索：把首页展示位的筛选条件换成关键词。
+
+    只在提交时读取临时输入并写一次 State（触发一次重建），
+    输入过程的每个按键都不经过 State。
+    """
+    kw = norm_keyword(_SEARCH_INPUT["value"])
     state.keyword = kw
+    _SEARCH_INPUT["value"] = kw
     if not kw:
         clear_search()
         return
@@ -2619,6 +2893,7 @@ def do_search():
 def clear_search():
     """退出搜索，回到最新影片。"""
     state.keyword = ""
+    _SEARCH_INPUT["value"] = ""
     set_filter(HOME_VID, HOME_FILTER)
 
 _LIST_DESTINATIONS = {"detail": detail_destination,
@@ -2667,13 +2942,15 @@ def set_page_size(v):
     save_settings()
     for vid in list(VIEWS):
         item = VIEWS[vid]
-        item["page"] = 1
-        if item["base"]:
-            # 每页项数变了，旧的分页偏移失效，回到起点重新累积
-            item["pool"] = []
-            item["base"] = 0
-            item["remote"] = 1
-            item["exhausted"] = False
+        with _VIEWS_LOCK:
+            item["page"] = 1
+            if item["base"]:
+                # 每页项数变了，旧的分页偏移失效，回到起点重新累积
+                item["pool"] = []
+                item["base"] = 0
+                item["remote"] = 1
+                item["exhausted"] = False
+                item["generation"] += 1     # 在途 worker 结果作废
         _pump(vid)
     state.reload += 1
 
