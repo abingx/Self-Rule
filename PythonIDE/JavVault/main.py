@@ -489,6 +489,45 @@ def save_settings():
 
 SETTINGS = load_settings()
 
+# ------------------------------------------------------------------
+#  底部固定分页条：GeometryReader 实测可用高度
+# ------------------------------------------------------------------
+# 影片 / 女优 / 收藏三个 tab 根页各包一层 GeometryReader，
+# 把实测到的可用高度写进 _GRID_GEOMETRY，用于限定滚动区高度，
+# 使「上一页 / 第X页 / 下一页」固定在 Tab 栏上方、不随内容滚动。
+_GRID_GEOMETRY = {"w": 0.0, "h": 0.0}
+PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()）
+PAGER_ROW_H = 44             # 分页条自身高度（估）
+# 分页条整体上移「半行高度」：与 Tab 栏之间留出半行空隙
+PAGER_BOTTOM_PAD = PAGER_ROW_H // 2
+PAGER_BLOCK_H = PAGER_ROW_H + PAGER_BOTTOM_PAD
+
+def _size_from_info(info):
+    """从 GeometryReader 回调数据里提取 (宽, 高)：兼容 dict / 元组等形态。"""
+    if isinstance(info, dict):
+        return info.get("width", info.get("w", 0)), info.get("height", info.get("h", 0))
+    if isinstance(info, (list, tuple)) and len(info) >= 2:
+        return info[0], info[1]
+    return 0, 0
+
+def remember_grid_size(info):
+    """GeometryReader 回调：记录可用区域高度（供固定分页条限定滚动区用）。"""
+    try:
+        w, h = _size_from_info(info)
+        w = float(w or 0.0)
+        h = float(h or 0.0)
+    except Exception:
+        return
+    if w <= 0 or h <= 0:
+        return
+    if abs(w - _GRID_GEOMETRY["w"]) < 1 and abs(h - _GRID_GEOMETRY["h"]) < 1:
+        return               # 同一帧重复回调：忽略
+    first = _GRID_GEOMETRY["h"] <= 0
+    _GRID_GEOMETRY["w"] = w
+    _GRID_GEOMETRY["h"] = h
+    if first:
+        state.reload += 1    # 首次测到尺寸后再重建一次，应用限定高度
+
 def page_size_key(kind):
     """展示位的 filter.kind -> 使用哪一套每页项数。
 
@@ -1396,12 +1435,11 @@ def mark_views_dirty(vid=None):
 
 def preload_ahead(v):
     """预加载页数：每页项数越大，预加载页数越少，控制同时下载与渲染的封面量。"""
-    return 1 if page_size_of_kind(v["filter"]["kind"]) >= 12 else 2
+    return 1 if page_size() >= 12 else 2
 
 def load_window_end(v):
     """预加载窗口末尾（全局序号，不含）。"""
-    size = page_size_of_kind(v["filter"]["kind"])
-    return (v["page"] + preload_ahead(v)) * size
+    return (v["page"] + preload_ahead(v)) * page_size()
 
 def _trim(v, size):
     """数据池超过上限时，从头部回收当前页之前的旧数据。
@@ -2326,8 +2364,16 @@ def grid_columns():
     return [col]
 
 
+def _caption_line(text):
+    """叠在封面上的一行文字（番号 / 发布日期 / 女优名共用同一样式）。"""
+    return appui.Text(text) \
+        .font("caption2") \
+        .foreground_color("white") \
+        .line_limit(1) \
+        .minimum_scale_factor(0.6)
+
 def movie_cell(m, vid):
-    """影片封面单元格：番号 | 发布日期 叠在封面底部（下对齐 + 左右居中）。
+    """影片封面单元格：番号与发布日期分两行叠在封面底部（下对齐 + 左右居中）。
 
     信息叠在图片内而不是排在图片下方，行与行的空隙就等于列与列的空隙。
     """
@@ -2337,12 +2383,11 @@ def movie_cell(m, vid):
 
     code = m.get("code") or ""
     date = m.get("date") or ""
-    meta = code + " | " + date if date else code
-    caption = appui.Text(meta) \
-        .font("caption2") \
-        .foreground_color("white") \
-        .line_limit(1) \
-        .minimum_scale_factor(0.6) \
+    # 番号与发布日期不再合并成一行：各占一行，同一个半透明胶囊内
+    lines = [_caption_line(code)] if code else []
+    if date:
+        lines.append(_caption_line(date))
+    caption = appui.VStack(lines, spacing=1) \
         .padding(horizontal=4, vertical=3) \
         .frame(max_width=GRID_CAPTION_WIDTH) \
         .background("black", corner_radius=4, opacity=0.55) \
@@ -2515,11 +2560,13 @@ def fav_count_row():
         .foreground_color("secondaryLabel") \
         .frame(min_height=36, max_width=appui.infinity, alignment="center")
 
-def movie_display(vid):
-    """通用影片展示：封面网格 + 翻页条。
+def movie_display(vid, with_pager=True):
+    """通用影片展示：封面网格（+ 翻页条）。
 
     vid 决定用哪个展示位；展示位的 filter 决定筛选条件，
     extras 决定这一处额外显示什么（搜索框 / 下拉刷新 / 提示行）。
+    with_pager=False 用于三个 tab 根页：分页条由 display_page_view
+    固定显示在 Tab 栏上方，不进滚动区。
     数据按发布时间从新到旧固定排列，增量加载只追加、不覆盖已有内容。
     """
     v = VIEWS.get(vid)
@@ -2558,7 +2605,8 @@ def movie_display(vid):
     else:
         parts.append(appui.Text("没有找到影片").foreground_color("secondaryLabel"))
 
-    parts.append(pager_row(vid))
+    if with_pager:
+        parts.append(pager_row(vid))
 
     if ex.get("status") and state.status:
         parts.append(appui.Text(state.status).font("caption")
@@ -2608,7 +2656,10 @@ def set_genre_group(v):
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
 
-    titled=False 用于各 tab 根页：不显示顶部标题；
+    titled=False 用于影片 / 女优 / 收藏三个 tab 根页：
+      - 分页条放在滚动区之外并限定滚动区高度，固定在 Tab 栏上方，
+        任何情况下都无需滚动页面即可点击；
+      - 外层包 GeometryReader 实测可用高度，用于限定滚动区高度。
     推入的跳转列表仍保留标题（作为页面说明与返回键文字）。
     """
     v = VIEWS.get(vid)
@@ -2618,13 +2669,33 @@ def display_page_view(vid, titled=True):
     def refresh_view():
         reset_view(vid)
 
-    content = genre_display(vid) if view_kind(vid) == "genre" else movie_display(vid)
-    sv = appui.ScrollView(content)
+    kind = view_kind(vid)
+    if kind == "genre":
+        # 类型页：无网格翻页，保持原结构
+        sv = appui.ScrollView(genre_display(vid))
+        if v["extras"].get("refresh"):
+            sv = sv.refreshable(action=refresh_view)
+        if titled:
+            sv = sv.navigation_title(view_title(vid))
+        return sv
+
+    with_pager = bool(titled)        # tab 根页：分页条移出滚动区
+    sv = appui.ScrollView(movie_display(vid, with_pager=with_pager))
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
     if titled:
-        sv = sv.navigation_title(view_title(vid))
-    return sv
+        return sv.navigation_title(view_title(vid))
+
+    # 限定滚动区高度：内容再多也放不到分页条下面，分页条始终可见
+    h = _GRID_GEOMETRY["h"]
+    if h > 0:
+        sv = sv.frame(height=max(160.0, h - PAGER_BLOCK_H))
+    pager = pager_row(vid) \
+        .padding(horizontal=PAGE_H_PAD) \
+        .padding(bottom=PAGER_BOTTOM_PAD)
+    page = appui.VStack([sv, pager], spacing=4)
+    # 实测可用区域：动态决定每页项数（影片 / 女优 / 收藏三个 tab 根页）
+    return appui.GeometryReader(content=page, on_change=remember_grid_size)
 
 
 # ============================================================
