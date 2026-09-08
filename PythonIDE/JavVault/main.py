@@ -2280,9 +2280,7 @@ def toggle_fav():
 # 封面网格列宽下限：同时用作叠在封面上的文字的最大宽度，
 # 保证文字再长也不会把单元格撑得比列还宽（adaptive 的列宽一定 >= 该值）
 GRID_MIN_COLUMN = 104
-# 封面网格间距：原 10，取三分之一 -> 3
-# 行间距由 LazyVGrid 的 spacing 控制，列间距在 grid_columns() 里显式写进列规格，
-# 两者取同一个值，保证横向与纵向空隙完全一致
+# 封面网格间距：影片 / 收藏 / 女优 三个 tab 共用同一套网格与单元格
 GRID_SPACING = 3
 # 叠在封面上的文字框最大宽度：必须 <= GRID_MIN_COLUMN。
 # adaptive 保证实际列宽一定 >= GRID_MIN_COLUMN，因此文字框永远落在封面边框之内，
@@ -2294,13 +2292,29 @@ FAV_GRADIENT = ["#2f74e0", "#5d44e0"]
 FAV_TINT_ALPHA = 0.4
 COVER_CELL_RADIUS = 6
 
-def fav_tint_layer(height):
+def grid_cover(url):
+    """网格封面：与详情页封面同一套已验证的填充模式。
+
+    aspect_ratio + content_mode="fill" 让图片按比例撑满自身框，
+    clipped 裁掉多余部分——图片严格贴合框内，不会溢出盖住相邻单元格
+    之间的空隙（此前构造参数形式的 content_mode="fill" + 固定高度
+    存在溢出，表现为女优头像之间没有间距）。
+    """
+    return appui.AsyncImage(url=img_src(url)) \
+        .aspect_ratio(COVER_RATIO, content_mode="fill") \
+        .frame(max_width=appui.infinity) \
+        .clipped() \
+        .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
+        .z_index(0)
+
+def fav_tint_layer():
     """已收藏标记：铺满封面的一层强调色渐变（对齐原 JS recGra）。
 
     层级夹在封面与「番号 | 日期」之间：封面 0 -> 强调色 0.5 -> 文字 1。
+    高度跟随封面（撑满 ZStack），不写死像素。
     """
     return appui.Spacer(min_length=0) \
-        .frame(max_width=appui.infinity, height=height) \
+        .frame(max_width=appui.infinity, max_height=appui.infinity) \
         .background(gradient=FAV_GRADIENT, gradient_type="linear",
                     corner_radius=COVER_CELL_RADIUS, opacity=FAV_TINT_ALPHA) \
         .z_index(0.5)
@@ -2334,15 +2348,14 @@ def movie_cell(m, vid):
         .background("black", corner_radius=4, opacity=0.55) \
         .padding(bottom=6) \
         .z_index(1)      # 提升层级，保证叠在封面之上而不是被封面盖住
-    # 封面撑满整列宽度；文字框宽度 <= 列宽下限，因此一定包含在封面边框内
-    cover = appui.AsyncImage(url=img_src(m["img"])) \
-        .frame(max_width=appui.infinity, height=165).clipped() \
-        .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
-        .z_index(0)
+    # 封面撑满整列宽度：与详情页封面同一套填充模式（见 grid_cover），
+    # 图片严格贴合自身框内，不会溢出盖住单元格之间的空隙；
+    # 文字框宽度 <= 列宽下限，因此一定包含在封面边框内
+    cover = grid_cover(m["img"])
     # 已收藏的影片盖一层强调色（收藏 tab 里全是收藏，无需再标记）
     layers = [cover]
     if code and in_fav(code) and view_kind(vid) != "fav":
-        layers.append(fav_tint_layer(165))
+        layers.append(fav_tint_layer())
     layers.append(caption)
     # ZStack：后声明的子视图绘制在上层，再配 z_index 保证文字一定压在封面之上
     return appui.Button(
@@ -2366,10 +2379,9 @@ def actress_cell(a):
         .background("black", corner_radius=4, opacity=0.55) \
         .padding(bottom=6) \
         .z_index(1)
-    cover = appui.AsyncImage(url=img_src(a["img"])) \
-        .frame(max_width=appui.infinity, height=130).clipped() \
-        .background("secondarySystemBackground", corner_radius=6) \
-        .z_index(0)
+    # 与影片封面完全同一套填充模式（grid_cover）：头像按 5:7 比例贴合框内，
+    # 不溢出、不留白，单元格之间的空隙得以保留
+    cover = grid_cover(a["img"])
     return appui.Button(
         action=open,
         content=appui.ZStack([cover, caption], alignment="bottom"),
@@ -3135,7 +3147,7 @@ def load_genres_once():
     _pump(GENRE_VID)
 
 # tab 序号 → 根页展示位（切换 tab 时复位详情用）
-TAB_ROOT_VIDS = {0: HOME_VID, 1: ACTRESS_VID, 2: GENRE_VID, 3: FAV_VID}
+TAB_ROOT_VIDS = {0: HOME_VID, 1: ACTRESS_VID, 2: FAV_VID, 3: GENRE_VID}
 
 def leave_tab_reset(prev):
     """离开某 tab 时复位：若该 tab 停在详情页（含多层），整条导航链退回主页面。
@@ -3174,8 +3186,8 @@ def make_body():
         tabs=[
             appui.Tab("影片", system_image="play.rectangle", content=movies_tab(), tag=0),
             appui.Tab("女优", system_image="person.2", content=actress_tab(), tag=1),
-            appui.Tab("类型", system_image="tag", content=genre_tab(), tag=2),
-            appui.Tab("收藏", system_image="star", content=fav_tab(), tag=3),
+            appui.Tab("收藏", system_image="star", content=fav_tab(), tag=2),
+            appui.Tab("类型", system_image="tag", content=genre_tab(), tag=3),
             appui.Tab("设置", system_image="gear", content=settings_tab(), tag=4),
         ],
         selection=state.bind.tab,
