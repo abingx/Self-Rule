@@ -63,6 +63,8 @@ APP_VERSION = _app_version()
 # 详情页封面宽高比（JavBus 封面标准比例 400x560）。
 # 配合 content_mode="fill" 让封面撑满整个容器，上下不留空白。
 COVER_RATIO = 5 / 7
+# 女优头像宽高比（比封面矮：人脸裁切更自然，且 4 行头像可铺满可视高度）。
+ACTRESS_RATIO = 5 / 6
 
 # 外部播放器：显示名 -> URL Scheme（设置页「外部播放器」下拉可配）
 EXTERNAL_PLAYERS = {
@@ -431,22 +433,10 @@ DETAIL_STACKS = {}
 
 SET_FILE = os.path.join(os.getcwd(), "settings.json")
 
-# 每页可选项数。
-# 上限取 18 的依据：封面网格 adaptive(minimum=104)，iPhone（约 390pt 宽、
-# 左右各 16pt 内边距）每行固定 3 列 —— 18 项 = 6 行；body() 每次重建时
-# 需要构造约 18 组封面节点（AsyncImage + 2 个 Text + Button），
-# 再加上预加载窗口里同时在下载的封面，量级仍可控。
-# 继续加到 24 及以上时，单次重建的节点数、以及预加载窗口内并发下载的
-# 封面数都会明显上升，图片下载完成后的去抖整树重建在老设备上容易掉帧。
-PAGE_SIZE_OPTIONS = [6, 9, 12, 15, 18]
-# Picker 的选项文本（三个 picker 共用同一份）
-_PAGE_SIZE_OPTIONS_TEXT = [str(x) for x in PAGE_SIZE_OPTIONS]
-
-# 每页项数按 tab 分开设置：影片 / 女优 / 收藏 各自一个值
+# 每页项数不再提供设置项：按界面实际尺寸动态计算
+# （在不超出「上一页 / 第X页 / 下一页」分页条的前提下取最大条目数，
+#   图片尺寸不变，见 compute_page_size / remember_grid_size）。
 DEFAULT_SETTINGS = {
-    "page_size_movie": 9,     # 影片 tab（含搜索、跳转出来的影片列表）
-    "page_size_actress": 12,  # 女优 tab（头像网格）
-    "page_size_fav": 9,       # 收藏 tab
     "player": "SenPlayer",    # 外部播放器
     "mute": True,             # 视频播放是否默认静音
 }
@@ -462,17 +452,8 @@ def load_settings():
                 for k in data:
                     if k in saved:
                         data[k] = saved[k]
-                # 旧版本只有统一的 page_size：迁移成影片的设置
-                if "page_size_movie" not in saved and "page_size" in saved:
-                    data["page_size_movie"] = saved["page_size"]
     except Exception:
         pass
-    for key in ("page_size_movie", "page_size_actress", "page_size_fav"):
-        try:
-            size = int(data[key])
-        except Exception:
-            size = DEFAULT_SETTINGS[key]
-        data[key] = size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS[key]
     if data["player"] not in EXTERNAL_PLAYERS:
         data["player"] = DEFAULT_SETTINGS["player"]
     data["mute"] = bool(data["mute"])
@@ -497,61 +478,120 @@ SETTINGS = load_settings()
 # 使「上一页 / 第X页 / 下一页」固定在 Tab 栏上方、不随内容滚动。
 _GRID_GEOMETRY = {"w": 0.0, "h": 0.0}
 PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()）
-PAGER_ROW_H = 44             # 分页条自身高度（估）
-# 分页条整体上移「半行高度」：与 Tab 栏之间留出半行空隙
-PAGER_BOTTOM_PAD = PAGER_ROW_H // 2
+
+# ------------------------------------------------------------------
+#  动态每页项数：GeometryReader 实测可用区域，按 tab 分别计算
+# ------------------------------------------------------------------
+# 规则：在不超出「上一页 / 第X页 / 下一页」分页条的前提下，
+# 按各 tab 的可视高度取可容纳的最大行数（行数向下取整），
+# 图片尺寸保持不变（列数与 adaptive(minimum=GRID_MIN_COLUMN) 一致）。
+_GRID_GEOMETRY = {"w": 0.0, "h": 0.0}
+_GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每页项数
+PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
+PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
+# 分页条整体上移「三分之一行高度」：与 Tab 栏之间留出空隙
+PAGER_BOTTOM_PAD = PAGER_ROW_H // 3
 PAGER_BLOCK_H = PAGER_ROW_H + PAGER_BOTTOM_PAD
+# 各 tab 顶部工具行高度（含与网格的间距）：影片=搜索栏，收藏=「共X部」，女优=无
+TOP_TOOL_H_BY_KIND = {"movie": 48, "actress": 0, "fav": 48}
+# 未完成首次测量时的兜底每页项数（与旧设置默认一致）
+FALLBACK_PAGE_SIZE = {"movie": 9, "actress": 12, "fav": 9}
+RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO, "fav": COVER_RATIO}
 
-def _size_from_info(info):
-    """从 GeometryReader 回调数据里提取 (宽, 高)：兼容 dict / 元组等形态。"""
-    if isinstance(info, dict):
-        return info.get("width", info.get("w", 0)), info.get("height", info.get("h", 0))
-    if isinstance(info, (list, tuple)) and len(info) >= 2:
-        return info[0], info[1]
-    return 0, 0
+def remember_grid_size(width, height=None):
+    """GeometryReader 回调：实测可用区域，按 tab 分别重算每页项数。
 
-def remember_grid_size(info):
-    """GeometryReader 回调：记录可用区域高度（供固定分页条限定滚动区用）。"""
+    回调契约（官方文档）：默认传入单参数字符串 "宽度,高度"（如 "390.0,844.0"）；
+    若回调签名带两个必选位置参数，运行时拆分为 (width, height) 两个浮点数。
+    这里用「可缺省的第二参数」同时兼容两种形态。
+    """
     try:
-        w, h = _size_from_info(info)
-        w = float(w or 0.0)
-        h = float(h or 0.0)
+        if height is None:
+            w_str, h_str = str(width).split(",")
+            w, h = float(w_str), float(h_str)
+        else:
+            w, h = float(width), float(height)
     except Exception:
         return
     if w <= 0 or h <= 0:
         return
     if abs(w - _GRID_GEOMETRY["w"]) < 1 and abs(h - _GRID_GEOMETRY["h"]) < 1:
         return               # 同一帧重复回调：忽略
-    first = _GRID_GEOMETRY["h"] <= 0
     _GRID_GEOMETRY["w"] = w
     _GRID_GEOMETRY["h"] = h
-    if first:
-        state.reload += 1    # 首次测到尺寸后再重建一次，应用限定高度
+    changed_kinds = set()
+    for key in _GRID_PAGE_SIZE:
+        size = compute_page_size(key)
+        if size > 0 and size != _GRID_PAGE_SIZE[key]:
+            _GRID_PAGE_SIZE[key] = size
+            changed_kinds.add(key)
+    state.reload += 1          # 应用新的每页项数
+    if not changed_kinds:
+        return
+    # 每页项数变了：旧分页偏移失效，只复位受影响 tab 的展示位
+    for vid in list(VIEWS):
+        kind = view_kind(vid)
+        if kind == "genre":
+            continue           # 类型页无网格翻页，不受影响
+        if page_size_key(kind) not in changed_kinds:
+            continue
+        item = VIEWS[vid]
+        with _VIEWS_LOCK:
+            item["page"] = 1
+            if item["base"]:
+                item["pool"] = []
+                item["base"] = 0
+                item["remote"] = 1
+                item["exhausted"] = False
+                item["generation"] += 1     # 在途 worker 结果作废
+        _pump(vid)
 
 def page_size_key(kind):
-    """展示位的 filter.kind -> 使用哪一套每页项数。
-
-    女优 tab 用女优的设置，收藏 tab 用收藏的设置，
-    其余（首页 / 搜索 / 演员、分类等跳转出来的影片列表）都用影片的设置。
-    """
+    """展示位的 filter.kind -> 计算键（女优 / 收藏 / 其余都用影片）。"""
     if kind == "actress":
-        return "page_size_actress"
+        return "actress"
     if kind == "fav":
-        return "page_size_fav"
-    return "page_size_movie"
+        return "fav"
+    return "movie"
 
-def page_size_of_kind(kind):
-    """按展示位类型取每页项数。"""
-    key = page_size_key(kind)
-    try:
-        size = int(SETTINGS[key])
-    except Exception:
-        size = DEFAULT_SETTINGS[key]
-    return size if size in PAGE_SIZE_OPTIONS else DEFAULT_SETTINGS[key]
+def grid_column_count():
+    """按实测可用宽度算列数：与 adaptive(minimum=GRID_MIN_COLUMN) 的
+    实际渲染一致（图片尺寸由此保持不变，计算只用于确定每页行数）。"""
+    w = _GRID_GEOMETRY["w"]
+    if w <= 0:
+        return 3                            # 未测量时的兜底
+    grid_w = max(0.0, w - PAGE_H_PAD * 2)
+    cols = int((grid_w + GRID_SPACING) // (GRID_MIN_COLUMN + GRID_SPACING))
+    return max(2, cols)
 
-def page_size(vid=None):
-    """每页项数：按展示位类型取；vid 为空时取影片的设置。"""
-    return page_size_of_kind(view_kind(vid) if vid else "home")
+def compute_page_size(kind):
+    """某个 tab 的每页项数：在不超出分页条的前提下取最大值（列数 × 行数）。
+
+    可用高度 = 实测高 - 该 tab 顶部工具行(搜索栏 / 「共X部」) - 分页条区块
+               - 页面上下留白 - 加载指示余量
+    单元格高度按各 tab 的封面比例换算：影片 / 收藏 5:7，女优 5:6。
+    行数向下取整，保证整页不越过分页条、无需滚动。
+    """
+    w = _GRID_GEOMETRY["w"]
+    h = _GRID_GEOMETRY["h"]
+    if w <= 0 or h <= 0:
+        return 0
+    cols = grid_column_count()
+    grid_w = max(0.0, w - PAGE_H_PAD * 2)
+    col_w = (grid_w - (cols - 1) * GRID_SPACING) / cols
+    cell_h = col_w / RATIO_BY_KIND[kind]
+    avail_h = (h - TOP_TOOL_H_BY_KIND.get(kind, 48)
+               - PAGER_BLOCK_H - PAGE_V_PAD * 2)
+    rows = int(avail_h // cell_h)
+    return cols * max(1, rows)
+
+def page_size(vid=None, kind=None):
+    """每页项数：按所属 tab 的可视高度动态取可容纳的最大值。"""
+    key = page_size_key(kind if kind else (view_kind(vid) if vid else "home"))
+    size = _GRID_PAGE_SIZE.get(key, 0)
+    if size > 0:
+        return size
+    return FALLBACK_PAGE_SIZE.get(key, 9)
 
 
 # ============================================================
@@ -1435,11 +1475,11 @@ def mark_views_dirty(vid=None):
 
 def preload_ahead(v):
     """预加载页数：每页项数越大，预加载页数越少，控制同时下载与渲染的封面量。"""
-    return 1 if page_size() >= 12 else 2
+    return 1 if page_size(kind=v["filter"]["kind"]) >= 12 else 2
 
 def load_window_end(v):
     """预加载窗口末尾（全局序号，不含）。"""
-    return (v["page"] + preload_ahead(v)) * page_size()
+    return (v["page"] + preload_ahead(v)) * page_size(kind=v["filter"]["kind"])
 
 def _trim(v, size):
     """数据池超过上限时，从头部回收当前页之前的旧数据。
@@ -2330,16 +2370,16 @@ FAV_GRADIENT = ["#2f74e0", "#5d44e0"]
 FAV_TINT_ALPHA = 0.4
 COVER_CELL_RADIUS = 6
 
-def grid_cover(url):
+def grid_cover(url, ratio=None):
     """网格封面：与详情页封面同一套已验证的填充模式。
 
     aspect_ratio + content_mode="fill" 让图片按比例撑满自身框，
     clipped 裁掉多余部分——图片严格贴合框内，不会溢出盖住相邻单元格
-    之间的空隙（此前构造参数形式的 content_mode="fill" + 固定高度
-    存在溢出，表现为女优头像之间没有间距）。
+    之间的空隙。ratio 缺省用影片封面比例 5:7；女优头像传 5:6（更矮，
+    人脸裁切更自然，且 4 行头像可正好铺满可视高度）。
     """
     return appui.AsyncImage(url=img_src(url)) \
-        .aspect_ratio(COVER_RATIO, content_mode="fill") \
+        .aspect_ratio(ratio or COVER_RATIO, content_mode="fill") \
         .frame(max_width=appui.infinity) \
         .clipped() \
         .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
@@ -2424,9 +2464,9 @@ def actress_cell(a):
         .background("black", corner_radius=4, opacity=0.55) \
         .padding(bottom=6) \
         .z_index(1)
-    # 与影片封面完全同一套填充模式（grid_cover）：头像按 5:7 比例贴合框内，
-    # 不溢出、不留白，单元格之间的空隙得以保留
-    cover = grid_cover(a["img"])
+    # 女优头像用独立比例 5:6（比封面矮）：人脸裁切更自然，
+    # 且 4 行头像可正好铺满可视高度
+    cover = grid_cover(a["img"], ratio=ACTRESS_RATIO)
     return appui.Button(
         action=open,
         content=appui.ZStack([cover, caption], alignment="bottom"),
@@ -2473,6 +2513,22 @@ def grid_cell(item, vid):
     if kind == "fav":
         return fav_cell(item)
     return movie_cell(item, vid)
+
+def placeholder_cell(vid):
+    """未加载数据的占位格：与真实单元格同一比例 / 圆角 / 底色的空框。
+
+    网格按测量尺寸先铺满整页，数据到达后由重建逐格填充，
+    未加载期间不出现空行或加载指示行。
+    Rectangle 是 Shape，默认以黑色填充——必须显式给柔和的灰色，
+    否则占位格是一块纯黑，与界面反差强烈。
+    """
+    ratio = ACTRESS_RATIO if view_kind(vid) == "actress" else COVER_RATIO
+    return appui.Rectangle() \
+        .foreground_color("secondarySystemBackground") \
+        .aspect_ratio(ratio, content_mode="fill") \
+        .frame(max_width=appui.infinity) \
+        .clipped() \
+        .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS)
 
 def sample_cell(s):
     """详情页样图格：缩略图随详情加载，点击查看大图（大图此时才加载）。"""
@@ -2584,25 +2640,20 @@ def movie_display(vid, with_pager=True):
 
     loading = page_loading(vid)
     items = page_items(vid)
-    if items:
+    # 按测量尺寸铺满整页格子：已到的数据立即渲染，未到的用同尺寸占位格
+    # 补齐，数据到达后随重建逐格填充（加载管线不变，仅展示层变化）
+    cells = [grid_cell(m, vid) for m in items]
+    missing = page_size(vid) - len(items)
+    if missing > 0 and loading:
+        cells.extend(placeholder_cell(vid) for _ in range(missing))
+    if cells:
         parts.append(appui.LazyVGrid(
             columns=grid_columns(),
             spacing=GRID_SPACING,
-            content=[grid_cell(m, vid) for m in items],
+            content=cells,
         ))
-        # 翻到已加载内容的末尾：在已有内容下方追加加载指示，不替换当前页
-        if loading:
-            parts.append(appui.HStack([
-                appui.ProgressView(),
-                appui.Text("正在加载更多...").font("caption")
-                    .foreground_color("secondaryLabel"),
-            ], spacing=8))
-    elif loading:
-        parts.append(appui.HStack([
-            appui.ProgressView(),
-            appui.Text("加载中...").font("caption").foreground_color("secondaryLabel"),
-        ], spacing=8))
-    else:
+    elif not loading:
+        # 无内容且不在加载中才提示；加载中显示整页占位格
         parts.append(appui.Text("没有找到影片").foreground_color("secondaryLabel"))
 
     if with_pager:
@@ -2656,11 +2707,13 @@ def set_genre_group(v):
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
 
-    titled=False 用于影片 / 女优 / 收藏三个 tab 根页：
-      - 分页条放在滚动区之外并限定滚动区高度，固定在 Tab 栏上方，
-        任何情况下都无需滚动页面即可点击；
-      - 外层包 GeometryReader 实测可用高度，用于限定滚动区高度。
-    推入的跳转列表仍保留标题（作为页面说明与返回键文字）。
+    titled=False 用于影片 / 女优 / 收藏三个 tab 根页（与探针同款布局）：
+      - 分页条悬浮固定在底部（ZStack 底对齐），不随内容滚动，
+        无需滚动页面即可点击；
+      - 滚动区铺满 GeometryReader 实测的整个可用区域（不对其内容限高），
+        每页项数按「实测高度 - 分页条区块」计算，内容不会越过分页条，
+        测量与布局完全解耦，无反馈回路。
+    推入的跳转列表仍保留标题，分页条随内容滚动。
     """
     v = VIEWS.get(vid)
     if not v:
@@ -2679,23 +2732,28 @@ def display_page_view(vid, titled=True):
             sv = sv.navigation_title(view_title(vid))
         return sv
 
-    with_pager = bool(titled)        # tab 根页：分页条移出滚动区
-    sv = appui.ScrollView(movie_display(vid, with_pager=with_pager))
-    if v["extras"].get("refresh"):
-        sv = sv.refreshable(action=refresh_view)
     if titled:
+        # 推入的跳转列表：分页条随内容滚动（保持原结构）
+        sv = appui.ScrollView(movie_display(vid, with_pager=True))
+        if v["extras"].get("refresh"):
+            sv = sv.refreshable(action=refresh_view)
         return sv.navigation_title(view_title(vid))
 
-    # 限定滚动区高度：内容再多也放不到分页条下面，分页条始终可见
-    h = _GRID_GEOMETRY["h"]
-    if h > 0:
-        sv = sv.frame(height=max(160.0, h - PAGER_BLOCK_H))
+    # 三个 tab 根页：分页条悬浮固定在底部（不参与测量与布局，无反馈回路），
+    # 整体上移三分之一行高度（PAGER_BOTTOM_PAD），与 Tab 栏之间留出空隙
+    content = movie_display(vid, with_pager=False).padding(bottom=PAGER_BLOCK_H)
+    sv = appui.ScrollView(content)
+    if v["extras"].get("refresh"):
+        sv = sv.refreshable(action=refresh_view)
     pager = pager_row(vid) \
         .padding(horizontal=PAGE_H_PAD) \
+        .padding(vertical=6) \
+        .background("systemBackground", opacity=0.92) \
         .padding(bottom=PAGER_BOTTOM_PAD)
-    page = appui.VStack([sv, pager], spacing=4)
-    # 实测可用区域：动态决定每页项数（影片 / 女优 / 收藏三个 tab 根页）
-    return appui.GeometryReader(content=page, on_change=remember_grid_size)
+    return appui.GeometryReader(
+        content=appui.ZStack([sv, pager], alignment="bottom"),
+        on_change=remember_grid_size,
+    )
 
 
 # ============================================================
@@ -3078,42 +3136,6 @@ def fav_tab():
         destinations=_LIST_DESTINATIONS,
     ).id("fav")
 
-def set_page_size(kind, v):
-    """修改某一类展示位的每页项数：只重置受影响的展示位。"""
-    try:
-        size = int(v)
-    except Exception:
-        return
-    if size not in PAGE_SIZE_OPTIONS:
-        return
-    key = page_size_key(kind)
-    SETTINGS[key] = size
-    save_settings()
-    for vid in list(VIEWS):
-        item = VIEWS[vid]
-        with _VIEWS_LOCK:
-            if page_size_key(item["filter"]["kind"]) != key:
-                continue        # 该展示位不受这项设置影响，保持原样
-            item["page"] = 1
-            if item["base"]:
-                # 每页项数变了，旧的分页偏移失效，回到起点重新累积
-                item["pool"] = []
-                item["base"] = 0
-                item["remote"] = 1
-                item["exhausted"] = False
-                item["generation"] += 1     # 在途 worker 结果作废
-        _pump(vid)
-    state.reload += 1
-
-def set_page_size_movie(v):
-    set_page_size("movie", v)
-
-def set_page_size_actress(v):
-    set_page_size("actress", v)
-
-def set_page_size_fav(v):
-    set_page_size("fav", v)
-
 def set_player(name):
     if name not in EXTERNAL_PLAYERS:
         return
@@ -3130,23 +3152,6 @@ def settings_tab():
     return appui.NavigationStack(
         appui.Form([
             appui.Section([
-                appui.Picker("影片每页",
-                             selection=str(page_size(HOME_VID)),
-                             options=_PAGE_SIZE_OPTIONS_TEXT,
-                             on_change=set_page_size_movie),
-                appui.Picker("女优每页",
-                             selection=str(page_size(ACTRESS_VID)),
-                             options=_PAGE_SIZE_OPTIONS_TEXT,
-                             on_change=set_page_size_actress),
-                appui.Picker("收藏每页",
-                             selection=str(page_size(FAV_VID)),
-                             options=_PAGE_SIZE_OPTIONS_TEXT,
-                             on_change=set_page_size_fav),
-            ], header="展示",
-               footer="影片 / 女优 / 收藏 三个 tab 的每页项数分别设置；"
-                      "影片的设置同时作用于搜索结果和演员、分类等跳转出来的影片列表。"
-                      "列表顺序固定为发布时间从新到旧。"),
-            appui.Section([
                 appui.Toggle("视频默认静音", is_on=SETTINGS["mute"],
                              on_change=set_mute),
                 appui.Picker("外部播放器",
@@ -3154,7 +3159,11 @@ def settings_tab():
                              options=list(EXTERNAL_PLAYERS.keys()),
                              on_change=set_player),
             ], header="播放",
-               footer="在详情页播放视频后，可用「外部播放」把链接交给选定的播放器。"),
+               footer="在详情页播放视频后，可用「外部播放」把链接交给选定的播放器。"
+                      "影片 / 女优 / 收藏 三个 tab 的每页项数按界面实际尺寸"
+                      "自动计算：在不超出「上一页 / 第X页 / 下一页」分页条"
+                      "的前提下尽量显示最多条目，图片尺寸保持不变。"
+                      "列表顺序固定为发布时间从新到旧。"),
             appui.Section([
                 appui.LabeledContent("版本", value=APP_VERSION),
                 appui.LabeledContent("数据来源", value="javbus.com"),
