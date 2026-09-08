@@ -3158,12 +3158,7 @@ def settings_tab():
                              selection=SETTINGS["player"],
                              options=list(EXTERNAL_PLAYERS.keys()),
                              on_change=set_player),
-            ], header="播放",
-               footer="在详情页播放视频后，可用「外部播放」把链接交给选定的播放器。"
-                      "影片 / 女优 / 收藏 三个 tab 的每页项数按界面实际尺寸"
-                      "自动计算：在不超出「上一页 / 第X页 / 下一页」分页条"
-                      "的前提下尽量显示最多条目，图片尺寸保持不变。"
-                      "列表顺序固定为发布时间从新到旧。"),
+            ], header="播放"),
             appui.Section([
                 appui.LabeledContent("版本", value=APP_VERSION),
                 appui.LabeledContent("数据来源", value="javbus.com"),
