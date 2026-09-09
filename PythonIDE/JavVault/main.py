@@ -263,11 +263,20 @@ def _download_one(url):
         return None
 
 def request_img(src, priority=False):
-    """登记一张图到后台下载队列。priority=True 插到队首。"""
+    """登记一张图到后台下载队列。priority=True 插到队首。
+
+    先查内存索引 _DOWNLOADED（零磁盘 I/O），未命中才做一次磁盘 stat——
+    周期任务会对同一批图反复调用本函数（如收藏页可视窗口），
+    stat 全部落在主线程会随浏览积累成卡顿。
+    """
     if not src:
         return ""
     url = _to_abs(src)
     path = _local_path(url)
+    with _LOCK:
+        if url in _DOWNLOADED:
+            _DOWNLOADED.move_to_end(url)
+            return "file://" + path
     try:
         if os.path.exists(path) and os.path.getsize(path) > len(_placeholder_bytes()):
             with _LOCK:
@@ -279,9 +288,6 @@ def request_img(src, priority=False):
     except Exception:
         pass
     with _LOCK:
-        if url in _DOWNLOADED:
-            _DOWNLOADED.move_to_end(url)
-            return "file://" + _local_path(url)
         if url in _SEEN or url in _INFLIGHT:
             # 已排队或正在下载：不重复入队（QUEUED → INFLIGHT → DOWNLOADED）
             return "file://" + _local_path(url)
@@ -297,29 +303,79 @@ def request_img(src, priority=False):
         _QUEUE_NONEMPTY.notify()            # 唤醒空闲的下载 worker
     return "file://" + _local_path(url)
 
-def img_src(src):
-    """返回该封面恒定不变的本地 file:// 路径（未下载时是占位图）。"""
+_PREPARE_PENDING = set()   # 渲染期发现未准备的 src：登记后由主线程周期任务补准备
+_PREPARE_FAILED = {}       # 写占位失败的 src -> 时刻：冷却期内不反复重试磁盘写入
+_PREPARE_FAIL_COOLDOWN = 60.0
+
+def _prepare_src(src):
+    """数据层把一张图解析为本地 file:// 路径：文件缺失时写占位图并登记 LRU。
+
+    只允许在渲染路径之外调用（worker 提交 / 主线程周期任务）——
+    body() 内的 img_src 只查内存缓存，不再做任何磁盘 I/O。
+    """
     if not src:
-        return ""
-    hit = _SRC_CACHE.get(src)
-    if hit:
-        _SRC_CACHE.move_to_end(src)     # LRU：命中即续期
-        return hit
+        return
+    failed = _PREPARE_FAILED.get(src)
+    if failed and time.time() - failed < _PREPARE_FAIL_COOLDOWN:
+        return
+    with _LOCK:
+        hit = _SRC_CACHE.get(src)
+        if hit:
+            _SRC_CACHE.move_to_end(src)
+            return
     url = _to_abs(src)
     path = _local_path(url)
     if not os.path.exists(path):
         try:
-            if not os.path.exists(_image_dir()):
-                os.makedirs(_image_dir(), exist_ok=True)
+            os.makedirs(_image_dir(), exist_ok=True)
             with open(path, "wb") as f:
                 f.write(_placeholder_bytes())
         except Exception:
-            pass
-    if os.path.exists(path):
+            _PREPARE_FAILED[src] = time.time()
+            return
+    _PREPARE_FAILED.pop(src, None)
+    with _LOCK:
         if len(_SRC_CACHE) >= _SRC_CACHE_MAX:
             _SRC_CACHE.popitem(last=False)      # 逐出最旧一条，而不是整表清空
         _SRC_CACHE[src] = "file://" + path
-    return "file://" + path
+
+def prepare_images(srcs):
+    """批量预准备图片路径（worker 线程 / 数据提交阶段调用）。"""
+    for src in srcs:
+        _prepare_src(src or "")
+
+def consume_prepare_pending():
+    """主线程：补准备渲染期登记的图片；有新可用路径时安排一次重建。
+
+    转场静默期内（快速切 tab / 导航推送）不做磁盘写入，等稳定后再补，
+    避免主线程在动画过程中做文件 I/O。
+    """
+    if not _PREPARE_PENDING:
+        return
+    if not reload_allowed():
+        return
+    pending = list(_PREPARE_PENDING)
+    _PREPARE_PENDING.clear()
+    for src in pending:
+        _prepare_src(src)
+    if any(_SRC_CACHE.get(s) for s in pending):
+        mark_views_dirty()      # 占位框 -> 真图需要一次重建
+
+def img_src(src):
+    """渲染路径专用：只查内存缓存（零磁盘 I/O）。
+
+    未预准备的图返回空串，由调用方用同比例占位框渲染保持布局稳定；
+    src 同时登记进 _PREPARE_PENDING，由主线程补准备后再重建填充。
+    """
+    if not src:
+        return ""
+    with _LOCK:
+        hit = _SRC_CACHE.get(src)
+        if hit:
+            _SRC_CACHE.move_to_end(src)     # LRU：命中即续期
+            return hit
+    _PREPARE_PENDING.add(src)
+    return ""
 
 def _worker():
     while True:
@@ -407,6 +463,19 @@ state = appui.State(
     genre_group="全部",     # 类型 tab 当前选中的一级分类
     reload=0,
 )
+
+def _batch_state(**updates):
+    """一次动作改多个字段只触发一次重建（官方 batch_update）。
+
+    逐字段赋值会各自触发一次整树重建——例如打开详情原来要连写约
+    十个字段（≈十次全量重建），是点击卡顿的主因之一。运行时若无
+    该 API 则退化为逐字段写入（行为不变，仅少了合并优化）。
+    """
+    if hasattr(state, "batch_update"):
+        state.batch_update(**updates)
+    else:
+        for key, value in updates.items():
+            setattr(state, key, value)
 
 # 每个 tab 独立的导航栈
 PATH_MOVIES = appui.NavigationPath()
@@ -499,8 +568,9 @@ PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上
 # 分页条以底部安全区插肩（safeAreaInset）钉在底部：SwiftUI 原生键盘
 # 避让自动让它贴紧键盘，无需跟踪键盘状态或手动重建；网格可用高度的
 # 计算只需扣除插肩条自身高度（PAGER_ROW_H）。
-# 各 tab 顶部工具行高度（含与网格的间距）：影片=搜索栏，收藏=「共X部」，女优=无
-TOP_TOOL_H_BY_KIND = {"movie": 48, "actress": 0, "fav": 48}
+# 各 tab 顶部工具行高度（含与网格的间距）：影片=0（搜索栏已改为原生
+# searchable 上移导航栏，不再占据滚动内容顶部），收藏=「共X部」，女优=无
+TOP_TOOL_H_BY_KIND = {"movie": 0, "actress": 0, "fav": 48}
 # 未完成首次测量时的兜底每页项数（与旧设置默认一致）
 FALLBACK_PAGE_SIZE = {"movie": 9, "actress": 12, "fav": 9}
 RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO, "fav": COVER_RATIO}
@@ -508,9 +578,9 @@ RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO, "fav": COVER_RA
 def make_grid_observer(kind):
     """生成某个 tab 的 GeometryReader 回调：只记录并重算本 tab 的测量值。
 
-    回调契约（官方文档）：默认传入单参数字符串 "宽度,高度"（如 "390.0,844.0"）；
-    若回调签名带两个必选位置参数，运行时拆分为 (width, height) 两个浮点数。
-    这里用「可缺省的第二参数」同时兼容两种形态。
+    回调契约（官方 stub）：回调收到 {'width': float, 'height': float} 字典；
+    同时兼容旧的「单参数 "宽度,高度" 字符串」与「两个浮点位置参数」两种形态，
+    避免运行时形态差异导致测量静默失效（失效时每页项数永远停在兜底值）。
 
     各 tab 的测量相互隔离：切换 tab / 某个 tab 内容变化，都不会触发其他
     tab 的重算与整树重建（全局单值会在 tab 之间来回乒乓，导致切换标签
@@ -528,13 +598,17 @@ def make_grid_observer(kind):
     （键盘安全区）所致——分页条由底部安全区插肩原生避让，自动贴紧
     键盘，这里保持测量值与每页项数不动即可，整个键盘周期零重建。
     """
-    def remember(width, height=None):
+    def remember(geometry, height=None):
         try:
-            if height is None:
-                w_str, h_str = str(width).split(",")
+            if isinstance(geometry, dict):
+                # 官方契约：{'width': float, 'height': float}
+                w = float(geometry.get("width", 0.0))
+                h = float(geometry.get("height", 0.0))
+            elif height is None:
+                w_str, h_str = str(geometry).split(",")
                 w, h = float(w_str), float(h_str)
             else:
-                w, h = float(width), float(height)
+                w, h = float(geometry), float(height)
         except Exception:
             return
         if w <= 0 or h <= 0:
@@ -548,7 +622,38 @@ def make_grid_observer(kind):
         # 键盘避让自动让它贴紧键盘——这里保持测量值与每页项数不动
         # （网格内容不被裁剪），整个键盘弹出/收起周期零重建。
         if same_w and h < g["h"]:
+            # 例外：tab 内容仅选中时挂载，GeometryReader 重新挂载时
+            # iOS 常先回调一个偏大的过渡尺寸、再回调最终尺寸；最终
+            # 尺寸若被键盘守卫吞掉，测量会停在过渡值——每页按偏大的
+            # 高度多算一行，内容越过分页条出现滚动。判定：最近接受
+            # 过一次「增长」，且回落值与增长前的稳定高度一致（或此
+            # 前从未测量过）→ 属过渡回落而非键盘，按真实尺寸修正并
+            # 撤销待应用值；否则维持键盘守卫（忽略）。
+            if time.time() - g.get("grown_at", 0.0) < 2.0:
+                prev = g.get("prev_h", None)
+                if prev is None or abs(h - prev) < 10:
+                    g["h"] = h
+                    g["grown_at"] = 0.0
+                    size = compute_page_size(kind)
+                    effective = (_GRID_PAGE_SIZE.get(kind, 0)
+                                 or FALLBACK_PAGE_SIZE.get(kind, 9))
+                    if size == effective:
+                        _GRID_PAGE_SIZE[kind] = size
+                        _PENDING_GEOM.pop(kind, None)
+                    elif size > 0:
+                        _PENDING_GEOM[kind] = {"size": size, "at": time.time()}
             return
+        # 接受新尺寸。宽度不变而高度变大（重挂载的过渡尺寸）时记录
+        # 「增长前的稳定高度」，供上面的过渡回落判定；宽度变化（旋转
+        # /首次测量）时重置或清空基准。
+        if same_w:
+            g["prev_h"] = g["h"]
+            g["grown_at"] = time.time()
+        elif g["w"] > 0:
+            g["grown_at"] = 0.0        # 真实宽度变化：旧基准失效
+        else:
+            g["prev_h"] = None         # 首次测量：无基准，回落即采信
+            g["grown_at"] = time.time()
         g["w"] = w
         g["h"] = h
         size = compute_page_size(kind)
@@ -665,6 +770,22 @@ def load_shelf():
 
 SHELF = load_shelf()
 
+# 收藏番号索引：in_fav 由「每个单元格线性扫描全部收藏」降为 O(1) 集合查询
+_FAV_CODES = set()
+
+# 收藏列表缓存：翻页窗口 / 周期任务 / 数据池重建都会调用 fav_items，
+# 收藏记录未变动时直接复用，mark_fav_dirty 时失效
+_FAV_ITEMS_CACHE = None
+
+def _rebuild_fav_codes():
+    _FAV_CODES.clear()
+    for x in SHELF["fav"]:
+        code = x.get("code")
+        if code:
+            _FAV_CODES.add(code)
+
+_rebuild_fav_codes()
+
 def save_shelf():
     try:
         tmp = FAV_FILE + ".tmp"
@@ -675,7 +796,7 @@ def save_shelf():
         log("save_shelf err: " + str(e))
 
 def in_fav(code):
-    return any(x.get("code") == code for x in SHELF["fav"])
+    return code in _FAV_CODES
 
 def fav_count():
     return len(SHELF["fav"])
@@ -687,15 +808,18 @@ _FAV_DIRTY = False
 
 def mark_fav_dirty():
     """收藏有变动：收藏 tab 已加载的数据池需要重建。"""
-    global _FAV_DIRTY
+    global _FAV_DIRTY, _FAV_ITEMS_CACHE
     _FAV_DIRTY = True
+    _FAV_ITEMS_CACHE = None    # 收藏列表缓存同步失效
 
 def add_fav(code, img=""):
     SHELF["fav"].insert(0, {"code": code, "img": img, "fav_time": now_time()})
+    _FAV_CODES.add(code)
     mark_fav_dirty()
 
 def remove_fav(code):
     SHELF["fav"] = [x for x in SHELF["fav"] if x.get("code") != code]
+    _FAV_CODES.discard(code)
     mark_fav_dirty()
 
 def toggle_bookmark(d, img=""):
@@ -796,6 +920,7 @@ def _movie_worker():
             _save_movie_cache(snapshot)
         if match:
             try:
+                _prepare_src(match.get("img") or "")
                 request_img(match.get("img", ""), priority=True)
                 mark_dirty()
             except Exception as e:
@@ -855,6 +980,7 @@ def load_fav_movies():
                 _MOVIE_PENDING.add(code)
                 _MOVIE_ATTEMPTS[code] = 0
                 _MOVIE_QUEUE.put(code)
+    prepare_images(cached_images)
     for image in reversed(cached_images):
         request_img(image, priority=True)
 
@@ -1155,6 +1281,7 @@ _LINK_CACHE_MAX = 64
 _LINK_TTL = 30 * 60
 _LINK_INFLIGHT = {}     # 番号 -> seq（正在预取）
 _LINK_PENDING = {}      # seq -> {"code":..., "values":{...}, "left":n}
+_LINK_INFLIGHT_MAX = 3  # 预取并发上限：快速连点多个单元格时不再无限堆积任务
 _LINK_SEQ = 0
 _LINK_LOCK = threading.Lock()
 
@@ -1219,31 +1346,39 @@ def _trailer_source_worker(code, seq):
             break
     _submit_sources(code, seq, {"trailer": url})
 
-def prefetch_play_sources(code):
-    """进入详情页时并行预取三条播放链接；取不到的保持空串（按钮置灰）。"""
+def prefetch_play_sources(code, updates=None):
+    """进入详情页时并行预取三条播放链接；取不到的保持空串（按钮置灰）。
+
+    updates: 调用方（open_detail）传入的 batch_update 字段字典——src_*
+    的复位值 / 缓存值直接合并进去，由调用方一次性提交，本函数不单独
+    写 State（避免一次点击触发多次整树重建）。
+    """
     global _LINK_SEQ
-    state.src_preview = ""
-    state.src_trailer = ""
-    state.src_video = ""
     code = str(code or "").strip().upper()
-    if not code:
-        return
-    with _LINK_LOCK:
-        cached = _LINK_CACHE.get(code)
-        # 缓存里至少有一条链接且未过期才复用，否则重新去取（避免一次失败就长期置灰）
-        if cached and time.time() - cached.get("ts", 0) <= _LINK_TTL \
-                and (cached.get("preview") or cached.get("trailer") or cached.get("video")):
-            state.src_preview = cached.get("preview", "")
-            state.src_trailer = cached.get("trailer", "")
-            state.src_video = cached.get("video", "")
-            return
-        if _LINK_INFLIGHT.get(code):
-            return          # 同一番号正在预取，结果回来后由主线程统一提交
-        _LINK_SEQ += 1
-        seq = _LINK_SEQ
-        _LINK_INFLIGHT[code] = seq
-    _TASK_POOL.submit(_jable_sources_worker, code, seq)
-    _TASK_POOL.submit(_trailer_source_worker, code, seq)
+    src = {"src_preview": "", "src_trailer": "", "src_video": ""}
+    submit = None
+    if code:
+        with _LINK_LOCK:
+            cached = _LINK_CACHE.get(code)
+            # 缓存里至少有一条链接且未过期才复用，否则重新去取（避免一次失败就长期置灰）
+            if cached and time.time() - cached.get("ts", 0) <= _LINK_TTL \
+                    and (cached.get("preview") or cached.get("trailer") or cached.get("video")):
+                src["src_preview"] = cached.get("preview", "")
+                src["src_trailer"] = cached.get("trailer", "")
+                src["src_video"] = cached.get("video", "")
+            elif not _LINK_INFLIGHT.get(code) \
+                    and len(_LINK_INFLIGHT) < _LINK_INFLIGHT_MAX:
+                _LINK_SEQ += 1
+                seq = _LINK_SEQ
+                _LINK_INFLIGHT[code] = seq
+                submit = seq
+    if updates is None:
+        _batch_state(**src)
+    else:
+        updates.update(src)
+    if submit is not None:
+        _TASK_POOL.submit(_jable_sources_worker, code, submit)
+        _TASK_POOL.submit(_trailer_source_worker, code, submit)
 
 def _commit_sources():
     """主线程：把后台取到的链接写回 State（只认当前详情的番号）。"""
@@ -1258,7 +1393,7 @@ def _commit_sources():
     code = str((state.detail or {}).get("code") or "").strip().upper()
     if not code:
         return
-    changed = False
+    updates = {}
     for item in items:
         if str(item.get("code") or "") != code:
             continue
@@ -1267,10 +1402,10 @@ def _commit_sources():
             if not field or not value:
                 continue
             if state.get(field) != value:
-                state[field] = value
-                changed = True
-    if changed:
-        state.reload += 1
+                updates[field] = value
+    if updates:
+        updates["reload"] = state.reload + 1
+        _batch_state(**updates)
 
 
 # ============================================================
@@ -1304,6 +1439,8 @@ def new_view(flt, extras, path):
         "loading": False,
         "exhausted": False, # 远程已无更多内容
         "generation": 0,    # 递增代号：筛选/数据池重置后 +1，在途 worker 结果作废
+        "fail_streak": 0,   # 连续网络失败次数：决定重试退避时长
+        "next_retry": 0.0,  # 失败退避截止时刻：期内 _pump 不再重试
     }
 
 VIEWS = {
@@ -1338,13 +1475,28 @@ def push_list(path, vid):
     运行时按 tag 查 destinations，并把 data 原样传给对应 builder。
     """
     _PUSHED_VIDS.append(vid)
-    if len(_PUSHED_VIDS) > 50:
-        del _PUSHED_VIDS[:25]
+    if len(_PUSHED_VIDS) > 8:
+        del _PUSHED_VIDS[:4]    # 只留最近的兜底引用：过多会把旧展示位 pin 住不回收
     path.append({"tag": "list", "data": {"vid": vid}})
 
 # 根展示位永不回收；动态展示位（详情内跳转的筛选列表）超过上限时回收最旧的
 ROOT_VIDS = {HOME_VID, ACTRESS_VID, GENRE_VID, FAV_VID}
 MAX_DYNAMIC_VIEWS = 12
+
+def _purge_stale_detail_stacks():
+    """清理滞留的详情状态栈。
+
+    on_disappear 在部分场景（展示位被回收、异常导航路径等）不会触发，
+    DETAIL_STACKS 条目滞留会让 gc_views 的保留集把死展示位永久 pin 住：
+    VIEWS 缓慢泄漏，pump_all_views / 整树重建的扫描成本随之增长
+    （表现为浏览一段时间后越用越卡）。
+    """
+    for host, stack in list(DETAIL_STACKS.items()):
+        v = VIEWS.get(host)
+        if v is None or v["path"].count < stack[-1]["depth"]:
+            DETAIL_STACKS.pop(host, None)
+    if not DETAIL_STACKS and state.detail_open:
+        state.detail_open = False
 
 def gc_views():
     """动态展示位生命周期回收（简单上限法，不做 LRU）。
@@ -1355,6 +1507,7 @@ def gc_views():
       - 没有在途 worker（loading=False）。
     回收顺序从最旧开始，保留最新的 MAX_DYNAMIC_VIEWS 个。
     """
+    _purge_stale_detail_stacks()    # 先清掉滞留详情栈，保留集才准确
     dynamic = [vid for vid in VIEWS if vid not in ROOT_VIDS]
     if len(dynamic) <= MAX_DYNAMIC_VIEWS:
         return
@@ -1410,17 +1563,24 @@ def fetch_view_page(v, page):
     return fetch_movie_page(view_url(v, page))
 
 def fav_items():
-    """收藏列表的数据源：由收藏记录构造，按收藏时间（date）从新到旧。"""
-    out = []
-    for item in SHELF["fav"]:
-        code = str(item.get("code") or "").strip().upper()
-        if not code:
-            continue
-        out.append({"code": code,
-                    "img": item.get("img") or "",
-                    "date": str(item.get("fav_time") or "").strip(),
-                    "link": BASE + "/" + quote(code)})
-    return sorted(out, key=lambda x: x.get("date") or "", reverse=True)
+    """收藏列表的数据源：由收藏记录构造，按收藏时间（date）从新到旧。
+
+    结果缓存：收藏记录未变动时直接复用，mark_fav_dirty 时失效。
+    """
+    global _FAV_ITEMS_CACHE
+    if _FAV_ITEMS_CACHE is None:
+        out = []
+        for item in SHELF["fav"]:
+            code = str(item.get("code") or "").strip().upper()
+            if not code:
+                continue
+            out.append({"code": code,
+                        "img": item.get("img") or "",
+                        "date": str(item.get("fav_time") or "").strip(),
+                        "link": BASE + "/" + quote(code)})
+        _FAV_ITEMS_CACHE = sorted(out, key=lambda x: x.get("date") or "",
+                                  reverse=True)
+    return _FAV_ITEMS_CACHE
 
 def sort_new_items(items):
     """固定顺序：发布时间从新到旧。
@@ -1487,6 +1647,14 @@ _VIEWS_DIRTY = False
 # 按展示位隔离的脏标记：不可见展示位的数据变化不触发整树重建，
 # 标记保留到该展示位可见时（翻回该 tab / 关闭详情）再消费
 _DIRTY_VIDS = set()
+# 已显示过数据的展示位：用于「首屏豁免」——切入 tab 后第一批数据
+# 到达（占位格 → 真实内容）不等切换宽限窗，立即重建给出首帧反馈
+_SHOWN_VIDS = set()
+
+def _pool_has_data(vid):
+    """展示位的数据池是否已有内容（首屏豁免判定用）。"""
+    v = VIEWS.get(vid)
+    return bool(v and v["pool"])
 
 def _view_visible(vid):
     """展示位当前是否可能显示在屏幕上（属于当前 tab，或它正承载详情）。"""
@@ -1562,7 +1730,7 @@ def _pump(vid, force=False):
         changed = False
         with _VIEWS_LOCK:
             if not (v["exhausted"] and not force):
-                v["pool"] = fav_items()
+                v["pool"] = list(fav_items())   # 拷贝：头部回收不会动到缓存
                 v["base"] = 0
                 v["remote"] = 1
                 v["exhausted"] = True
@@ -1580,6 +1748,8 @@ def _pump(vid, force=False):
                 return
             if v["loading"]:
                 return
+            if time.time() < v.get("next_retry", 0.0):
+                return      # 失败退避期内：不再每个 tick 重试
             v["loading"] = True
             gen = v["generation"]
         threading.Thread(target=_genre_worker, args=(vid, gen), daemon=True).start()
@@ -1587,6 +1757,9 @@ def _pump(vid, force=False):
     with _VIEWS_LOCK:
         if v["loading"] or v["exhausted"]:
             return
+        if time.time() < v.get("next_retry", 0.0):
+            return          # 失败退避期内：不再每个 tick 重试（否则网络失败
+                            # 的展示位会每 0.5s 拉起一个线程重发请求，越点越多）
         if pool_end(v) >= load_window_end(v):
             return
         v["loading"] = True
@@ -1607,7 +1780,12 @@ def _genre_worker(vid, gen):
             v["exhausted"] = True
     except Exception as e:
         log("genre err: " + str(e))
-        # 失败不置 exhausted：loading 复位后由下轮 _pump 自动重试
+        # 失败不置 exhausted：退避后由下轮 _pump 重试
+        with _VIEWS_LOCK:
+            if VIEWS.get(vid) is v:
+                v["fail_streak"] = v.get("fail_streak", 0) + 1
+                v["next_retry"] = time.time() + min(
+                    60.0, 2.0 ** min(v["fail_streak"], 5))
     finally:
         with _VIEWS_LOCK:
             if VIEWS.get(vid) is v and v["generation"] == gen:
@@ -1634,8 +1812,14 @@ def _pump_worker(vid, gen):
                     break
             res = fetch_view_page(v, v["remote"])       # 网络请求在锁外
             if res is None:
-                # 网络失败 ≠ 没有更多数据：不置 exhausted，留给下轮 _pump 重试
+                # 网络失败 ≠ 没有更多数据：不置 exhausted，但按连败指数退避，
+                # 避免周期任务每 tick 重试形成线程 + 请求风暴
                 log("pump net err: page " + str(v["remote"]))
+                with _VIEWS_LOCK:
+                    if VIEWS.get(vid) is v:
+                        v["fail_streak"] = v.get("fail_streak", 0) + 1
+                        v["next_retry"] = time.time() + min(
+                            60.0, 2.0 ** min(v["fail_streak"], 5))
                 break
             with _VIEWS_LOCK:
                 if VIEWS.get(vid) is not v or v["generation"] != gen:
@@ -1646,8 +1830,11 @@ def _pump_worker(vid, gen):
                 # 增量追加：新数据排在已有数据之后，已翻过的页码内容不受影响
                 v["pool"].extend(sort_new_items(res))
                 v["remote"] += 1
+                v["fail_streak"] = 0
+                v["next_retry"] = 0.0
                 _trim(v, page_size(vid))
             fetched += 1
+            prepare_images([m.get("img") or "" for m in res])
             for m in res:
                 request_img(m.get("img") or "")
             mark_views_dirty(vid)
@@ -1662,9 +1849,15 @@ def _pump_worker(vid, gen):
         mark_views_dirty(vid)
 
 def pump_all_views():
-    """定时补足各展示位的预加载窗口（每轮只抓少量，逐步填充）。"""
+    """补足「可见展示位」的预加载窗口（每轮只抓少量，逐步填充）。
+
+    只 pump 当前 tab 导航栈上的展示位；不可见展示位由切入该 tab 时
+    （set_tab）按需补足。对全部展示位轮询会让浏览过的每个列表
+    （尤其是网络失败的）每 tick 都被重试，线程与请求越积越多。
+    """
     for vid in list(VIEWS):
-        _pump(vid)
+        if _view_visible(vid):
+            _pump(vid)
 
 def set_filter(vid, flt):
     """切换展示位的筛选条件（重置翻页状态并重新抓取）。"""
@@ -1679,6 +1872,8 @@ def set_filter(vid, flt):
         v["remote"] = 1
         v["exhausted"] = False
         v["loading"] = False
+        v["fail_streak"] = 0    # 新筛选视为全新任务：清掉旧退避
+        v["next_retry"] = 0.0
         v["generation"] += 1    # 旧筛选的在途 worker 结果全部作废
     reset_page_inputs()         # 页码重置回 1：未提交的页码输入一并作废
     _pump(vid)
@@ -1783,10 +1978,12 @@ _NAV_SILENCE = 0.8
 _DETAIL_SAFE_AFTER = 0.6
 _LAST_TAB = -1
 _LAST_TAB_SWITCH = 0.0
-TAB_RELOAD_GRACE = 0.6
+TAB_RELOAD_GRACE = 0.35   # 切换宽限窗：原 0.6 —— 首屏豁免兜底后可更短
 
 # 图片刷新去抖
 _LAST_IMG_RELOAD = 0.0
+# 本次 tab 停留期间是否已刷过一次图片：首刷豁免用（切入后封面尽快出现）
+_TAB_IMG_FLUSHED = True
 IMG_SILENCE_INTERVAL = 0.9
 IMG_MAX_RELOAD_INTERVAL = 3.0
 IMG_RELOAD_MIN_GAP = 2.0
@@ -1854,7 +2051,8 @@ def set_play_error(message):
 def _sync_dirty():
     """主线程周期任务：图片刷新 + 列表提交 + 播放请求 + 详情提交。"""
     global _PLAY_REQUEST, _PLAY_ERROR, _VIEWS_DIRTY, _LAST_IMG_RELOAD
-    global _LAST_TAB, _LAST_TAB_SWITCH, _FAV_DIRTY
+    global _LAST_TAB, _LAST_TAB_SWITCH, _FAV_DIRTY, _TAB_CONTENT_PENDING
+    global _TAB_IMG_FLUSHED
     now = time.time()
     if state.tab != _LAST_TAB:
         # 兜底复位：若 on_change 回调未触发（纯绑定同步），这里也能
@@ -1862,7 +2060,18 @@ def _sync_dirty():
         leave_tab_reset(_LAST_TAB)
         _LAST_TAB = state.tab
         _LAST_TAB_SWITCH = now
+        _TAB_SWITCH_TIMES.append(now)
+    # 快速切 tab 防抖收尾：连点静默期过后补一次重建，构建真实 tab 内容
+    if _TAB_CONTENT_PENDING and now - _LAST_TAB_SWITCH >= _TAB_CONTENT_DEBOUNCE:
+        _TAB_CONTENT_PENDING = False
+        state.reload += 1
     settled = reload_allowed() and (now - _LAST_TAB_SWITCH) >= TAB_RELOAD_GRACE
+
+    # 渲染期发现未准备的图片：主线程补数据层路径解析（写占位文件），
+    # 有新可用路径时安排一次重建填充真图
+    consume_prepare_pending()
+    # 清理滞留详情栈：防止 VIEWS 随浏览缓慢泄漏、扫描成本逐 tick 增长
+    _purge_stale_detail_stacks()
 
     # 应用已稳定的几何测量：tab 首次出现时的连续回调只对应一次重建，
     # 且直接以最终尺寸应用，中间的过渡尺寸不产生任何中间渲染
@@ -1880,7 +2089,7 @@ def _sync_dirty():
         _FAV_DIRTY = False
         fv = VIEWS.get(FAV_VID)
         if fv and fv["exhausted"]:
-            fv["pool"] = fav_items()
+            fv["pool"] = list(fav_items())
             fv["base"] = 0
             load_fav_movies()
             mark_views_dirty(FAV_VID)
@@ -1891,19 +2100,31 @@ def _sync_dirty():
         max_wait = IMG_MAX_RELOAD_LONG if detail else IMG_MAX_RELOAD_INTERVAL
         min_gap = IMG_RELOAD_MIN_GAP_DETAIL if detail else IMG_RELOAD_MIN_GAP
         overdue = now - _LAST_IMG_RELOAD >= max_wait
-        if (quiet or overdue) and settled and now - _LAST_IMG_RELOAD >= min_gap:
+        # 切换后首刷：只要有已完成的下载就立即显示（is_dirty 保证 ≥1 张），
+        # 不等下载静默 / 节流，让切入 tab 后封面尽快出现；
+        # 后续刷新仍走原节流，避免下载高峰期频繁重建
+        first_flush = not _TAB_IMG_FLUSHED
+        if ((quiet or overdue or first_flush) and settled
+                and (first_flush or now - _LAST_IMG_RELOAD >= min_gap)):
             clear_dirty()
             _LAST_IMG_RELOAD = now
+            _TAB_IMG_FLUSHED = True
             state.reload += 1
 
-    if (_VIEWS_DIRTY or _DIRTY_VIDS) and settled:
+    if _VIEWS_DIRTY or _DIRTY_VIDS:
         # 可见性隔离：只在本轮有「屏幕上可能显示的」脏展示位时才重建。
         # 一次重建刷新整棵树，因此可见脏位存在时顺带消费全部标记；
         # 全部不可见时保留标记，等翻回对应 tab / 关闭详情后再刷新。
-        if _VIEWS_DIRTY or any(_view_visible(vid) for vid in _DIRTY_VIDS):
+        visible = [vid for vid in _DIRTY_VIDS if _view_visible(vid)]
+        # 首屏豁免：切入 tab 后第一批数据到达（占位格 → 真实内容），
+        # 不等切换宽限窗立即重建；转场静默（settled 内含）仍遵守
+        first_screen = any(vid not in _SHOWN_VIDS and _pool_has_data(vid)
+                           for vid in visible)
+        if (settled or first_screen) and (_VIEWS_DIRTY or visible):
             state.reload += 1
             _VIEWS_DIRTY = False
             _DIRTY_VIDS.clear()
+            _SHOWN_VIDS.update(visible)
 
     # 翻到已加载内容的末尾后，继续把预加载窗口填满（每轮只抓少量）
     if settled:
@@ -1912,12 +2133,10 @@ def _sync_dirty():
     if _PLAY_REQUEST and settled:
         url, title, source = _PLAY_REQUEST
         _PLAY_REQUEST = None
-        state.status = ""
-        play_url(url, title, source=source)
+        play_url(url, title, source=source)     # status 复位已并入其批量提交
     elif _PLAY_ERROR and settled:
-        state.status = _PLAY_ERROR
+        _batch_state(status=_PLAY_ERROR, reload=state.reload + 1)
         _PLAY_ERROR = ""
-        state.reload += 1
 
     _commit_detail()
     _commit_translation()
@@ -1955,22 +2174,26 @@ def _commit_detail():
                 cur[k] = v
             cur.pop("_loading", None)
             cur.pop("error", None)
-        else:
-            state.detail = d
+        # cur 为空时 detail 字段并入下方批量提交，不再单独写
+        prepare_images([d["cover"]] + [a["img"] for a in d["actresses"]]
+                       + [s["img"] for s in d["samples"]])
         for a in d["actresses"]:
             request_img(a["img"], priority=True)
         request_img(d["cover"], priority=True)
         # 缩略图进入详情即加载；大图不预取，点击查看大图时才加载（见 show_sample）
         for s in d["samples"]:
             request_img(s["img"], priority=True)
-        # 标题默认翻译成中文展示（封面下方那一行）
-        state.name_text = d.get("name") or ""
-        state.title_trans = False
-        translate_title_async(d)
-        # JavDB 评分（发行日期下一行展示）
-        state.rating_text = ""
-        rating_async(d)
-        state.reload += 1
+        # 标题/评分的初始显示值与本轮 reload 合并成一次提交
+        # （逐字段写会各自触发一次整树重建）
+        name_text, title_trans, rating_text = _initial_title_display(d)
+        updates = {"name_text": name_text, "title_trans": title_trans,
+                   "rating_text": rating_text, "reload": state.reload + 1}
+        if not cur:
+            updates["detail"] = d
+        _batch_state(**updates)
+        # 后台翻译 / 评分（初始显示值已在上面提交，defer_state 不再写）
+        translate_title_async(d, defer_state=True)
+        rating_async(d, defer_state=True)
     elif _DETAIL_ERROR:
         _DETAIL_ERROR = False
         if not state.detail_open:
@@ -2012,19 +2235,23 @@ def fetch_translation(text):
         log("translate err: " + str(e))
         return ""
 
-def translate_title_async(d):
-    """发起标题翻译：命中缓存直接显示，否则后台请求（结果由主线程提交）。"""
+def translate_title_async(d, defer_state=False):
+    """发起标题翻译：命中缓存直接显示，否则后台请求（结果由主线程提交）。
+
+    defer_state=True：初始显示值已由调用方随 batch_update 提交，
+    这里只负责提交后台任务，不再写 State（省一次整树重建）。
+    """
     global _TRANS_SEQ
     text = str(d.get("name") or "").strip()
     if not text:
         return
     cached = _TRANS_CACHE.get(text)
     if cached:
-        state.name_text = cached
-        state.title_trans = True
+        if not defer_state:
+            _batch_state(name_text=cached, title_trans=True)
         return
-    state.name_text = "翻译中..."
-    state.title_trans = False
+    if not defer_state:
+        _batch_state(name_text="翻译中...", title_trans=False)
     _TRANS_SEQ += 1
     seq = _TRANS_SEQ
     link = d.get("link") or ""
@@ -2052,12 +2279,11 @@ def _commit_translation():
             if len(_TRANS_CACHE) > 200:
                 _TRANS_CACHE.clear()
             _TRANS_CACHE[str(cur.get("name") or "").strip()] = r["text"]
-            state.name_text = r["text"]
-            state.title_trans = True
+            _batch_state(name_text=r["text"], title_trans=True)
         else:
             # 翻译失败：恢复日文原标题
-            state.name_text = str(cur.get("name") or "")
-            state.title_trans = False
+            _batch_state(name_text=str(cur.get("name") or ""),
+                         title_trans=False)
 
 
 # ============================================================
@@ -2093,13 +2319,14 @@ def fetch_rating(code):
         log("rating err: " + str(e))
         return ""
 
-def rating_async(d):
-    """发起评分抓取（后台线程，结果由主线程提交）。"""
+def rating_async(d, defer_state=False):
+    """发起评分抓取（后台线程，结果由主线程提交）。defer_state 同翻译。"""
     global _RATING_SEQ
     code = str(d.get("code") or "").strip()
     if not code:
         return
-    state.rating_text = "评分：获取中..."
+    if not defer_state:
+        state.rating_text = "评分：获取中..."
     _RATING_SEQ += 1
     seq = _RATING_SEQ
     link = d.get("link") or ""
@@ -2125,6 +2352,26 @@ def _commit_rating():
     if cur and cur.get("link") == r["link"] and state.detail_open:
         # 失败 → 不显示评分（rating_text 为空时详情页不渲染该行）
         state.rating_text = r["text"] if r["ok"] else ""
+
+def _initial_title_display(d, want_rating=True):
+    """详情标题/评分的初始显示值：(name_text, title_trans, rating_text)。
+
+    供 open_detail / _commit_detail 与 batch_update 合并成一次提交。
+    want_rating=False 用于「详情还在加载中」的场景（此时不显示评分行）。
+    """
+    text = str(d.get("name") or "").strip()
+    cached = _TRANS_CACHE.get(text) if text else None
+    if cached:
+        name_text, title_trans = cached, True
+    elif text:
+        name_text, title_trans = "翻译中...", False
+    else:
+        name_text, title_trans = "", False
+    if want_rating and str(d.get("code") or "").strip():
+        rating_text = "评分：获取中..."
+    else:
+        rating_text = ""
+    return name_text, title_trans, rating_text
 
 def reset_pending():
     global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
@@ -2180,16 +2427,19 @@ def pause_local_playback():
     except Exception as e:
         log("pause player err: " + str(e))
 
-def stop_local_playback():
-    """暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放。"""
+def _halt_player():
+    """暂停并停止本地播放器（含画中画）。不写 State：由调用方按需合并提交。"""
     try:
         player = get_player()
         player.pause()
         player.stop()
     except Exception as e:
         log("stop player err: " + str(e))
-    state.panel = ""
-    state.panel_title = ""
+
+def stop_local_playback():
+    """暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放。"""
+    _halt_player()
+    _batch_state(panel="", panel_title="")
 
 def play_url(url, title="", source=""):
     log("play: " + str(title) + " -> " + str(url)[:120])
@@ -2197,67 +2447,67 @@ def play_url(url, title="", source=""):
         start_playback(url)      # 自动播放 + 默认静音
     except Exception as e:
         log("player load err: " + str(e))
-    state.panel = url
-    state.panel_title = title
-    state.play = source
-    state.status = ""
-    state.reload += 1
+    _batch_state(panel=url, panel_title=title, play=source,
+                 status="", reload=state.reload + 1)
 
 def open_detail(movie, vid):
     """打开影片详情：在展示位 vid 所属的导航栈内 push 详情页。"""
     log("open_detail: " + str(movie.get("link")))
     reset_page_inputs()         # 点了列表项：未提交的页码输入作废
-    global DETAIL_OPEN_AT, DETAIL_HOST, DETAIL_PATH
+    global DETAIL_OPEN_AT, DETAIL_HOST, DETAIL_PATH, _DETAIL_PATH_DEPTH
     if vid in VIEWS and VIEWS[vid]["filter"]["kind"] == "fav":
         # 暂停收藏封面补全线程，避免与详情请求竞争
         pause_fav_movies()
     thumb = movie.get("img") or ""
-    if state.detail_thumb != thumb:
-        state.detail_thumb = thumb
-    if state.panel or state.panel_title or state.play or state.status:
-        state.panel = ""
-        state.panel_title = ""
-        state.play = ""
-        state.status = ""
-
     link = movie.get("link") or ""
     ready = take_ready(link)
     cur = state.detail
     need_fetch = False
     if ready:
-        state.detail = ready
+        new_detail = ready
     elif (cur and cur.get("link") == link
           and not cur.get("_loading") and not cur.get("error")):
-        state.detail = cur
+        new_detail = cur
     else:
         # 加载期间不展示列表封面：留空，等详情抓到后再整体渲染
-        state.detail = {"_loading": True,
-                        "code": movie.get("code", ""),
-                        "cover": "",
-                        "name": movie.get("title", ""),
-                        "link": link}
+        new_detail = {"_loading": True,
+                      "code": movie.get("code", ""),
+                      "cover": "",
+                      "name": movie.get("title", ""),
+                      "link": link}
         need_fetch = True
-    state.detail_open = True
+    # 本函数原来逐字段写 State（约十次整树重建），是打开详情卡顿的
+    # 主因之一：全部字段（含播放源复位值）合并成一次批量提交。
+    name_text, title_trans, _rating = _initial_title_display(
+        new_detail, want_rating=False)
+    rating_text = ""
+    if not need_fetch and name_text \
+            and str(new_detail.get("code") or "").strip():
+        rating_text = "评分：获取中..."
+    updates = {"detail": new_detail, "detail_open": True,
+               "name_text": name_text, "title_trans": title_trans,
+               "rating_text": rating_text}
+    if state.detail_thumb != thumb:
+        updates["detail_thumb"] = thumb
+    if state.panel or state.panel_title or state.play or state.status:
+        updates.update(panel="", panel_title="", play="", status="")
+    # 播放源复位值 / 缓存值也合并进同一次提交
+    prefetch_play_sources(new_detail.get("code"), updates=updates)
+    _batch_state(**updates)
     DETAIL_OPEN_AT = time.time()
-    # 标题显示复位为日文原文，随后自动翻译成中文
-    state.name_text = str((state.detail or {}).get("name") or "")
-    state.title_trans = False
-    state.rating_text = ""
-    if not need_fetch and state.name_text:
-        translate_title_async(state.detail)
-        rating_async(state.detail)
-    # 进入详情即并行预取预览 / 预告 / 视频链接
-    prefetch_play_sources((state.detail or {}).get("code"))
+    if not need_fetch and name_text:
+        # 初始显示值已随批量提交，这里只发起后台翻译 / 评分
+        translate_title_async(new_detail, defer_state=True)
+        rating_async(new_detail, defer_state=True)
     # 详情与它内部的跳转列表都推入「打开它的那个展示位」的导航栈
     DETAIL_HOST = vid if vid in VIEWS else HOME_VID
     DETAIL_PATH = VIEWS[DETAIL_HOST]["path"]
     note_nav_action()
     DETAIL_PATH.append({"tag": "detail", "host": DETAIL_HOST})
-    global _DETAIL_PATH_DEPTH
     _DETAIL_PATH_DEPTH = DETAIL_PATH.count
     # 记入该 tab 自己的详情栈（含栈深基准），切回这个 tab 时恢复显示它的详情
     DETAIL_STACKS.setdefault(DETAIL_HOST, []).append(
-        {"detail": state.detail, "depth": _DETAIL_PATH_DEPTH})
+        {"detail": new_detail, "depth": _DETAIL_PATH_DEPTH})
     if need_fetch:
         request_detail(link)
 
@@ -2316,15 +2566,14 @@ def open_genre(link, value):
 
 def clear_panel():
     """关闭播放：停止本地播放（含画中画）。"""
-    stop_local_playback()
-    state.play = ""
+    _halt_player()
+    _batch_state(panel="", panel_title="", play="")
 
 def open_external_player():
     """把当前播放链接交给设置里选定的外部播放器（URL Scheme 可配置）。"""
     url = state.panel or ""
     if not url:
-        state.status = "请先播放视频"
-        state.reload += 1
+        _batch_state(status="请先播放视频", reload=state.reload + 1)
         return
     name = SETTINGS["player"]
     scheme = EXTERNAL_PLAYERS.get(name, name)
@@ -2332,21 +2581,21 @@ def open_external_player():
     target = (scheme + "://x-callback-url/play?url=" + quote(url, safe="") +
               "&name=" + quote(code, safe="") + "&User-Agent=" + scheme)
     # 先暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放/冲突
-    stop_local_playback()
+    _halt_player()
     if shortcuts.open_url(target):
-        state.play = ""
-        state.status = "已跳转 " + name
+        _batch_state(panel="", panel_title="", play="",
+                     status="已跳转 " + name, reload=state.reload + 1)
     else:
-        state.status = "打开失败"
-    state.reload += 1
+        _batch_state(panel="", panel_title="", status="打开失败",
+                     reload=state.reload + 1)
 
 def copy_video_link():
     if state.panel:
         clipboard.set(state.panel)
-        state.status = "链接已复制"
+        status = "链接已复制"
     else:
-        state.status = "请先播放视频"
-    state.reload += 1
+        status = "请先播放视频"
+    _batch_state(status=status, reload=state.reload + 1)
 
 def play_preview():
     """播放预览：链接在进入详情时就已并行取好。"""
@@ -2363,17 +2612,33 @@ def play_video():
     if state.src_video:
         play_url(state.src_video, "完整视频", source="完整视频")
 
-def show_sample(link):
-    """查看样片大图：加载全部样片大图后推入浏览（可左右滑动翻看）。"""
+def _load_sample_window():
+    """只加载当前样片 ±1 的大图，翻页时增量补足。
+
+    避免进入大图浏览就把全部样片大图排入下载队列造成内存峰值。
+    """
     samples = (state.detail or {}).get("samples") or []
-    for s in samples:
-        request_img(s["link"], priority=True)
+    idx = max(0, min(int(state.sample_index or 0), len(samples) - 1))
+    window = [s.get("link") or "" for s in samples[max(0, idx - 1):idx + 2]]
+    window = [u for u in window if u]
+    prepare_images(window)
+    for link in window:
+        request_img(link, priority=True)
+
+def on_sample_page_change(_value=None):
+    """样片大图翻页：加载新当前页 ±1 的大图。"""
+    _load_sample_window()
+
+def show_sample(link):
+    """查看样片大图：加载当前 ±1 后推入浏览（可左右滑动翻看）。"""
+    samples = (state.detail or {}).get("samples") or []
     idx = 0
     for i, s in enumerate(samples):
         if s.get("link") == link:
             idx = i
             break
     state.sample_index = idx
+    _load_sample_window()
     note_nav_action()
     DETAIL_PATH.append({"tag": "sample"})
 
@@ -2386,8 +2651,8 @@ def copy_code():
     if state.detail:
         code = state.detail["code"]
         clipboard.set(code)
-        state.status = "番号 " + code + " 已复制"
-        state.reload += 1
+        _batch_state(status="番号 " + code + " 已复制",
+                     reload=state.reload + 1)
 
 def toggle_fav():
     d = state.detail
@@ -2619,22 +2884,13 @@ def magnet_row(m):
         appui.Button("复制", action=copy, role="destructive"),
     ])
 
-# 搜索框的临时输入（普通变量：按键时不写入 State，避免每字符整树重建）
+# 搜索栏的临时输入（普通变量：按键时不写入 State，避免每字符整树重建）。
+# 搜索栏已改为原生 .searchable（挂在影片 tab 根页，见 display_page_view），
+# 不再手写搜索行；text 只在整树重建时回读本变量。
 _SEARCH_INPUT = {"value": ""}
 
 def set_search_input(v):
     _SEARCH_INPUT["value"] = v      # 只记录，不写 State：按键不触发重建
-
-def search_row(vid):
-    """搜索栏（只有影片首页这一处展示需要）。"""
-    field = appui.TextField("番号或演员", text=_SEARCH_INPUT["value"],
-                            on_change=set_search_input) \
-        .text_field_style("rounded_border") \
-        .on_submit(do_search)
-    buttons = [appui.Button("搜索", action=do_search).button_style("bordered_prominent")]
-    if VIEWS[vid]["filter"]["kind"] == "search":
-        buttons.append(appui.Button("取消", action=clear_search).button_style("bordered"))
-    return appui.HStack([field] + buttons, spacing=8)
 
 def pager_row(vid):
     """翻页条：左上翻、右下翻、中间页码即输入框（未输入时显示当前页码）。"""
@@ -2709,9 +2965,6 @@ def movie_display(vid, with_pager=True):
     ex = v["extras"]
     parts = []
 
-    if ex.get("search"):
-        parts.append(search_row(vid))
-
     if view_kind(vid) == "fav":
         # 收藏 tab 顶部：已收藏总数（占位与搜索栏一致）
         parts.append(fav_count_row())
@@ -2779,8 +3032,7 @@ def genre_display(vid):
 
 def set_genre_group(v):
     """切换一级分类。"""
-    state.genre_group = v
-    state.reload += 1
+    _batch_state(genre_group=v, reload=state.reload + 1)
 
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
@@ -2827,6 +3079,10 @@ def display_page_view(vid, titled=True):
     sv = appui.ScrollView(movie_display(vid, with_pager=False))
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
+    if v["extras"].get("search"):
+        # 原生搜索栏挂在导航栏（只影片首页有），搜索/取消交互全部交给系统
+        sv = sv.searchable(text=_SEARCH_INPUT["value"], prompt="番号或演员",
+                           on_change=set_search_input, on_submit=do_search)
     return appui.GeometryReader(
         content=sv.safe_area_inset(edge="bottom", content=pager),
         on_change=make_grid_observer(page_size_key(view_kind(vid))),
@@ -2852,8 +3108,10 @@ def detail_destination(data):
     if stack:
         entry = stack[-1]
         if entry["detail"] is not state.detail:
-            state.detail = entry["detail"]      # 切回该 tab：显示它自己的详情
-        state.detail_open = True
+            # 切回该 tab：显示它自己的详情（两字段合并一次提交）
+            _batch_state(detail=entry["detail"], detail_open=True)
+        else:
+            state.detail_open = True
         DETAIL_HOST = host
         DETAIL_PATH = VIEWS[host]["path"]
         _DETAIL_PATH_DEPTH = entry["depth"]
@@ -2886,7 +3144,14 @@ def list_destination(data):
 
 # 详情页封面：按标准比例撑满宽度，上下不留空白
 def _cover_view(url):
-    return appui.AsyncImage(url=img_src(url)) \
+    src = img_src(url)
+    if not src:
+        # 未准备好的封面：同比例占位框保持布局，路径补准备后由重建填充
+        return appui.Rectangle() \
+            .foreground_color("secondarySystemBackground") \
+            .aspect_ratio(COVER_RATIO, content_mode="fill") \
+            .frame(max_width=appui.infinity)
+    return appui.AsyncImage(url=src) \
         .aspect_ratio(COVER_RATIO, content_mode="fill") \
         .frame(max_width=appui.infinity) \
         .clipped() \
@@ -3129,11 +3394,15 @@ def sample_preview_view():
     samples = (state.detail or {}).get("samples") or []
     pages = []
     for i, s in enumerate(samples):
-        pages.append(appui.Tab(
-            content=appui.AsyncImage(url=img_src(s["link"]), content_mode="fit")
-                .frame(max_width=appui.infinity, max_height=appui.infinity),
-            tag=i,
-        ))
+        url = img_src(s["link"])
+        if url:
+            content = appui.AsyncImage(url=url, content_mode="fit") \
+                .frame(max_width=appui.infinity, max_height=appui.infinity)
+        else:
+            # 未准备好的大图：占位加载指示，路径补准备后由重建填充
+            content = appui.ProgressView() \
+                .frame(max_width=appui.infinity, max_height=appui.infinity)
+        pages.append(appui.Tab(content=content, tag=i))
     if not pages:
         return appui.VStack([
             appui.Text("没有样片").foreground_color("secondaryLabel"),
@@ -3141,7 +3410,8 @@ def sample_preview_view():
         ], spacing=12).padding(bottom=24)
     index = max(0, min(int(state.sample_index), len(pages) - 1))
     gallery = appui.VStack([
-        appui.TabView(tabs=pages, selection=state.bind.sample_index)
+        appui.TabView(tabs=pages, selection=state.bind.sample_index,
+                      on_change=on_sample_page_change)
             .tab_view_style("page")
             .frame(max_width=appui.infinity, max_height=appui.infinity),
         appui.Text(str(index + 1) + " / " + str(len(pages)))
@@ -3251,25 +3521,21 @@ def settings_tab():
 # ============================================================
 
 
+def _prewarm_tabs():
+    """延迟预热女优/类型 tab 的数据（后台线程，错开启动网络高峰）。"""
+    time.sleep(2.0)
+    _pump(ACTRESS_VID)
+    _pump(GENRE_VID)
+
 def start():
     """冷启动：初始化后台线程并复位到影片 tab。"""
     init_background()
     reset_pending()
-    state.tab = 0
-    state.keyword = ""
-    state.detail = None
-    state.detail_open = False
-    state.detail_thumb = ""
-    state.panel = ""
-    state.panel_title = ""
-    state.play = ""
-    state.src_preview = ""
-    state.src_trailer = ""
-    state.src_video = ""
-    state.status = ""
-    state.sample_index = 0
-    state.name_text = ""
-    state.title_trans = False
+    # 15 个复位字段合并成一次重建（原来是 15 次）
+    _batch_state(tab=0, keyword="", detail=None, detail_open=False,
+                 detail_thumb="", panel="", panel_title="", play="",
+                 src_preview="", src_trailer="", src_video="", status="",
+                 sample_index=0, name_text="", title_trans=False)
     DETAIL_STACKS.clear()      # 全部栈复位：各 tab 的详情状态一并清空
     PATH_MOVIES.pop_to_root()
     PATH_ACT.pop_to_root()
@@ -3278,6 +3544,9 @@ def start():
     PATH_SETTINGS.pop_to_root()
     _pump(HOME_VID)
     _pump(FAV_VID)
+    # 冷启动 2 秒后预热女优/类型数据：首次切 tab 时数据已在/在路上，
+    # 显著缩短切入等待；延迟错开启动时首页/收藏的网络高峰
+    _TASK_POOL.submit(_prewarm_tabs)
 
 # 首次进入 tab 才预加载（避免启动时并发请求过多）
 _ACTRESS_LOADED = False
@@ -3323,7 +3592,7 @@ def leave_tab_reset(prev):
 
 def set_tab(v):
     """记录当前标签页：确保 State 与界面选择一致，重建时停留在最后切换的标签页。"""
-    global _LAST_TAB, _LAST_TAB_SWITCH
+    global _LAST_TAB, _LAST_TAB_SWITCH, _TAB_IMG_FLUSHED
     try:
         v = int(v)
     except Exception:
@@ -3332,24 +3601,65 @@ def set_tab(v):
     leave_tab_reset(_LAST_TAB)
     reset_page_inputs()         # 切了 tab：未提交的页码输入作废
     _LAST_TAB = v
-    state.tab = v
+    if state.tab != v:
+        state.tab = v       # 双向绑定通常已写入：同值再写会触发多余重建
     if switched:
         # 打开切换宽限窗：转场期间及其后的挂起重建推迟到窗口之外
         # （此前只有 _sync_dirty 兜底分支会更新 _LAST_TAB_SWITCH，正常
         #   on_change 路径漏更新，TAB_RELOAD_GRACE 形同虚设）
         _LAST_TAB_SWITCH = time.time()
+        _TAB_SWITCH_TIMES.append(_LAST_TAB_SWITCH)
+        _TAB_IMG_FLUSHED = False     # 新 tab 首刷豁免重新生效
         # 切换重建已按当前数据渲染新 tab：滞留脏标记随之作废，
         # 避免切入后再来一次内容不变的重建（表现为整页闪一下）
         _drop_stale_dirty()
+        # 新 tab 的预加载由切入时按需补足（后台轮询只覆盖可见展示位）
+        root = TAB_ROOT_VIDS.get(v)
+        if root in VIEWS:
+            _pump(root)
+
+# 连续快速切 tab 的内容构建防抖：连点期间选中 tab 也渲染占位，
+# 切换停止 _TAB_CONTENT_DEBOUNCE 秒后由 _sync_dirty 补一次真实构建
+_TAB_CONTENT_DEBOUNCE = 0.25
+_TAB_CONTENT_PENDING = False
+_TAB_SWITCH_TIMES = deque(maxlen=4)   # 最近几次 tab 切换时刻（判断连点）
+
+def _tab_content(tag, builder):
+    """只构建当前选中 tab 的真实内容，其余 tab 用轻量占位。
+
+    整树重建是 AppUI 的固有机制：每次 state 变化 body() 都会重新执行，
+    若 5 个 tab 全量构建，网格单元格 / 类型页上百个分类按钮 / 设置页
+    表单都会在后台反复构造（快速切 tab 时尤其明显）。非选中 tab 的
+    内容本次重建不可见，占位即可；切回时按 state.tab 重建真实内容，
+    导航位置由 NavigationPath 恢复。
+
+    连续快速切换（最近 1 秒内 ≥2 次切换）时连选中 tab 也用占位：
+    连点期间每次重建只构造几个 Text，几乎零成本；单次切换不受
+    影响，立即构建真实内容。
+    """
+    global _TAB_CONTENT_PENDING
+    if state.tab != tag:
+        return appui.Text("")
+    now = time.time()
+    if sum(1 for t in _TAB_SWITCH_TIMES if now - t < 1.0) >= 2:
+        _TAB_CONTENT_PENDING = True
+        return appui.Text("")
+    _TAB_CONTENT_PENDING = False
+    return builder()
 
 def make_body():
     return appui.TabView(
         tabs=[
-            appui.Tab("影片", system_image="play.rectangle", content=movies_tab(), tag=0),
-            appui.Tab("女优", system_image="person.2", content=actress_tab(), tag=1),
-            appui.Tab("收藏", system_image="star", content=fav_tab(), tag=2),
-            appui.Tab("类型", system_image="tag", content=genre_tab(), tag=3),
-            appui.Tab("设置", system_image="gear", content=settings_tab(), tag=4),
+            appui.Tab("影片", system_image="play.rectangle",
+                      content=_tab_content(0, movies_tab), tag=0),
+            appui.Tab("女优", system_image="person.2",
+                      content=_tab_content(1, actress_tab), tag=1),
+            appui.Tab("收藏", system_image="star",
+                      content=_tab_content(2, fav_tab), tag=2),
+            appui.Tab("类型", system_image="tag",
+                      content=_tab_content(3, genre_tab), tag=3),
+            appui.Tab("设置", system_image="gear",
+                      content=_tab_content(4, settings_tab), tag=4),
         ],
         selection=state.bind.tab,
         on_change=set_tab,
