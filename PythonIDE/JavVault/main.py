@@ -494,12 +494,11 @@ _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每�
 # 应用值，尺寸停止变化该时长后由 _sync_dirty 统一应用一次。
 _GEOM_STABLE_DELAY = 0.3
 _PENDING_GEOM = {}       # kind -> {"size": n, "at": 登记时刻}
-_KEYBOARD_UP = False     # 页码输入框键盘是否弹出（由几何守卫检测，见 remember）
 PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
 PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
-# 分页条整体上移「三分之一行高度」：与 Tab 栏之间留出空隙
-PAGER_BOTTOM_PAD = PAGER_ROW_H // 3
-PAGER_BLOCK_H = PAGER_ROW_H + PAGER_BOTTOM_PAD
+# 分页条以底部安全区插肩（safeAreaInset）钉在底部：SwiftUI 原生键盘
+# 避让自动让它贴紧键盘，无需跟踪键盘状态或手动重建；网格可用高度的
+# 计算只需扣除插肩条自身高度（PAGER_ROW_H）。
 # 各 tab 顶部工具行高度（含与网格的间距）：影片=搜索栏，收藏=「共X部」，女优=无
 TOP_TOOL_H_BY_KIND = {"movie": 48, "actress": 0, "fav": 48}
 # 未完成首次测量时的兜底每页项数（与旧设置默认一致）
@@ -526,11 +525,10 @@ def make_grid_observer(kind):
     _GEOM_STABLE_DELAY 后统一应用一次，中间过渡尺寸不产生中间渲染。
 
     键盘避让守卫：宽度不变而高度变小是页码输入框弹出键盘挤压容器
-    （键盘安全区）所致，不是真实可用区域变化——测量值与每页项数
-    保持不动，网格内容不被裁剪，键盘只是视觉遮挡。
+    （键盘安全区）所致——分页条由底部安全区插肩原生避让，自动贴紧
+    键盘，这里保持测量值与每页项数不动即可，整个键盘周期零重建。
     """
     def remember(width, height=None):
-        global _KEYBOARD_UP
         try:
             if height is None:
                 w_str, h_str = str(width).split(",")
@@ -544,20 +542,12 @@ def make_grid_observer(kind):
         g = _GRID_GEOMETRY_BY_KIND[kind]
         same_w = abs(w - g["w"]) < 1
         if same_w and abs(h - g["h"]) < 1:
-            # 高度恢复原值：键盘此前弹出过则收起已完成——恢复分页条
-            # 底部间距（一次重建），测量值与每页项数保持不动
-            if _KEYBOARD_UP:
-                _KEYBOARD_UP = False
-                state.reload += 1
             return               # 同一帧重复回调：忽略
         # 键盘避让守卫：宽度不变而高度变小，是页码输入框弹出键盘后
-        # 键盘安全区挤压容器所致，不是真实可用区域变化——保持测量值
-        # 与每页项数不动，网格内容不被裁剪（键盘只是视觉遮挡）；
-        # 分页条改为贴紧键盘（一次重建），键盘收起时再恢复间距。
+        # 键盘安全区挤压容器所致。分页条已改用底部安全区插肩，原生
+        # 键盘避让自动让它贴紧键盘——这里保持测量值与每页项数不动
+        # （网格内容不被裁剪），整个键盘弹出/收起周期零重建。
         if same_w and h < g["h"]:
-            if not _KEYBOARD_UP:
-                _KEYBOARD_UP = True
-                state.reload += 1
             return
         g["w"] = w
         g["h"] = h
@@ -630,7 +620,7 @@ def compute_page_size(kind):
     col_w = (grid_w - (cols - 1) * GRID_SPACING) / cols
     cell_h = col_w / RATIO_BY_KIND[kind]
     avail_h = (h - TOP_TOOL_H_BY_KIND.get(kind, 48)
-               - PAGER_BLOCK_H - PAGE_V_PAD * 2)
+               - PAGER_ROW_H - PAGE_V_PAD * 2)
     rows = int(avail_h // cell_h)
     return cols * max(1, rows)
 
@@ -2795,11 +2785,11 @@ def set_genre_group(v):
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
 
-    titled=False 用于影片 / 女优 / 收藏三个 tab 根页（与探针同款布局）：
-      - 分页条悬浮固定在底部（ZStack 底对齐），不随内容滚动，
-        无需滚动页面即可点击；
+    titled=False 用于影片 / 女优 / 收藏三个 tab 根页：
+      - 分页条以底部安全区插肩（safeAreaInset）钉在底部，不随内容
+        滚动，无需滚动页面即可点击；原生键盘避让自动让它贴紧键盘；
       - 滚动区铺满 GeometryReader 实测的整个可用区域（不对其内容限高），
-        每页项数按「实测高度 - 分页条区块」计算，内容不会越过分页条，
+        每页项数按「实测高度 - 分页条插肩高度」计算，内容不会越过分页条，
         测量与布局完全解耦，无反馈回路。
     推入的跳转列表仍保留标题，分页条随内容滚动。
     """
@@ -2827,21 +2817,18 @@ def display_page_view(vid, titled=True):
             sv = sv.refreshable(action=refresh_view)
         return sv.navigation_title(view_title(vid))
 
-    # 三个 tab 根页：分页条悬浮固定在底部（不参与测量与布局，无反馈回路），
-    # 整体上移三分之一行高度（PAGER_BOTTOM_PAD），与 Tab 栏之间留出空隙
-    content = movie_display(vid, with_pager=False).padding(bottom=PAGER_BLOCK_H)
-    sv = appui.ScrollView(content)
-    if v["extras"].get("refresh"):
-        sv = sv.refreshable(action=refresh_view)
-    # 键盘弹出（_KEYBOARD_UP）时间距归零：分页条贴紧键盘上沿；
-    # 平时整体上移三分之一行高度（PAGER_BOTTOM_PAD），与 Tab 栏留出空隙
+    # 三个 tab 根页：分页条以底部安全区插肩（safeAreaInset）钉在底部，
+    # 原生键盘避让自动把它抬到键盘上方并紧贴键盘——弹出/收起全程
+    # 无需跟踪键盘状态或手动重建；滚动内容自动为插肩条让位
     pager = pager_row(vid) \
         .padding(horizontal=PAGE_H_PAD) \
         .padding(vertical=6) \
-        .background("systemBackground", opacity=0.92) \
-        .padding(bottom=0 if _KEYBOARD_UP else PAGER_BOTTOM_PAD)
+        .background("systemBackground", opacity=0.92)
+    sv = appui.ScrollView(movie_display(vid, with_pager=False))
+    if v["extras"].get("refresh"):
+        sv = sv.refreshable(action=refresh_view)
     return appui.GeometryReader(
-        content=appui.ZStack([sv, pager], alignment="bottom"),
+        content=sv.safe_area_inset(edge="bottom", content=pager),
         on_change=make_grid_observer(page_size_key(view_kind(vid))),
     )
 
