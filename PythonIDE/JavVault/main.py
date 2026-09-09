@@ -494,6 +494,7 @@ _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每�
 # 应用值，尺寸停止变化该时长后由 _sync_dirty 统一应用一次。
 _GEOM_STABLE_DELAY = 0.3
 _PENDING_GEOM = {}       # kind -> {"size": n, "at": 登记时刻}
+_KEYBOARD_UP = False     # 页码输入框键盘是否弹出（由几何守卫检测，见 remember）
 PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
 PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
 # 分页条整体上移「三分之一行高度」：与 Tab 栏之间留出空隙
@@ -523,8 +524,13 @@ def make_grid_observer(kind):
     行数变化也不立即重建：tab 首次出现时 iOS 常连续回调多次（过渡尺寸
     → 最终尺寸），回调只登记待应用值，由 _sync_dirty 在测量停止变化
     _GEOM_STABLE_DELAY 后统一应用一次，中间过渡尺寸不产生中间渲染。
+
+    键盘避让守卫：宽度不变而高度变小是页码输入框弹出键盘挤压容器
+    （键盘安全区）所致，不是真实可用区域变化——测量值与每页项数
+    保持不动，网格内容不被裁剪，键盘只是视觉遮挡。
     """
     def remember(width, height=None):
+        global _KEYBOARD_UP
         try:
             if height is None:
                 w_str, h_str = str(width).split(",")
@@ -536,8 +542,23 @@ def make_grid_observer(kind):
         if w <= 0 or h <= 0:
             return
         g = _GRID_GEOMETRY_BY_KIND[kind]
-        if abs(w - g["w"]) < 1 and abs(h - g["h"]) < 1:
+        same_w = abs(w - g["w"]) < 1
+        if same_w and abs(h - g["h"]) < 1:
+            # 高度恢复原值：键盘此前弹出过则收起已完成——恢复分页条
+            # 底部间距（一次重建），测量值与每页项数保持不动
+            if _KEYBOARD_UP:
+                _KEYBOARD_UP = False
+                state.reload += 1
             return               # 同一帧重复回调：忽略
+        # 键盘避让守卫：宽度不变而高度变小，是页码输入框弹出键盘后
+        # 键盘安全区挤压容器所致，不是真实可用区域变化——保持测量值
+        # 与每页项数不动，网格内容不被裁剪（键盘只是视觉遮挡）；
+        # 分页条改为贴紧键盘（一次重建），键盘收起时再恢复间距。
+        if same_w and h < g["h"]:
+            if not _KEYBOARD_UP:
+                _KEYBOARD_UP = True
+                state.reload += 1
+            return
         g["w"] = w
         g["h"] = h
         size = compute_page_size(kind)
@@ -2812,11 +2833,13 @@ def display_page_view(vid, titled=True):
     sv = appui.ScrollView(content)
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
+    # 键盘弹出（_KEYBOARD_UP）时间距归零：分页条贴紧键盘上沿；
+    # 平时整体上移三分之一行高度（PAGER_BOTTOM_PAD），与 Tab 栏留出空隙
     pager = pager_row(vid) \
         .padding(horizontal=PAGE_H_PAD) \
         .padding(vertical=6) \
         .background("systemBackground", opacity=0.92) \
-        .padding(bottom=PAGER_BOTTOM_PAD)
+        .padding(bottom=0 if _KEYBOARD_UP else PAGER_BOTTOM_PAD)
     return appui.GeometryReader(
         content=appui.ZStack([sv, pager], alignment="bottom"),
         on_change=make_grid_observer(page_size_key(view_kind(vid))),
