@@ -2661,9 +2661,9 @@ def pager_row(vid):
             .multiline_text_alignment("center")
             .on_submit(on_submit)
             .font("subheadline").bold()
-            .frame(min_width=36, max_width=72),
+            .frame(min_width=20, max_width=56),
         appui.Text("页").font("subheadline"),
-    ], spacing=2)
+    ], spacing=0)
     return appui.HStack([
         prev_btn,
         appui.Spacer(min_length=8),
