@@ -488,6 +488,12 @@ PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()�
 # 按各 tab 的可视高度取可容纳的最大行数（行数向下取整），
 # 图片尺寸保持不变（列数与 adaptive(minimum=GRID_MIN_COLUMN) 一致）。
 _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每页项数
+# GeometryReader 回调防抖：tab 首次出现时 iOS 往往连续回调多次（安全区 /
+# Tab 栏高度未稳定的过渡尺寸 → 最终尺寸），行数每次变化都立即重建会让
+# 网格连续抖动（先按兜底值撑满、被砍掉一行、又补回来）。回调只登记待
+# 应用值，尺寸停止变化该时长后由 _sync_dirty 统一应用一次。
+_GEOM_STABLE_DELAY = 0.3
+_PENDING_GEOM = {}       # kind -> {"size": n, "at": 登记时刻}
 PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
 PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
 # 分页条整体上移「三分之一行高度」：与 Tab 栏之间留出空隙
@@ -513,6 +519,10 @@ def make_grid_observer(kind):
     每页项数变化时不清空数据池、不重置页码：数据池是连续流，切片长度
     变化不影响已翻到的位置；只有当前页起点落到已回收区时才把页码收敛
     到仍能覆盖的页（而不是第 1 页）。
+
+    行数变化也不立即重建：tab 首次出现时 iOS 常连续回调多次（过渡尺寸
+    → 最终尺寸），回调只登记待应用值，由 _sync_dirty 在测量停止变化
+    _GEOM_STABLE_DELAY 后统一应用一次，中间过渡尺寸不产生中间渲染。
     """
     def remember(width, height=None):
         try:
@@ -531,21 +541,37 @@ def make_grid_observer(kind):
         g["w"] = w
         g["h"] = h
         size = compute_page_size(kind)
-        if size <= 0 or size == _GRID_PAGE_SIZE.get(kind, 0):
-            return               # 每页项数没变：不重建，页码与滚动位置原样保留
-        _GRID_PAGE_SIZE[kind] = size
-        for vid in list(VIEWS):
-            if view_kind(vid) == "genre":
-                continue           # 类型页无网格翻页，不受影响
-            if page_size_key(view_kind(vid)) != kind:
-                continue
-            item = VIEWS[vid]
-            with _VIEWS_LOCK:
-                if item["pool"] and (item["page"] - 1) * size < item["base"]:
-                    item["page"] = max(1, item["base"] // size + 1)
-            _pump(vid)             # 补足变长后的预加载窗口（缺失数据增量抓）
-        state.reload += 1          # 应用新的每页项数
+        if size <= 0:
+            return
+        # 与当前生效的每页项数比较（未测量时生效的是兜底值）：一致说明
+        # 网格行数与当前渲染一致——首次测量结果与兜底一致时同样适用——
+        # 只记录尺寸，不重建。
+        effective = _GRID_PAGE_SIZE.get(kind, 0) or FALLBACK_PAGE_SIZE.get(kind, 9)
+        if size == effective:
+            _GRID_PAGE_SIZE[kind] = size
+            _PENDING_GEOM.pop(kind, None)   # 抖回原值：撤销待应用值
+            return
+        # 行数变化：不立即重建。iOS 在 tab 首次出现时往往连续回调多次
+        # （过渡尺寸 → 最终尺寸），立即重建会让网格行数连续抖动（先按
+        # 兜底值撑满、被砍掉一行、又补回来）。这里只登记待应用值，由
+        # _sync_dirty 在尺寸停止变化 _GEOM_STABLE_DELAY 后统一应用一次。
+        _PENDING_GEOM[kind] = {"size": size, "at": time.time()}
     return remember
+
+def _apply_pending_geometry(kind):
+    """应用某 tab 稳定后的实测每页项数（页码收敛 + 预加载窗口补足）。"""
+    size = _PENDING_GEOM[kind]["size"]
+    _GRID_PAGE_SIZE[kind] = size
+    for vid in list(VIEWS):
+        if view_kind(vid) == "genre":
+            continue           # 类型页无网格翻页，不受影响
+        if page_size_key(view_kind(vid)) != kind:
+            continue
+        item = VIEWS[vid]
+        with _VIEWS_LOCK:
+            if item["pool"] and (item["page"] - 1) * size < item["base"]:
+                item["page"] = max(1, item["base"] // size + 1)
+        _pump(vid)             # 补足变长后的预加载窗口（缺失数据增量抓）
 
 def page_size_key(kind):
     """展示位的 filter.kind -> 计算键（女优 / 收藏 / 其余都用影片）。"""
@@ -1461,6 +1487,20 @@ def _view_visible(vid):
     if cur_path is not None and v["path"] is cur_path:
         return True       # 属于当前 tab 的导航栈
     return vid == DETAIL_HOST and vid in VIEWS
+
+def _drop_stale_dirty():
+    """作废当前可见展示位的滞留脏标记。
+
+    tab 切换本身已按最新数据整树重建了新 tab，这些标记再被消费只会
+    触发一次内容不变的重建（表现为切入 tab 后整页闪一下），因此作废；
+    不可见展示位的标记保留，等翻回该 tab / 关闭详情后再消费。
+    """
+    global _VIEWS_DIRTY, _LAST_IMG_RELOAD
+    _VIEWS_DIRTY = False
+    clear_dirty()                    # 挂起的图片刷新一并消费（切换重建已重读文件）
+    _LAST_IMG_RELOAD = time.time()   # 拉开与下一次图片刷新的最小间隔
+    for d in [d for d in _DIRTY_VIDS if _view_visible(d)]:
+        _DIRTY_VIDS.discard(d)
 # VIEWS 共享字段的短临界区锁：只保护 pool/base/remote/exhausted/loading 的
 # 一致性读写，不包裹网络请求与 UI 计算（避免 UI 线程与 worker 互相阻塞）
 _VIEWS_LOCK = threading.Lock()
@@ -1508,6 +1548,7 @@ def _pump(vid, force=False):
     kind = v["filter"]["kind"]
     if kind == "fav":
         # 收藏：本地数据一次取全；已加载且非显式要求时不重复重建
+        changed = False
         with _VIEWS_LOCK:
             if not (v["exhausted"] and not force):
                 v["pool"] = fav_items()
@@ -1515,9 +1556,11 @@ def _pump(vid, force=False):
                 v["remote"] = 1
                 v["exhausted"] = True
                 v["loading"] = False
+                changed = True    # 数据池真的重建了才需要刷新
         # 可视窗口的封面检查 / 解析 / 下载：数据池未重建（仅翻页）时也要滑动窗口
         load_fav_movies()
-        mark_views_dirty(vid)
+        if changed:
+            mark_views_dirty(vid)
         return
     if kind == "genre":
         # 分类：单次抓取全部分组，无翻页
@@ -1809,6 +1852,17 @@ def _sync_dirty():
         _LAST_TAB = state.tab
         _LAST_TAB_SWITCH = now
     settled = reload_allowed() and (now - _LAST_TAB_SWITCH) >= TAB_RELOAD_GRACE
+
+    # 应用已稳定的几何测量：tab 首次出现时的连续回调只对应一次重建，
+    # 且直接以最终尺寸应用，中间的过渡尺寸不产生任何中间渲染
+    if _PENDING_GEOM and settled:
+        stable = [k for k, p in _PENDING_GEOM.items()
+                  if now - p["at"] >= _GEOM_STABLE_DELAY]
+        if stable:
+            for k in stable:
+                _apply_pending_geometry(k)
+                del _PENDING_GEOM[k]
+            state.reload += 1
 
     # 收藏变动后重建收藏 tab 的数据池（保持当前页码不变）
     if _FAV_DIRTY:
@@ -3259,15 +3313,24 @@ def leave_tab_reset(prev):
 
 def set_tab(v):
     """记录当前标签页：确保 State 与界面选择一致，重建时停留在最后切换的标签页。"""
-    global _LAST_TAB
+    global _LAST_TAB, _LAST_TAB_SWITCH
     try:
         v = int(v)
     except Exception:
         pass
+    switched = v != _LAST_TAB
     leave_tab_reset(_LAST_TAB)
     reset_page_inputs()         # 切了 tab：未提交的页码输入作废
     _LAST_TAB = v
     state.tab = v
+    if switched:
+        # 打开切换宽限窗：转场期间及其后的挂起重建推迟到窗口之外
+        # （此前只有 _sync_dirty 兜底分支会更新 _LAST_TAB_SWITCH，正常
+        #   on_change 路径漏更新，TAB_RELOAD_GRACE 形同虚设）
+        _LAST_TAB_SWITCH = time.time()
+        # 切换重建已按当前数据渲染新 tab：滞留脏标记随之作废，
+        # 避免切入后再来一次内容不变的重建（表现为整页闪一下）
+        _drop_stale_dirty()
 
 def make_body():
     return appui.TabView(
