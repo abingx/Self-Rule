@@ -401,7 +401,6 @@ state = appui.State(
     src_trailer="",         # 详情页预告链接
     src_video="",           # 详情页完整视频链接
     sample_index=0,         # 样片大图当前页（可左右滑动翻看）
-    show_page_input=False,  # 页码跳转弹层（由原生 coordinator 快路径呈现/关闭）
     name_text="",           # 详情页标题的中文译文（空表示尚未翻译完成）
     title_trans=False,      # 标题是否已翻译成中文
     rating_text="",         # 详情页评分文本（JavDB）
@@ -435,7 +434,7 @@ SET_FILE = os.path.join(os.getcwd(), "settings.json")
 
 # 每页项数不再提供设置项：按界面实际尺寸动态计算
 # （在不超出「上一页 / 第X页 / 下一页」分页条的前提下取最大条目数，
-#   图片尺寸不变，见 compute_page_size / remember_grid_size）。
+#   图片尺寸不变，见 compute_page_size / make_grid_observer）。
 DEFAULT_SETTINGS = {
     "player": "SenPlayer",    # 外部播放器
     "mute": True,             # 视频播放是否默认静音
@@ -471,12 +470,15 @@ def save_settings():
 SETTINGS = load_settings()
 
 # ------------------------------------------------------------------
-#  底部固定分页条：GeometryReader 实测可用高度
+#  底部固定分页条：GeometryReader 实测可用高度（按 tab 隔离）
 # ------------------------------------------------------------------
-# 影片 / 女优 / 收藏三个 tab 根页各包一层 GeometryReader，
-# 把实测到的可用高度写进 _GRID_GEOMETRY，用于限定滚动区高度，
-# 使「上一页 / 第X页 / 下一页」固定在 Tab 栏上方、不随内容滚动。
-_GRID_GEOMETRY = {"w": 0.0, "h": 0.0}
+# 影片 / 女优 / 收藏三个 tab 根页各包一层 GeometryReader。
+# 测量值必须按 tab 分别记录：不同 tab 的内容高度不同（搜索栏 / 网格行数
+# 差异），共用一个全局值会让「切 tab」触发别的 tab 重算 → 整树重建反复
+# 发生、页码被连锁重置（即「切 tab 闪烁 + 页码回第一页」的根因）。
+_GRID_GEOMETRY_BY_KIND = {"movie": {"w": 0.0, "h": 0.0},
+                          "actress": {"w": 0.0, "h": 0.0},
+                          "fav": {"w": 0.0, "h": 0.0}}
 PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()）
 
 # ------------------------------------------------------------------
@@ -485,7 +487,6 @@ PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()�
 # 规则：在不超出「上一页 / 第X页 / 下一页」分页条的前提下，
 # 按各 tab 的可视高度取可容纳的最大行数（行数向下取整），
 # 图片尺寸保持不变（列数与 adaptive(minimum=GRID_MIN_COLUMN) 一致）。
-_GRID_GEOMETRY = {"w": 0.0, "h": 0.0}
 _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每页项数
 PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
 PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
@@ -498,53 +499,53 @@ TOP_TOOL_H_BY_KIND = {"movie": 48, "actress": 0, "fav": 48}
 FALLBACK_PAGE_SIZE = {"movie": 9, "actress": 12, "fav": 9}
 RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO, "fav": COVER_RATIO}
 
-def remember_grid_size(width, height=None):
-    """GeometryReader 回调：实测可用区域，按 tab 分别重算每页项数。
+def make_grid_observer(kind):
+    """生成某个 tab 的 GeometryReader 回调：只记录并重算本 tab 的测量值。
 
     回调契约（官方文档）：默认传入单参数字符串 "宽度,高度"（如 "390.0,844.0"）；
     若回调签名带两个必选位置参数，运行时拆分为 (width, height) 两个浮点数。
     这里用「可缺省的第二参数」同时兼容两种形态。
+
+    各 tab 的测量相互隔离：切换 tab / 某个 tab 内容变化，都不会触发其他
+    tab 的重算与整树重建（全局单值会在 tab 之间来回乒乓，导致切换标签
+    时反复重建、页码被连锁重置回第一页）。
+
+    每页项数变化时不清空数据池、不重置页码：数据池是连续流，切片长度
+    变化不影响已翻到的位置；只有当前页起点落到已回收区时才把页码收敛
+    到仍能覆盖的页（而不是第 1 页）。
     """
-    try:
-        if height is None:
-            w_str, h_str = str(width).split(",")
-            w, h = float(w_str), float(h_str)
-        else:
-            w, h = float(width), float(height)
-    except Exception:
-        return
-    if w <= 0 or h <= 0:
-        return
-    if abs(w - _GRID_GEOMETRY["w"]) < 1 and abs(h - _GRID_GEOMETRY["h"]) < 1:
-        return               # 同一帧重复回调：忽略
-    _GRID_GEOMETRY["w"] = w
-    _GRID_GEOMETRY["h"] = h
-    changed_kinds = set()
-    for key in _GRID_PAGE_SIZE:
-        size = compute_page_size(key)
-        if size > 0 and size != _GRID_PAGE_SIZE[key]:
-            _GRID_PAGE_SIZE[key] = size
-            changed_kinds.add(key)
-    state.reload += 1          # 应用新的每页项数
-    if not changed_kinds:
-        return
-    # 每页项数变了：旧分页偏移失效，只复位受影响 tab 的展示位
-    for vid in list(VIEWS):
-        kind = view_kind(vid)
-        if kind == "genre":
-            continue           # 类型页无网格翻页，不受影响
-        if page_size_key(kind) not in changed_kinds:
-            continue
-        item = VIEWS[vid]
-        with _VIEWS_LOCK:
-            item["page"] = 1
-            if item["base"]:
-                item["pool"] = []
-                item["base"] = 0
-                item["remote"] = 1
-                item["exhausted"] = False
-                item["generation"] += 1     # 在途 worker 结果作废
-        _pump(vid)
+    def remember(width, height=None):
+        try:
+            if height is None:
+                w_str, h_str = str(width).split(",")
+                w, h = float(w_str), float(h_str)
+            else:
+                w, h = float(width), float(height)
+        except Exception:
+            return
+        if w <= 0 or h <= 0:
+            return
+        g = _GRID_GEOMETRY_BY_KIND[kind]
+        if abs(w - g["w"]) < 1 and abs(h - g["h"]) < 1:
+            return               # 同一帧重复回调：忽略
+        g["w"] = w
+        g["h"] = h
+        size = compute_page_size(kind)
+        if size <= 0 or size == _GRID_PAGE_SIZE.get(kind, 0):
+            return               # 每页项数没变：不重建，页码与滚动位置原样保留
+        _GRID_PAGE_SIZE[kind] = size
+        for vid in list(VIEWS):
+            if view_kind(vid) == "genre":
+                continue           # 类型页无网格翻页，不受影响
+            if page_size_key(view_kind(vid)) != kind:
+                continue
+            item = VIEWS[vid]
+            with _VIEWS_LOCK:
+                if item["pool"] and (item["page"] - 1) * size < item["base"]:
+                    item["page"] = max(1, item["base"] // size + 1)
+            _pump(vid)             # 补足变长后的预加载窗口（缺失数据增量抓）
+        state.reload += 1          # 应用新的每页项数
+    return remember
 
 def page_size_key(kind):
     """展示位的 filter.kind -> 计算键（女优 / 收藏 / 其余都用影片）。"""
@@ -554,10 +555,10 @@ def page_size_key(kind):
         return "fav"
     return "movie"
 
-def grid_column_count():
+def grid_column_count(kind="movie"):
     """按实测可用宽度算列数：与 adaptive(minimum=GRID_MIN_COLUMN) 的
     实际渲染一致（图片尺寸由此保持不变，计算只用于确定每页行数）。"""
-    w = _GRID_GEOMETRY["w"]
+    w = _GRID_GEOMETRY_BY_KIND.get(kind, {}).get("w", 0.0)
     if w <= 0:
         return 3                            # 未测量时的兜底
     grid_w = max(0.0, w - PAGE_H_PAD * 2)
@@ -567,16 +568,17 @@ def grid_column_count():
 def compute_page_size(kind):
     """某个 tab 的每页项数：在不超出分页条的前提下取最大值（列数 × 行数）。
 
-    可用高度 = 实测高 - 该 tab 顶部工具行(搜索栏 / 「共X部」) - 分页条区块
-               - 页面上下留白 - 加载指示余量
+    可用高度 = 本 tab 实测高 - 该 tab 顶部工具行(搜索栏 / 「共X部」)
+               - 分页条区块 - 页面上下留白
     单元格高度按各 tab 的封面比例换算：影片 / 收藏 5:7，女优 5:6。
     行数向下取整，保证整页不越过分页条、无需滚动。
     """
-    w = _GRID_GEOMETRY["w"]
-    h = _GRID_GEOMETRY["h"]
+    g = _GRID_GEOMETRY_BY_KIND.get(kind, {})
+    w = g.get("w", 0.0)
+    h = g.get("h", 0.0)
     if w <= 0 or h <= 0:
         return 0
-    cols = grid_column_count()
+    cols = grid_column_count(kind)
     grid_w = max(0.0, w - PAGE_H_PAD * 2)
     col_w = (grid_w - (cols - 1) * GRID_SPACING) / cols
     cell_h = col_w / RATIO_BY_KIND[kind]
@@ -1439,8 +1441,10 @@ PRELOAD_AHEAD_PAGES = 2
 MAX_FETCH_PER_ROUND = 2
 # 同一轮内两次远程请求之间的间隔（秒）
 FETCH_GAP = 0.3
-# 数据池最多保留的页数，超出后只回收「当前页之前」的旧数据
-POOL_LIMIT_PAGES = 24
+# 数据池最多保留的页数，超出后只回收「当前页之前」的旧数据。
+# 取较大值：回收会让「跳回前面已翻过的页」越界，从而被回退并重新抓取
+# （表现为闪动 + 页码重置）。单条数据很小，120 页仅约 1MB 量级。
+POOL_LIMIT_PAGES = 120
 
 _VIEWS_DIRTY = False
 # 按展示位隔离的脏标记：不可见展示位的数据变化不触发整树重建，
@@ -1622,6 +1626,7 @@ def set_filter(vid, flt):
         v["exhausted"] = False
         v["loading"] = False
         v["generation"] += 1    # 旧筛选的在途 worker 结果全部作废
+    reset_page_inputs()         # 页码重置回 1：未提交的页码输入一并作废
     _pump(vid)
     state.reload += 1
 
@@ -1640,13 +1645,9 @@ def apply_page(vid, page):
     with _VIEWS_LOCK:
         size = page_size(vid)
         if (page - 1) * size < v["base"]:
-            # 该页已被回收，回到第 1 页重新累积，避免一次性回抓大量历史页
-            page = 1
-            v["pool"] = []
-            v["base"] = 0
-            v["remote"] = 1
-            v["exhausted"] = False
-            v["generation"] += 1    # 数据池重置：在途 worker 结果作废
+            # 该页已被回收：退到数据池仍能覆盖的第一页即可，
+            # 数据池 / 远程游标 / 在途任务保持不动（不重置、不重新抓取）
+            page = max(1, v["base"] // size + 1)
         elif v["exhausted"]:
             # 已知列表总长时，不允许跳过最后一页
             page = min(page, max(1, (pool_end(v) + size - 1) // size))
@@ -1657,6 +1658,7 @@ def apply_page(vid, page):
 
 def goto_page(vid, page):
     """翻页：页码立即生效，缺失的数据由后台增量补足。"""
+    reset_page_inputs(vid)         # 点了翻页按钮：未提交的输入作废
     if apply_page(vid, page):
         state.reload += 1
 
@@ -1671,59 +1673,38 @@ def max_page(vid):
             return max(1, (pool_end(v) + size - 1) // size)
     return None
 
-# 页码弹层的临时输入（普通变量：按键时不写入 State，避免每次按键整树重建闪动）
-_PAGE_INPUT = {"vid": "", "value": ""}
-# 根视图 sheet 注册的呈现字段（由原生 coordinator 快路径呈现/关闭）
-SHEET_PAGE_INPUT = "show_page_input"
+# 页码输入框的临时输入（按展示位分开保存；普通变量：按键时不写入
+# State，避免每次按键整树重建闪动）。
+# 键不存在 = 未在输入：输入框直接显示当前页码。
+_PAGE_INPUT = {}
 
-def open_page_input(vid):
-    """点击「第 X 页」：呈现页码弹层。
+def page_field_text(vid, page):
+    """输入框显示值：输入中显示键入内容，其余时候显示当前页码。"""
+    v = _PAGE_INPUT.get(vid)
+    return str(page) if v is None else v
 
-    走原生 PresentationCoordinator 快路径，不触发 body() 重建，
-    因此原有界面不会闪动、也不会滚动回顶部。
-    """
-    _PAGE_INPUT["vid"] = vid
-    _PAGE_INPUT["value"] = ""
-    appui.presentation_present(SHEET_PAGE_INPUT)
+def set_page_input_value(vid, v):
+    """输入校验：只保留数字，非法字符在记录时直接过滤（不触发重建）。"""
+    _PAGE_INPUT[vid] = "".join(ch for ch in str(v) if ch.isdigit())
 
-def set_page_input_value(v):
-    _PAGE_INPUT["value"] = v      # 只记录，不写 State：按键不触发整树重建
+def reset_page_inputs(vid=None):
+    """放弃未提交的页码输入（点击输入框之外：翻页、打开详情、切 tab、
+    换筛选……），之后的重建会让输入框回到当前页码显示。"""
+    if vid is None:
+        _PAGE_INPUT.clear()
+    else:
+        _PAGE_INPUT.pop(vid, None)
 
-def cancel_page_input():
-    appui.presentation_dismiss(SHEET_PAGE_INPUT)
-
-def submit_page_input():
-    """跳页：先走快路径关闭弹层，仅在页码有效时才刷新列表。"""
-    vid = _PAGE_INPUT["vid"]
+def submit_page_input(vid):
+    """回车跳页：输入有效则跳转，无效则放弃输入回到当前页码显示。"""
     try:
-        page = int(str(_PAGE_INPUT["value"]).strip())
-    except Exception:
+        page = int(_PAGE_INPUT.get(vid, "") or "0")
+    except ValueError:
         page = 0
-    appui.presentation_dismiss(SHEET_PAGE_INPUT)
-    if page >= 1 and apply_page(vid, page):
-        state.reload += 1
-
-def page_input_view():
-    """页码跳转弹层（注册在根视图的 sheet 上，由原生 coordinator 呈现）。"""
-    return appui.Form([
-        appui.Section([
-            appui.TextField("输入页码", text="", on_change=set_page_input_value,
-                            keyboard_type="number", submit_label="go")
-                .on_submit(submit_page_input),
-        ], header="跳转到页码",
-           footer="输入页码后点击「跳转」；未加载的页会按需抓取，"
-                  "列表已取完时会自动收敛到最后一页。"),
-        appui.Section([
-            appui.HStack([
-                appui.Button("跳转", action=submit_page_input)
-                    .button_style("bordered")
-                    .frame(max_width=appui.infinity),
-                appui.Button("取消", action=cancel_page_input)
-                    .button_style("bordered")
-                    .frame(max_width=appui.infinity),
-            ], spacing=8),
-        ]),
-    ])
+    reset_page_inputs(vid)
+    if page >= 1:
+        apply_page(vid, page)
+    state.reload += 1   # 跳页或恢复页码显示，都需要一次重建
 
 
 # ============================================================
@@ -2160,6 +2141,7 @@ def play_url(url, title="", source=""):
 def open_detail(movie, vid):
     """打开影片详情：在展示位 vid 所属的导航栈内 push 详情页。"""
     log("open_detail: " + str(movie.get("link")))
+    reset_page_inputs()         # 点了列表项：未提交的页码输入作废
     global DETAIL_OPEN_AT, DETAIL_HOST, DETAIL_PATH
     if vid in VIEWS and VIEWS[vid]["filter"]["kind"] == "fav":
         # 暂停收藏封面补全线程，避免与详情请求竞争
@@ -2377,9 +2359,22 @@ def grid_cover(url, ratio=None):
     clipped 裁掉多余部分——图片严格贴合框内，不会溢出盖住相邻单元格
     之间的空隙。ratio 缺省用影片封面比例 5:7；女优头像传 5:6（更矮，
     人脸裁切更自然，且 4 行头像可正好铺满可视高度）。
+
+    url 为空（如旧收藏尚未补全封面）时渲染同比例灰底占位框：
+    AsyncImage 无地址不会渲染任何内容，格子会塌陷压缩；
+    固定比例的占位框保证布局稳定，封面补全后平滑填入。
     """
+    ratio = ratio or COVER_RATIO
+    if not url:
+        return appui.Rectangle() \
+            .foreground_color("secondarySystemBackground") \
+            .aspect_ratio(ratio, content_mode="fill") \
+            .frame(max_width=appui.infinity) \
+            .clipped() \
+            .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
+            .z_index(0)
     return appui.AsyncImage(url=img_src(url)) \
-        .aspect_ratio(ratio or COVER_RATIO, content_mode="fill") \
+        .aspect_ratio(ratio, content_mode="fill") \
         .frame(max_width=appui.infinity) \
         .clipped() \
         .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
@@ -2405,10 +2400,15 @@ def grid_columns():
 
 
 def _caption_line(text):
-    """叠在封面上的一行文字（番号 / 发布日期 / 女优名共用同一样式）。"""
+    """叠在封面上的一行文字（番号 / 发布日期 / 女优名共用同一样式）。
+
+    统一的小字号 + 高透明度样式：弱化对封面内容的遮挡（影片 / 收藏 /
+    女优三处一致）。
+    """
     return appui.Text(text) \
-        .font("caption2") \
+        .font(size=10) \
         .foreground_color("white") \
+        .opacity(0.85) \
         .line_limit(1) \
         .minimum_scale_factor(0.6)
 
@@ -2430,7 +2430,7 @@ def movie_cell(m, vid):
     caption = appui.VStack(lines, spacing=1) \
         .padding(horizontal=4, vertical=3) \
         .frame(max_width=GRID_CAPTION_WIDTH) \
-        .background("black", corner_radius=4, opacity=0.55) \
+        .background("black", corner_radius=4, opacity=0.4) \
         .padding(bottom=6) \
         .z_index(1)      # 提升层级，保证叠在封面之上而不是被封面盖住
     # 封面撑满整列宽度：与详情页封面同一套填充模式（见 grid_cover），
@@ -2455,13 +2455,14 @@ def actress_cell(a):
         open_actress(a["link"], a["name"])
 
     caption = appui.Text(a.get("name") or "") \
-        .font("caption2") \
+        .font(size=10) \
         .foreground_color("white") \
+        .opacity(0.85) \
         .line_limit(1) \
         .minimum_scale_factor(0.6) \
         .padding(horizontal=4, vertical=3) \
         .frame(max_width=GRID_CAPTION_WIDTH) \
-        .background("black", corner_radius=4, opacity=0.55) \
+        .background("black", corner_radius=4, opacity=0.4) \
         .padding(bottom=6) \
         .z_index(1)
     # 女优头像用独立比例 5:6（比封面矮）：人脸裁切更自然，
@@ -2571,7 +2572,7 @@ def search_row(vid):
     return appui.HStack([field] + buttons, spacing=8)
 
 def pager_row(vid):
-    """翻页条：左上翻、右下翻、中间显示当前页码。"""
+    """翻页条：左上翻、右下翻、中间页码即输入框（未输入时显示当前页码）。"""
 
     def prev():
         goto_page(vid, VIEWS[vid]["page"] - 1)
@@ -2581,8 +2582,11 @@ def pager_row(vid):
 
     page = VIEWS[vid]["page"]
 
-    def open_input():
-        open_page_input(vid)
+    def on_change(v):
+        set_page_input_value(vid, v)
+
+    def on_submit():
+        submit_page_input(vid)
 
     prev_btn = appui.Button(
         content=appui.Label("上一页", system_image="chevron.left"),
@@ -2592,11 +2596,20 @@ def pager_row(vid):
         content=appui.Label("下一页", system_image="chevron.right"),
         action=next_page,
     ).button_style("bordered").disabled(not can_next(vid))
-    # 中间页码可点击：弹出页码输入框直接跳转
-    center = appui.Button(
-        content=appui.Text("第 " + str(page) + " 页").font("subheadline").bold(),
-        action=open_input,
-    ).button_style("plain")
+    # 中间：页码本身就是输入框——未输入时显示当前页码，
+    # 输入数字 + 回车即跳转；点其他区域未提交则回到当前页码显示
+    center = appui.HStack([
+        appui.Text("第").font("subheadline"),
+        appui.TextField("", text=page_field_text(vid, page),
+                        on_change=on_change, keyboard_type="number",
+                        submit_label="go")
+            .text_field_style("plain")
+            .multiline_text_alignment("center")
+            .on_submit(on_submit)
+            .font("subheadline").bold()
+            .frame(min_width=36, max_width=72),
+        appui.Text("页").font("subheadline"),
+    ], spacing=2)
     return appui.HStack([
         prev_btn,
         appui.Spacer(min_length=8),
@@ -2752,7 +2765,7 @@ def display_page_view(vid, titled=True):
         .padding(bottom=PAGER_BOTTOM_PAD)
     return appui.GeometryReader(
         content=appui.ZStack([sv, pager], alignment="bottom"),
-        on_change=remember_grid_size,
+        on_change=make_grid_observer(page_size_key(view_kind(vid))),
     )
 
 
@@ -3191,7 +3204,6 @@ def start():
     state.src_video = ""
     state.status = ""
     state.sample_index = 0
-    state.show_page_input = False
     state.name_text = ""
     state.title_trans = False
     DETAIL_STACKS.clear()      # 全部栈复位：各 tab 的详情状态一并清空
@@ -3253,6 +3265,7 @@ def set_tab(v):
     except Exception:
         pass
     leave_tab_reset(_LAST_TAB)
+    reset_page_inputs()         # 切了 tab：未提交的页码输入作废
     _LAST_TAB = v
     state.tab = v
 
@@ -3267,11 +3280,6 @@ def make_body():
         ],
         selection=state.bind.tab,
         on_change=set_tab,
-    ).sheet(
-        is_presented=state.bind.show_page_input,
-        content=page_input_view,
-        detents="medium",
-        drag_indicator="visible",
     )
 
 start()
