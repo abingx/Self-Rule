@@ -27,7 +27,7 @@ SPLITS = [
     ("全马", MARATHON),
 ]
 
-# 屏幕自适应：启动时读一次屏高（点），按屏高缩放字号、行高与输入框，整页不滚动即可显示。
+# 按屏高缩放字号与输入框，使整页不滚动即可显示。
 try:
     SCREEN_HEIGHT = float(device.screen_height())
 except (AttributeError, TypeError, ValueError):
@@ -172,9 +172,8 @@ def split_cell(label, km, pace, limit):
     """单元内分段名靠左、时间靠右，两者自动分配单元宽度。"""
     color = "secondaryLabel" if km > limit else "label"
     return appui.HStack([
-        appui.Text(label).font(size=FONT_BODY).foreground_color(color),
+        appui.Text(label).foreground_color(color),
         appui.Text(fmt_seconds(pace * km))
-            .font(size=FONT_BODY)
             .foreground_color(color)
             .frame(max_width=appui.infinity, alignment="trailing"),
     ], spacing=SPLIT_CELL_GAP).frame(max_width=appui.infinity)
@@ -201,7 +200,6 @@ def time_field(bind, placeholder, submit_action):
         appui.TextField(placeholder, text=bind,
                         on_submit=submit_action,
                         keyboard_type="numberPad")
-        .font(size=FONT_BODY)
         .multiline_text_alignment("center")
         .frame(width=FIELD_WIDTH, height=FIELD_HEIGHT)
         .background("secondarySystemBackground", corner_radius=CORNER_RADIUS)
@@ -211,7 +209,6 @@ def time_field(bind, placeholder, submit_action):
 
 def separ_colon():
     return (appui.Text(":")
-            .font(size=FONT_BODY)
             .foreground_color("label"))
 
 
@@ -222,8 +219,7 @@ def labeled_row(label, fields):
         if i > 0:
             row.append(separ_colon())
         row.append(item)
-    return (appui.LabeledContent(label, content=appui.HStack(row, spacing=4))
-            .font(size=FONT_BODY))
+    return appui.LabeledContent(label, content=appui.HStack(row, spacing=4))
 
 
 def root():
@@ -255,13 +251,15 @@ def root():
     else:
         main.append(appui.Section("分段", [
             appui.Text("请输入有效的配速或用时")
-                .font(size=FONT_BODY)
                 .foreground_color("secondaryLabel"),
         ]))
 
-    # 分区表头由系统渲染、无法单独设字号，故在根视图统一注入字号，令全页同号。
+    # 字号在根视图统一注入，系统分区表头也随之同号。
     return appui.NavigationStack(
-        appui.Form(main).font(size=FONT_BODY).navigation_title("配速计算器")
+        appui.Form(main)
+        .font(size=FONT_BODY)
+        .navigation_title("配速计算器")
+        .navigation_bar_title_display_mode("inline")
     )
 
 
