@@ -5,7 +5,14 @@
 #
 #  结构
 #   ├─ 影片 tab：通用展示函数（封面网格 + 翻页），筛选条件随位置变化
-#   └─ 设置 tab：每页项数 / 默认排序 / 全部影片 / 收藏管理
+#   ├─ 女优 / 类型 / 收藏 tab：同一套通用展示，只是数据源与筛选条件不同
+#   ├─ 设置 tab：播放设置与关于
+#   └─ 播放：TabView 底部常驻条 + 系统 sheet 展开完整面板（不占独立 tab）
+#
+#  数据
+#   ├─ 设置：storage.get_json / set_json
+#   ├─ 收藏：database.collection（按记录增删，顺序号 seq 保证跨启动稳定）
+#   └─ 图片：自建磁盘缓存 + 后台下载队列
 #
 #  通用展示函数 movie_display(vid) 是唯一的影片列表实现，
 #  影片首页、详情里点演员/导演/公司等跳转的列表、收藏列表都调用它，
@@ -51,13 +58,13 @@ HEADERS = {
 }
 
 def _app_version():
-    """从 miniapp.json 读取版本号，保证设置页与清单一致。"""
+    """从 miniapp.json 读取版本号（清单是唯一版本来源，设置页与之一致）。"""
     try:
         p = os.path.join(os.getcwd(), "miniapp.json")
         with open(p, "r", encoding="utf-8") as f:
-            return str(json.load(f).get("version", "2.0"))
+            return str(json.load(f).get("version", "1.0"))
     except Exception:
-        return "2.0"
+        return "1.0"
 
 APP_TITLE = "JavVault"
 APP_VERSION = _app_version()
@@ -150,19 +157,23 @@ def image_cache_maintenance():
         return
     st["count"] = 0
     st["last"] = now
+    if not ensure_image_dir():
+        return
     d = _image_dir()
     entries = []
     total = 0
     try:
-        for name in os.listdir(d):
-            p = os.path.join(d, name)
-            try:
-                info = os.stat(p)
-            except Exception:
-                continue
-            entries.append((info.st_mtime, info.st_size, p))
-            total += info.st_size
-    except Exception:
+        # scandir：一次遍历即可拿到 dir entry（含 stat），比 listdir+stat 少一轮系统调用
+        with os.scandir(d) as it:
+            for entry in it:
+                try:
+                    info = entry.stat()
+                except Exception:
+                    continue        # 扫描期间被删 / 无权限：跳过
+                entries.append((info.st_mtime, info.st_size, entry.path))
+                total += info.st_size
+    except Exception as e:
+        log("cache scan err: " + str(e))
         return
     limit = IMAGE_CACHE_LIMIT_MB * 1024 * 1024
     if total <= limit:
@@ -213,13 +224,29 @@ _PLACEHOLDER = _build_placeholder()
 def _placeholder_bytes():
     return _PLACEHOLDER
 
+_IMAGE_DIR = os.path.join(tempfile.gettempdir(), "javbus_img")
+_IMAGE_DIR_READY = False
+
 def _image_dir():
-    d = os.path.join(tempfile.gettempdir(), "javbus_img")
+    """图片缓存目录（纯路径拼接，不做任何系统调用）。
+
+    本函数位于 _local_path 热路径上：渲染路径与下载 worker 每张图都会调用
+    多次，之前每次调用都执行 os.makedirs（冗余 syscall）。目录创建收敛到
+    ensure_image_dir()，只在真正写文件前调用一次。
+    """
+    return _IMAGE_DIR
+
+def ensure_image_dir():
+    """确保缓存目录存在；返回是否可用（写文件前调用）。"""
+    global _IMAGE_DIR_READY
+    if _IMAGE_DIR_READY and os.path.isdir(_IMAGE_DIR):
+        return True
     try:
-        os.makedirs(d, exist_ok=True)
-    except Exception:
-        pass
-    return d
+        os.makedirs(_IMAGE_DIR, exist_ok=True)
+        _IMAGE_DIR_READY = True
+    except Exception as e:
+        log("image dir err: " + str(e))
+    return _IMAGE_DIR_READY
 
 def _to_abs(src):
     if src.startswith("http") or src.startswith("file://"):
@@ -257,6 +284,8 @@ def _download_one(url):
             if not data:
                 return None
             if not _is_image(data):
+                return None
+            if not ensure_image_dir():
                 return None
             tmp = path + ".tmp"
             with open(tmp, "wb") as f:
@@ -332,7 +361,8 @@ def _prepare_src(src):
     path = _local_path(url)
     if not os.path.exists(path):
         try:
-            os.makedirs(_image_dir(), exist_ok=True)
+            if not ensure_image_dir():
+                raise OSError("image dir unavailable")
             with open(path, "wb") as f:
                 f.write(_placeholder_bytes())
         except Exception as e:
@@ -459,6 +489,7 @@ _STATE_FIELDS = dict(
     panel="",
     panel_title="",
     play="",                # 当前播放来源："" / 预览 / 预告 / 完整视频
+    panel_open=False,       # 播放面板（sheet）是否展开
     src_preview="",         # 详情页预览链接（进入详情即并行预取，空表示还没取到）
     src_trailer="",         # 详情页预告链接
     src_video="",           # 详情页完整视频链接
@@ -600,7 +631,7 @@ _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每�
 _GEOM_STABLE_DELAY = 0.3
 _PENDING_GEOM = {}       # kind -> {"size": n, "at": 登记时刻}
 PAGE_V_PAD = 16              # 展示内容上下内边距（VStack .padding()）
-PAGER_ROW_H = 41             # 分页条自身高度（bordered 按钮 ~29 + 上下 padding 12）
+PAGER_ROW_H = 56             # 分页条自身高度（按钮 min_height 44 + 上下 padding 12）
 # 分页条以底部安全区插肩（safeAreaInset）钉在底部：SwiftUI 原生键盘
 # 避让自动让它贴紧键盘，无需跟踪键盘状态或手动重建；网格可用高度的
 # 计算只需扣除插肩条自身高度（PAGER_ROW_H）。
@@ -902,9 +933,6 @@ _rebuild_fav_codes()
 def in_fav(code):
     return code in _FAV_CODES
 
-def fav_count():
-    return len(SHELF["fav"])
-
 def now_time():
     return datetime.date.today().strftime("%Y-%m-%d")
 
@@ -969,7 +997,8 @@ def _load_movie_cache():
 
 def _save_movie_cache(movies):
     try:
-        os.makedirs(os.path.dirname(_MOVIE_CACHE_FILE), exist_ok=True)
+        if not ensure_image_dir():
+            return      # 缓存文件与图片同目录
         tmp = _MOVIE_CACHE_FILE + "." + str(threading.get_ident()) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(movies, f, ensure_ascii=False)
@@ -1396,7 +1425,13 @@ _LINK_CACHE = {}
 _LINK_CACHE_MAX = 64
 _LINK_TTL = 30 * 60
 _LINK_INFLIGHT = {}     # 番号 -> seq（正在预取）
-_LINK_PENDING = {}      # seq -> {"code":..., "values":{...}, "left":n}
+_LINK_INFLIGHT_AT = {}  # 番号 -> 预取开始时刻（用于回收卡死/丢结果的任务）
+_LINK_INFLIGHT_TTL = 120.0
+_LINK_LEFT = {}         # seq -> 还差几路结果
+# 计数必须与 _LINK_PENDING 分开：主线程每轮会把 _LINK_PENDING 取走清空并
+# 提交已有结果，若把计数放在里面，第二路结果到达时会重新建档、永远收不了口，
+# 导致该番号一直被认为「在途」而无法重新预取
+_LINK_PENDING = {}      # seq -> {"code":..., "values":{...}}
 _LINK_INFLIGHT_MAX = 3  # 预取并发上限：快速连点多个单元格时不再无限堆积任务
 _LINK_SEQ = 0
 _LINK_LOCK = threading.Lock()
@@ -1431,18 +1466,27 @@ def _submit_sources(code, seq, values):
             # 只缓存取到的链接，避免把上一次的结果冲掉
             if value:
                 rec[key] = value
-        rec["ts"] = time.time()
+        now = time.time()
+        rec["ts"] = now
         _LINK_CACHE[code] = rec
+        # 顺手清掉过期条目（条数上限 64，成本可忽略）
+        for stale in [c for c, r in _LINK_CACHE.items()
+                      if now - r.get("ts", 0) > _LINK_TTL]:
+            _LINK_CACHE.pop(stale, None)
         while len(_LINK_CACHE) > _LINK_CACHE_MAX:
             _LINK_CACHE.pop(next(iter(_LINK_CACHE)))
         item = _LINK_PENDING.get(seq)
         if item is None:
-            item = {"code": code, "values": {}, "left": SOURCE_TASK_COUNT}
+            item = {"code": code, "values": {}}
             _LINK_PENDING[seq] = item
         item["values"].update(values)
-        item["left"] -= 1
-        if item["left"] <= 0:
+        left = _LINK_LEFT.get(seq, SOURCE_TASK_COUNT) - 1
+        if left <= 0:
+            _LINK_LEFT.pop(seq, None)
             _LINK_INFLIGHT.pop(code, None)
+            _LINK_INFLIGHT_AT.pop(code, None)
+        else:
+            _LINK_LEFT[seq] = left
 
 def _jable_sources_worker(code, seq):
     """Jable：一次搜索同时解析出预览与完整视频。"""
@@ -1482,12 +1526,24 @@ def prefetch_play_sources(code, updates=None):
                 src["src_preview"] = cached.get("preview", "")
                 src["src_trailer"] = cached.get("trailer", "")
                 src["src_video"] = cached.get("video", "")
-            elif not _LINK_INFLIGHT.get(code) \
-                    and len(_LINK_INFLIGHT) < _LINK_INFLIGHT_MAX:
-                _LINK_SEQ += 1
-                seq = _LINK_SEQ
-                _LINK_INFLIGHT[code] = seq
-                submit = seq
+            else:
+                # 在途任务超时未收口（worker 异常 / 结果丢失）：作废并允许重新预取，
+                # 否则该番号会在整个 TTL 内一直置灰
+                if code in _LINK_INFLIGHT \
+                        and time.time() - _LINK_INFLIGHT_AT.get(code, 0.0) \
+                        > _LINK_INFLIGHT_TTL:
+                    dead = _LINK_INFLIGHT.pop(code, None)
+                    _LINK_INFLIGHT_AT.pop(code, None)
+                    _LINK_LEFT.pop(dead, None)
+                    _LINK_PENDING.pop(dead, None)
+                if not _LINK_INFLIGHT.get(code) \
+                        and len(_LINK_INFLIGHT) < _LINK_INFLIGHT_MAX:
+                    _LINK_SEQ += 1
+                    seq = _LINK_SEQ
+                    _LINK_INFLIGHT[code] = seq
+                    _LINK_INFLIGHT_AT[code] = time.time()
+                    _LINK_LEFT[seq] = SOURCE_TASK_COUNT
+                    submit = seq
     if updates is None:
         _batch_state(**src)
     else:
@@ -1736,8 +1792,10 @@ def page_loading(vid):
         return pool_end(v) < v["page"] * page_size(vid) and not v["exhausted"]
 
 def can_next(vid):
-    """是否还能往后翻。"""
-    v = VIEWS[vid]
+    """是否还能往后翻（展示位已被回收时按「不能翻」处理，不再直接索引）。"""
+    v = VIEWS.get(vid)
+    if not v:
+        return False
     with _VIEWS_LOCK:
         if pool_end(v) > v["page"] * page_size(vid):
             return True
@@ -1749,8 +1807,6 @@ def can_next(vid):
 # ============================================================
 
 
-# 当前页之外额外预加载的页数：翻到最后一页时，下一页的数据已经在路上
-PRELOAD_AHEAD_PAGES = 2
 # 一轮后台任务最多抓几个远程页（避免一次性加载过多造成内存与限流压力）
 MAX_FETCH_PER_ROUND = 2
 # 同一轮内两次远程请求之间的间隔（秒）
@@ -1869,7 +1925,7 @@ def _pump(vid, force=False):
                 return      # 失败退避期内：不再每个 tick 重试
             v["loading"] = True
             gen = v["generation"]
-        threading.Thread(target=_genre_worker, args=(vid, gen), daemon=True).start()
+        _FETCH_POOL.submit(_genre_worker, vid, gen)
         return
     with _VIEWS_LOCK:
         if v["loading"] or v["exhausted"]:
@@ -1881,7 +1937,7 @@ def _pump(vid, force=False):
             return
         v["loading"] = True
         gen = v["generation"]
-    threading.Thread(target=_pump_worker, args=(vid, gen), daemon=True).start()
+    _FETCH_POOL.submit(_pump_worker, vid, gen)
 
 def _genre_worker(vid, gen):
     """后台抓取分类分组（一次抓完，无翻页）。gen 校验防止 stale 提交。"""
@@ -2028,17 +2084,6 @@ def goto_page(vid, page):
     if apply_page(vid, page):
         state.reload += 1
 
-def max_page(vid):
-    """已知的最大页码；列表尚未取完时返回 None。"""
-    v = VIEWS.get(vid)
-    if not v:
-        return 1
-    with _VIEWS_LOCK:
-        if v["exhausted"]:
-            size = page_size(vid)
-            return max(1, (pool_end(v) + size - 1) // size)
-    return None
-
 # 页码输入框绑定 State（page_input / page_input_vid）：
 # 之前用普通 dict 存输入，网格图片刷新等重建会把已键入内容顶掉；
 # 绑定后输入值即 State 真源，重建不会覆盖用户输入。
@@ -2082,13 +2127,15 @@ def submit_page_input(vid):
 _DETAIL_READY = None
 _DETAIL_ERROR = False
 _DETAIL_SEQ = 0
-_PLAY_REQUEST = None
-_PLAY_ERROR = ""
 _BG_STARTED = False
 # 短任务线程池：详情抓取 / 翻译 / 评分 / 播放源共用。
 # 以前打开一次详情要起约 5 个短生命周期线程，快速进出详情会反复创建；
 # 统一入池（图片下载 ×3、收藏解析 ×2 仍为常驻消费者，不走此池）
 _TASK_POOL = ThreadPoolExecutor(max_workers=6, thread_name_prefix="task")
+# 列表抓取池：目录页预加载与详情首屏分开排队——共用一个大池时，
+# 「一轮预加载多个展示位」会把详情请求挤到队尾。以前每次抓页都新建
+# 裸线程，快速翻页 / 切 tab 会短时间堆起大量线程，这里统一收敛。
+_FETCH_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="fetch")
 
 # 导航转场静默期：push/pop 期间的后台刷新暂缓，避免打断转场动画
 _RELOAD_SILENT_UNTIL = 0.0
@@ -2156,33 +2203,21 @@ def _detail_worker(link, seq):
         if seq == _DETAIL_SEQ:
             _DETAIL_ERROR = True
 
-def set_play_request(url, title, source):
-    global _PLAY_REQUEST, _PLAY_ERROR
-    _PLAY_REQUEST = (url, title, source)
-    _PLAY_ERROR = ""
-
-def set_play_error(message):
-    global _PLAY_REQUEST, _PLAY_ERROR
-    _PLAY_REQUEST = None
-    _PLAY_ERROR = message
-
 def _sync_dirty():
     """主线程周期任务：图片刷新 + 列表提交 + 播放请求 + 详情提交。"""
-    global _PLAY_REQUEST, _PLAY_ERROR, _VIEWS_DIRTY, _LAST_IMG_RELOAD
-    global _LAST_TAB, _LAST_TAB_SWITCH, _FAV_DIRTY, _TAB_CONTENT_PENDING
+    global _VIEWS_DIRTY, _LAST_IMG_RELOAD
+    global _LAST_TAB, _LAST_TAB_SWITCH, _FAV_DIRTY
     global _TAB_IMG_FLUSHED
     now = time.time()
+    # 本 tick 的界面变更合并成一个标志：几何测量 / 图片刷新 / 列表数据
+    # 各自 state.reload += 1 会让同一个 tick 触发多达 4 次整树重建
+    need_reload = False
     if state.tab != _LAST_TAB:
         # 兜底复位：若 on_change 回调未触发（纯绑定同步），这里也能
         # 检测到切换并把停在详情页的旧 tab 退回主页面
         leave_tab_reset(_LAST_TAB)
         _LAST_TAB = state.tab
         _LAST_TAB_SWITCH = now
-        _TAB_SWITCH_TIMES.append(now)
-    # 快速切 tab 防抖收尾：连点静默期过后补一次重建，构建真实 tab 内容
-    if _TAB_CONTENT_PENDING and now - _LAST_TAB_SWITCH >= _TAB_CONTENT_DEBOUNCE:
-        _TAB_CONTENT_PENDING = False
-        state.reload += 1
     settled = reload_allowed() and (now - _LAST_TAB_SWITCH) >= TAB_RELOAD_GRACE
 
     # 渲染期发现未准备的图片：主线程补数据层路径解析（写占位文件），
@@ -2200,7 +2235,7 @@ def _sync_dirty():
             for k in stable:
                 _apply_pending_geometry(k)
                 del _PENDING_GEOM[k]
-            state.reload += 1
+            need_reload = True
 
     # 收藏变动后重建收藏 tab 的数据池（保持当前页码不变）
     if _FAV_DIRTY:
@@ -2227,7 +2262,7 @@ def _sync_dirty():
             clear_dirty()
             _LAST_IMG_RELOAD = now
             _TAB_IMG_FLUSHED = True
-            state.reload += 1
+            need_reload = True
 
     if _VIEWS_DIRTY or _DIRTY_VIDS:
         # 可见性隔离：只在本轮有「屏幕上可能显示的」脏展示位时才重建。
@@ -2239,22 +2274,18 @@ def _sync_dirty():
         first_screen = any(vid not in _SHOWN_VIDS and _pool_has_data(vid)
                            for vid in visible)
         if (settled or first_screen) and (_VIEWS_DIRTY or visible):
-            state.reload += 1
+            need_reload = True
             _VIEWS_DIRTY = False
             _DIRTY_VIDS.clear()
             _SHOWN_VIDS.update(visible)
 
+    # 本 tick 合并后的唯一一次重建
+    if need_reload:
+        state.reload += 1
+
     # 翻到已加载内容的末尾后，继续把预加载窗口填满（每轮只抓少量）
     if settled:
         pump_all_views()
-
-    if _PLAY_REQUEST and settled:
-        url, title, source = _PLAY_REQUEST
-        _PLAY_REQUEST = None
-        play_url(url, title, source=source)     # status 复位已并入其批量提交
-    elif _PLAY_ERROR and settled:
-        _batch_state(status=_PLAY_ERROR, reload=state.reload + 1)
-        _PLAY_ERROR = ""
 
     _commit_detail()
     _commit_translation()
@@ -2340,7 +2371,8 @@ TRANS_HEADERS = {
     "User-Agent": "GoogleTranslate/5.8.58002 (iPhone; iOS 10.3; zh_CN; iPhone8,1)",
 }
 
-_TRANS_CACHE = {}          # 日文原文 -> 中文译文
+_TRANS_CACHE = OrderedDict()   # 日文原文 -> 中文译文（LRU：满时逐出最旧，不整表清空）
+_TRANS_CACHE_MAX = 200
 _TRANS_READY = None        # {"seq","ok","text","link"}，后台线程写入、主线程提交
 _TRANS_SEQ = 0
 
@@ -2371,6 +2403,7 @@ def translate_title_async(d, defer_state=False):
         return
     cached = _TRANS_CACHE.get(text)
     if cached:
+        _TRANS_CACHE.move_to_end(text)      # LRU：命中即续期
         if not defer_state:
             _batch_state(name_text=cached, title_trans=True)
         return
@@ -2400,9 +2433,11 @@ def _commit_translation():
     cur = state.detail
     if cur and cur.get("link") == r["link"] and state.detail_open:
         if r["ok"]:
-            if len(_TRANS_CACHE) > 200:
-                _TRANS_CACHE.clear()
-            _TRANS_CACHE[str(cur.get("name") or "").strip()] = r["text"]
+            key = str(cur.get("name") or "").strip()
+            _TRANS_CACHE[key] = r["text"]
+            _TRANS_CACHE.move_to_end(key)
+            while len(_TRANS_CACHE) > _TRANS_CACHE_MAX:
+                _TRANS_CACHE.popitem(last=False)    # LRU 逐出，不再整表清空
             _batch_state(name_text=r["text"], title_trans=True)
         else:
             # 翻译失败：恢复日文原标题
@@ -2484,7 +2519,11 @@ def _initial_title_display(d, want_rating=True):
     want_rating=False 用于「详情还在加载中」的场景（此时不显示评分行）。
     """
     text = str(d.get("name") or "").strip()
-    cached = _TRANS_CACHE.get(text) if text else None
+    cached = None
+    if text:
+        cached = _TRANS_CACHE.get(text)
+        if cached:
+            _TRANS_CACHE.move_to_end(text)      # LRU：命中即续期
     if cached:
         name_text, title_trans = cached, True
     elif text:
@@ -2498,12 +2537,10 @@ def _initial_title_display(d, want_rating=True):
     return name_text, title_trans, rating_text
 
 def reset_pending():
-    global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ, _PLAY_REQUEST, _PLAY_ERROR
+    global _DETAIL_READY, _DETAIL_ERROR, _DETAIL_SEQ
     _DETAIL_SEQ += 1
     _DETAIL_READY = None
     _DETAIL_ERROR = False
-    _PLAY_REQUEST = None
-    _PLAY_ERROR = ""
 
 def init_background():
     global _BG_STARTED
@@ -2563,7 +2600,7 @@ def _halt_player():
 def stop_local_playback():
     """暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放。"""
     _halt_player()
-    _batch_state(panel="", panel_title="")
+    _batch_state(panel="", panel_title="", panel_open=False)
 
 def play_url(url, title="", source=""):
     log("play: " + str(title) + " -> " + str(url)[:120])
@@ -2571,7 +2608,8 @@ def play_url(url, title="", source=""):
         start_playback(url)      # 自动播放 + 默认静音
     except Exception as e:
         log("player load err: " + str(e))
-    _batch_state(panel=url, panel_title=title, play=source,
+    # 播放面板交给系统 sheet：点播放即展开，同时 TabView 底部出现常驻条
+    _batch_state(panel=url, panel_title=title, play=source, panel_open=True,
                  status="", reload=state.reload + 1)
 
 def open_detail(movie, vid):
@@ -2694,9 +2732,9 @@ def open_genre(link, value):
     open_filter_at(PATH_GENRE, link, value)
 
 def clear_panel():
-    """关闭播放：停止本地播放（含画中画）。"""
+    """关闭播放：停止本地播放（含画中画）并收起播放面板。"""
     _halt_player()
-    _batch_state(panel="", panel_title="", play="")
+    _batch_state(panel="", panel_title="", play="", panel_open=False)
 
 def open_external_player():
     """把当前播放链接交给设置里选定的外部播放器（URL Scheme 可配置）。"""
@@ -2712,11 +2750,11 @@ def open_external_player():
     # 先暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放/冲突
     _halt_player()
     if shortcuts.open_url(target):
-        _batch_state(panel="", panel_title="", play="",
+        _batch_state(panel="", panel_title="", play="", panel_open=False,
                      status="已跳转 " + name, reload=state.reload + 1)
     else:
-        _batch_state(panel="", panel_title="", status="打开失败",
-                     reload=state.reload + 1)
+        _batch_state(panel="", panel_title="", panel_open=False,
+                     status="打开失败", reload=state.reload + 1)
 
 def copy_video_link():
     if state.panel:
@@ -2939,14 +2977,14 @@ def genre_cell(c):
     def open():
         open_genre(c["link"], c["name"])
 
-    return appui.Button(
+    return     appui.Button(
         action=open,
         content=appui.Label(c["name"], system_image="tag")
             .font("caption")
             .line_limit(1)
             .minimum_scale_factor(0.7)
-            .frame(max_width=appui.infinity)
-            .padding(vertical=9)
+            .frame(max_width=appui.infinity, min_height=44)
+            .padding(vertical=12)
             .background("secondarySystemBackground", corner_radius=8),
     ).button_style("plain")
 
@@ -2961,9 +2999,10 @@ def fav_cell(m):
     def unfav():
         remove_fav(m["code"])
 
+    # id 由 movie_cell 统一设置，这里不再重复覆盖
     return movie_cell(item, FAV_VID).context_menu(content=[
         appui.Button("从收藏移除", action=unfav, role="destructive"),
-    ]).id(m.get("code") or "")
+    ])
 
 def grid_cell(item, vid):
     """按展示位类型选择单元格：影片/收藏用封面，女优用头像。"""
@@ -3047,14 +3086,18 @@ def pager_row(vid):
     def on_submit():
         submit_page_input(vid)
 
+    # 翻页按钮做到 44pt 触控高度（PAGER_ROW_H 已同步为 44+12=56，
+    # compute_page_size 依此扣减可用高度，保证内容不会越过分页条）
     prev_btn = appui.Button(
         content=appui.Label("上一页", system_image="chevron.left"),
         action=prev,
-    ).button_style("bordered").disabled(page <= 1)
+    ).button_style("bordered") \
+        .frame(min_height=44).disabled(page <= 1)
     next_btn = appui.Button(
         content=appui.Label("下一页", system_image="chevron.right"),
         action=next_page,
-    ).button_style("bordered").disabled(not can_next(vid))
+    ).button_style("bordered") \
+        .frame(min_height=44).disabled(not can_next(vid))
     # 中间：页码本身就是输入框——未输入时显示当前页码，
     # 输入数字 + 回车即跳转；点其他区域未提交则回到当前页码显示
     center = appui.HStack([
@@ -3147,7 +3190,9 @@ def genre_display(vid):
             appui.Text("加载中...").font("caption").foreground_color("secondaryLabel"),
         ], spacing=8).padding()
     if not v["pool"]:
-        return appui.Text("没有找到分类").foreground_color("secondaryLabel").padding()
+        return appui.ContentUnavailableView(
+            "没有找到分类", system_image="tag",
+            description="下拉刷新再试").padding()
 
     groups = v["pool"]
     tags = ["全部"] + [g["tag"] for g in groups]
@@ -3291,7 +3336,9 @@ def list_destination(data):
             _PUSHED_VIDS.pop()
         vid = _PUSHED_VIDS[-1] if _PUSHED_VIDS else ""
     if vid not in VIEWS:
-        return appui.Text("列表已失效").navigation_title("影片")
+        return appui.ContentUnavailableView(
+            "列表已失效", system_image="questionmark.folder",
+            description="请返回后重试").navigation_title("影片")
     return display_page_view(vid)
 
 
@@ -3373,9 +3420,9 @@ def detail_page_view():
     if d.get("_loading"):
         return _loading_view(d)
     if d.get("error"):
-        return appui.VStack([
-            appui.Text("加载失败，请返回重试").foreground_color("secondaryLabel"),
-        ], spacing=12).padding()
+        return appui.ContentUnavailableView(
+            "加载失败", system_image="exclamationmark.triangle",
+            description="请返回列表后重试").padding()
 
     # 顶部番号：点击即复制（唯一的一处番号展示）
     code_btn = appui.Button(
@@ -3406,16 +3453,10 @@ def detail_page_view():
     meta_block = appui.VStack([meta] + rating_rows, spacing=4, alignment="leading")
 
     def eq_btn(label, action, source=None, prominent=False):
-        """等宽按钮：文字不折行（自动缩字号），同排均分宽度、间距一致。"""
-        style = "bordered_prominent" if prominent else "bordered"
+        """等宽按钮：当前播放来源自动高亮（样式与触控高度见 wide_button）。"""
         if source is not None and state.play == source:
-            style = "bordered_prominent"
-        return appui.Button(
-                content=appui.Text(label).line_limit(1).minimum_scale_factor(0.5),
-                action=action,
-            ) \
-            .button_style(style) \
-            .frame(min_height=34, max_width=appui.infinity)
+            prominent = True
+        return wide_button(label, action, prominent=prominent)
 
     fav_title = "已收藏" if in_fav(d["code"]) else "收藏"
     # 链接没取到的按钮保持置灰：进入详情时就已并行预取，取到后自动点亮
@@ -3430,20 +3471,18 @@ def detail_page_view():
                        spacing=12, alignment="leading")
 
     if state.panel:
-        op_buttons = [eq_btn("关闭播放", clear_panel)]
-        if state.play == "完整视频":
-            op_buttons = [
-                eq_btn("外部播放", open_external_player),
-                eq_btn("复制链接", copy_video_link),
-                eq_btn("关闭播放", clear_panel),
-            ]
-        panel_rows = [
-            appui.Text(state.panel_title).font("caption").foreground_color("secondaryLabel"),
-            appui.VideoPlayer(player=get_player(), autoplay=True,
-                              pause_on_disappear=False).frame(height=220),
-            appui.HStack(op_buttons, spacing=8),
-        ]
-        top = appui.VStack([top] + panel_rows, spacing=8)
+        # 播放状态由 TabView 底部常驻条 + 系统 sheet 承载（官方模式）：
+        # 详情页不再内嵌播放器——重型媒体视图不放可滚动区域，
+        # 这里只留一个入口，把完整的播放控制交给 sheet
+        top = appui.VStack([
+            top,
+            appui.HStack([
+                appui.Text("正在播放：" + (state.panel_title or state.play))
+                    .font("caption").foreground_color("secondaryLabel").line_limit(1),
+                appui.Spacer(min_length=8),
+                appui.Button("播放面板", action=open_player_panel),
+            ], spacing=8),
+        ], spacing=8)
     if state.status:
         top = appui.VStack([
             top,
@@ -3699,6 +3738,7 @@ def start():
     # 15 个复位字段合并成一次重建（原来是 15 次）
     _batch_state(tab=0, keyword="", detail=None, detail_open=False,
                  detail_thumb="", panel="", panel_title="", play="",
+                 panel_open=False,
                  src_preview="", src_trailer="", src_video="", status="",
                  sample_index=0, name_text="", title_trans=False)
     DETAIL_STACKS.clear()      # 全部栈复位：各 tab 的详情状态一并清空
@@ -3711,8 +3751,9 @@ def start():
     # （load_home_once / load_fav_once），四个 tab 的加载时机模型一致，
     # 不依赖「脚本只会被执行一次」的隐含时序
     # 冷启动 2 秒后预热女优/类型数据：首次切 tab 时数据已在/在路上，
-    # 显著缩短切入等待；延迟错开启动时首页/收藏的网络高峰
-    _TASK_POOL.submit(_prewarm_tabs)
+    # 显著缩短切入等待；延迟错开启动时首页/收藏的网络高峰。
+    # 放列表抓取池：休眠 2 秒期间不占用详情/翻译的池位
+    _FETCH_POOL.submit(_prewarm_tabs)
 
 # 首次进入 tab 才预加载（避免启动时并发请求过多）
 _HOME_LOADED = False
@@ -3790,7 +3831,6 @@ def set_tab(v):
         # （此前只有 _sync_dirty 兜底分支会更新 _LAST_TAB_SWITCH，正常
         #   on_change 路径漏更新，TAB_RELOAD_GRACE 形同虚设）
         _LAST_TAB_SWITCH = time.time()
-        _TAB_SWITCH_TIMES.append(_LAST_TAB_SWITCH)
         _TAB_IMG_FLUSHED = False     # 新 tab 首刷豁免重新生效
         # 切换重建已按当前数据渲染新 tab：滞留脏标记随之作废，
         # 避免切入后再来一次内容不变的重建（表现为整页闪一下）
@@ -3800,37 +3840,78 @@ def set_tab(v):
         if root in VIEWS:
             _pump(root)
 
-# 连续快速切 tab 的内容构建防抖：连点期间选中 tab 也渲染占位，
-# 切换停止 _TAB_CONTENT_DEBOUNCE 秒后由 _sync_dirty 补一次真实构建
-_TAB_CONTENT_DEBOUNCE = 0.25
-_TAB_CONTENT_PENDING = False
-_TAB_SWITCH_TIMES = deque(maxlen=4)   # 最近几次 tab 切换时刻（判断连点）
-
 def _tab_content(tag, builder):
     """只构建当前选中 tab 的真实内容，其余 tab 用轻量占位。
 
-    整树重建是 AppUI 的固有机制：每次 state 变化 body() 都会重新执行，
-    若 5 个 tab 全量构建，网格单元格 / 类型页上百个分类按钮 / 设置页
-    表单都会在后台反复构造（快速切 tab 时尤其明显）。非选中 tab 的
-    内容本次重建不可见，占位即可；切回时按 state.tab 重建真实内容，
-    导航位置由 NavigationPath 恢复。
+    AppUI 每次状态变化都会重新执行 body()，若 5 个 tab 全量构建，
+    网格单元格 / 类型页上百个分类按钮 / 设置页表单每轮都要重造一遍。
+    非选中 tab 本次重建不可见，返回空占位即可；切回时按 state.tab
+    构建真实内容，导航位置由 NavigationPath 保留。
 
-    连续快速切换（最近 1 秒内 ≥2 次切换）时连选中 tab 也用占位：
-    连点期间每次重建只构造几个 Text，几乎零成本；单次切换不受
-    影响，立即构建真实内容。
+    构建期只读 State（不写状态、不做副作用）。
     """
-    global _TAB_CONTENT_PENDING
     if state.tab != tag:
         return appui.Text("")
-    now = time.time()
-    if sum(1 for t in _TAB_SWITCH_TIMES if now - t < 1.0) >= 2:
-        _TAB_CONTENT_PENDING = True
-        return appui.Text("")
-    _TAB_CONTENT_PENDING = False
     return builder()
 
+def wide_button(label, action, prominent=False):
+    """等宽操作按钮（详情页 / 播放面板共用）。
+
+    文字不折行（自动缩字号）、同排均分宽度；min_height=44 保证触控目标
+    达到 iOS 建议的最小尺寸（原来 34pt 偏小）。
+    """
+    return appui.Button(
+            content=appui.Text(label).line_limit(1).minimum_scale_factor(0.5),
+            action=action,
+        ) \
+        .button_style("bordered_prominent" if prominent else "bordered") \
+        .frame(min_height=44, max_width=appui.infinity)
+
+def open_player_panel():
+    state.panel_open = True
+
+def close_player_panel():
+    state.panel_open = False
+
+def player_accessory_view():
+    """TabView 底部常驻播放条（官方底部附件模式）：显示在播内容，点击展开面板。"""
+    return appui.HStack([
+        appui.VStack([
+            appui.Label(state.panel_title or "正在播放",
+                        system_image="play.circle.fill")
+                .font("subheadline").bold().line_limit(1),
+            appui.Text((state.play or "播放中") + " · 点击展开")
+                .font("caption").foreground_color("secondaryLabel"),
+        ], alignment="leading", spacing=2)
+            .frame(max_width=appui.infinity, alignment="leading"),
+        appui.Label("", system_image="chevron.up")
+            .foreground_color("secondaryLabel"),
+    ], spacing=10).padding(horizontal=14, vertical=10)
+
+def player_panel_view():
+    """播放面板（系统 sheet）：播放器 + 操作按钮。
+
+    圆角、拖拽条、下拉关闭与 detents 全部交给系统 sheet 处理，
+    不再把 VideoPlayer 塞进详情页的可滚动列表（重型媒体视图放稳定区域）。
+    """
+    rows = [appui.Text(state.panel_title or "播放").font("subheadline").bold().line_limit(2),
+            appui.VideoPlayer(player=get_player(), autoplay=True,
+                              pause_on_disappear=False).frame(height=220)]
+    if state.play == "完整视频":
+        rows.append(appui.HStack([
+            wide_button("外部播放", open_external_player),
+            wide_button("复制链接", copy_video_link),
+        ], spacing=8))
+    rows.append(appui.HStack([
+        wide_button("关闭播放", clear_panel),
+        wide_button("收起面板", close_player_panel),
+    ], spacing=8))
+    return appui.NavigationStack(
+        appui.Form([appui.Section(rows, header="播放中")]).navigation_title("播放")
+    )
+
 def make_body():
-    return appui.TabView(
+    tabs = appui.TabView(
         tabs=[
             appui.Tab("影片", system_image="play.rectangle",
                       content=_tab_content(0, movies_tab), tag=0),
@@ -3845,6 +3926,18 @@ def make_body():
         ],
         selection=state.bind.tab,
         on_change=set_tab,
+    )
+    if state.panel:
+        # 有播放会话时才挂底部常驻条；展开面板由系统 sheet 呈现
+        tabs = tabs.tab_view_bottom_accessory(
+            content=player_accessory_view().content_shape("rect")
+                .on_tap(open_player_panel))
+    return tabs.sheet(
+        is_presented=state.panel_open,
+        on_dismiss=close_player_panel,
+        content=player_panel_view,
+        detents="medium_large",
+        drag_indicator="visible",
     )
 
 start()
