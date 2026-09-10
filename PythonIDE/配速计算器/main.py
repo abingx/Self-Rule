@@ -1,4 +1,5 @@
 import appui
+import device
 
 MARATHON = 42.095
 HALF_MARATHON = 21.0975
@@ -25,6 +26,23 @@ SPLITS = [
     ("40K", 40),
     ("全马", MARATHON),
 ]
+
+# 屏幕自适应：启动时读一次屏高（点），按屏高缩放字号、行高与输入框，整页不滚动即可显示。
+try:
+    SCREEN_HEIGHT = float(device.screen_height())
+except (AttributeError, TypeError, ValueError):
+    SCREEN_HEIGHT = 844.0
+
+BASE_HEIGHT = 844.0                                  # 基准屏高（iPhone 13/14），该屏不缩字号
+SCALE = min(1.0, max(0.7, SCREEN_HEIGHT / BASE_HEIGHT))
+
+FONT_BODY = round(15 * SCALE, 1)
+FIELD_WIDTH = round(40 * SCALE, 1)
+FIELD_HEIGHT = round(28 * SCALE, 1)
+CORNER_RADIUS = round(8 * SCALE, 1)
+
+SPLIT_COLUMN_GAP = round(90 * SCALE, 1)    # 左右两列之间的固定间距
+SPLIT_CELL_GAP = round(4 * SCALE, 1)       # 分段名与时间之间的最小间距
 
 # 默认值互相自洽：6'00"/公里 对应全马 4:12:34。
 state = appui.PersistentState(
@@ -150,23 +168,31 @@ def set_project(value):
         update_from_time()
 
 
+def split_cell(label, km, pace, limit):
+    """单元内分段名靠左、时间靠右，两者自动分配单元宽度。"""
+    color = "secondaryLabel" if km > limit else "label"
+    return appui.HStack([
+        appui.Text(label).font(size=FONT_BODY).foreground_color(color),
+        appui.Text(fmt_seconds(pace * km))
+            .font(size=FONT_BODY)
+            .foreground_color(color)
+            .frame(max_width=appui.infinity, alignment="trailing"),
+    ], spacing=SPLIT_CELL_GAP).frame(max_width=appui.infinity)
+
+
 def split_section(title, pace, limit):
-    """分段用时按配速换算，超出所选项目距离的分段以灰色显示时间。"""
+    """分段按配速换算，超出所选项目距离的分段整行以灰色显示。
+
+    系统行高固定（约 49pt，与字号无关），10 行放不进一屏，故两列并排、先竖排。
+    """
+    half = len(SPLITS) // 2
     rows = []
-    for label, km in SPLITS:
-        beyond = km > limit
-        rows.append(
-            appui.HStack([
-                appui.Text(label).foreground_color("label"),
-                appui.Text(fmt_seconds(pace * km))
-                    .foreground_color("secondaryLabel" if beyond else "label")
-                    .frame(max_width=appui.infinity, alignment="trailing"),
-            ], spacing=6)
-        )
+    for left, right in zip(SPLITS[:half], SPLITS[half:]):
+        rows.append(appui.HStack([
+            split_cell(*left, pace, limit),
+            split_cell(*right, pace, limit),
+        ], spacing=SPLIT_COLUMN_GAP))
     return appui.Section(title, rows)
-
-
-FIELD_WIDTH = 40
 
 
 def time_field(bind, placeholder, submit_action):
@@ -175,15 +201,17 @@ def time_field(bind, placeholder, submit_action):
         appui.TextField(placeholder, text=bind,
                         on_submit=submit_action,
                         keyboard_type="numberPad")
+        .font(size=FONT_BODY)
         .multiline_text_alignment("center")
+        .frame(width=FIELD_WIDTH, height=FIELD_HEIGHT)
+        .background("secondarySystemBackground", corner_radius=CORNER_RADIUS)
         .tint("label")
-        .background("secondarySystemBackground", corner_radius=8)
-        .frame(width=FIELD_WIDTH, height=28)
     )
 
 
 def separ_colon():
     return (appui.Text(":")
+            .font(size=FONT_BODY)
             .foreground_color("label"))
 
 
@@ -194,7 +222,8 @@ def labeled_row(label, fields):
         if i > 0:
             row.append(separ_colon())
         row.append(item)
-    return appui.LabeledContent(label, content=appui.HStack(row, spacing=4))
+    return (appui.LabeledContent(label, content=appui.HStack(row, spacing=4))
+            .font(size=FONT_BODY))
 
 
 def root():
@@ -203,7 +232,7 @@ def root():
     limit = project_distance()
 
     main = [
-        appui.Section(header="目标", content=[
+        appui.Section("目标", [
             labeled_row("项目", [
                 appui.Picker(selection=state.project,
                              options=PROJECT_NAMES,
@@ -225,10 +254,15 @@ def root():
         main.append(split_section("分段", pace, limit))
     else:
         main.append(appui.Section("分段", [
-            appui.Text("请输入有效的配速或用时").foreground_color("secondaryLabel"),
+            appui.Text("请输入有效的配速或用时")
+                .font(size=FONT_BODY)
+                .foreground_color("secondaryLabel"),
         ]))
 
-    return appui.Form(main)
+    # 分区表头由系统渲染、无法单独设字号，故在根视图统一注入字号，令全页同号。
+    return appui.NavigationStack(
+        appui.Form(main).font(size=FONT_BODY).navigation_title("配速计算器")
+    )
 
 
 appui.run(root, state=state, presentation="fullscreen_with_close")
