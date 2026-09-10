@@ -1651,6 +1651,62 @@ def push_list(path, vid):
         del _PUSHED_VIDS[:4]    # 只留最近的兜底引用：过多会把旧展示位 pin 住不回收
     path.append({"tag": "list", "data": {"vid": vid}})
 
+
+# ------------------------------------------------------------------
+#  导航 push 防重：连点同一个条目只放行一次
+# ------------------------------------------------------------------
+# 问题：连续快速点击同一格子 / 同一个筛选项，会连续 push 同一页面
+# （详情 / 大图 / 跳转列表），导航栈里压入多份相同页面——返回时要按同样
+# 多的次数才能回到列表。
+# 方案：push 前做「同一目标 + 时间窗」防抖；详情另加结构性守卫（同一链接
+# 已在栈顶且仍在导航链上就直接忽略）。两者都不写 State，因此连点不会
+# 产生额外重建，栈里也始终只有一份，返回永远只退一层。
+_PUSH_GUARD = {}
+_PUSH_GUARD_GAP = 0.5          # 同一目标的最小 push 间隔（秒）
+_PUSH_GUARD_TTL = 60.0         # 记录保留时长（仅用于清理，不影响判定）
+_PUSH_GUARD_LOCK = threading.Lock()
+
+def push_allowed(key, gap=_PUSH_GUARD_GAP):
+    """同一目标在 gap 秒内只放行一次 push；key 需含页面类型与目标标识。"""
+    if not key:
+        return True
+    now = time.time()
+    with _PUSH_GUARD_LOCK:
+        if now - _PUSH_GUARD.get(key, 0.0) < gap:
+            log("push ignored (debounce): " + str(key))
+            return False
+        _PUSH_GUARD[key] = now
+        if len(_PUSH_GUARD) > 64:       # 顺手清理过期记录，避免无界增长
+            for k, t in list(_PUSH_GUARD.items()):
+                if now - t > _PUSH_GUARD_TTL:
+                    _PUSH_GUARD.pop(k, None)
+        return True
+
+def clear_push_guard(key):
+    """返回后清除防抖记录：允许立刻重新进入同一目标。"""
+    with _PUSH_GUARD_LOCK:
+        _PUSH_GUARD.pop(key, None)
+
+def clear_push_guard_prefix(prefix):
+    """按前缀清除防抖记录（如关闭大图浏览后清空全部 sample 记录）。"""
+    with _PUSH_GUARD_LOCK:
+        for k in [k for k in _PUSH_GUARD if k.startswith(prefix)]:
+            _PUSH_GUARD.pop(k, None)
+
+def detail_push_blocked(host, link):
+    """结构性守卫：该详情已是本 tab 详情栈顶、且仍在导航链上 → 忽略重复点击。
+
+    与时间无关：只要这个详情还显示在屏幕上，就不会再压入一层，
+    因此返回永远只需一次。
+    """
+    stack = DETAIL_STACKS.get(host)
+    v = VIEWS.get(host)
+    if not stack or not v:
+        return False
+    top = stack[-1]
+    return (top.get("detail") or {}).get("link") == link \
+        and v["path"].count >= top["depth"]
+
 # 根展示位永不回收；动态展示位（详情内跳转的筛选列表）超过上限时回收最旧的
 ROOT_VIDS = {HOME_VID, ACTRESS_VID, GENRE_VID, FAV_VID}
 MAX_DYNAMIC_VIEWS = 12
@@ -2615,13 +2671,21 @@ def play_url(url, title="", source=""):
 def open_detail(movie, vid):
     """打开影片详情：在展示位 vid 所属的导航栈内 push 详情页。"""
     log("open_detail: " + str(movie.get("link")))
-    reset_page_inputs()         # 点了列表项：未提交的页码输入作废
     global DETAIL_OPEN_AT, DETAIL_HOST, DETAIL_PATH, _DETAIL_PATH_DEPTH
+    host = vid if vid in VIEWS else HOME_VID
+    link = movie.get("link") or ""
+    if not link:
+        return
+    # 连点防重复入栈：① 同一详情已在栈顶且仍在导航链上 → 忽略；
+    # ② 同一链接在防抖窗口内被重复触发 → 忽略。命中时直接返回，
+    #    不写 State、不 push，返回因此永远只退一层
+    if detail_push_blocked(host, link) or not push_allowed("detail:" + link):
+        return
+    reset_page_inputs()         # 点了列表项：未提交的页码输入作废
     if vid in VIEWS and VIEWS[vid]["filter"]["kind"] == "fav":
         # 暂停收藏封面补全线程，避免与详情请求竞争
         pause_fav_movies()
     thumb = movie.get("img") or ""
-    link = movie.get("link") or ""
     ready = take_ready(link)
     cur = state.detail
     need_fetch = False
@@ -2667,7 +2731,7 @@ def open_detail(movie, vid):
         translate_title_async(new_detail, defer_state=True)
         rating_async(new_detail, defer_state=True)
     # 详情与它内部的跳转列表都推入「打开它的那个展示位」的导航栈
-    DETAIL_HOST = vid if vid in VIEWS else HOME_VID
+    DETAIL_HOST = host
     DETAIL_PATH = VIEWS[DETAIL_HOST]["path"]
     note_nav_action()
     DETAIL_PATH.append({"tag": "detail", "host": DETAIL_HOST})
@@ -2692,7 +2756,10 @@ def on_detail_closed(host):
         return
     if VIEWS[host]["path"].count >= stack[-1]["depth"]:
         return      # 该 tab 导航栈未变浅：详情仍在使用中
+    closed_link = (stack[-1].get("detail") or {}).get("link") or ""
     stack.pop()
+    if closed_link:
+        clear_push_guard("detail:" + closed_link)   # 返回后允许立刻重进同一详情
     if stack:
         # 同一 tab 内连续打开两层详情：返回时恢复上一层
         state.detail = stack[-1]["detail"]
@@ -2708,6 +2775,9 @@ def open_filter_at(path, link, value):
     if not link:
         state.status = "无该字段链接"
         state.reload += 1
+        return
+    # 连点同一筛选项只入栈一次（否则返回要按多次）
+    if not push_allowed("list:" + str(link)):
         return
     gc_views()      # 新建展示位前回收超出上限的旧展示位
     vid = new_vid()
@@ -2798,6 +2868,8 @@ def on_sample_page_change(_value=None):
 
 def show_sample(link):
     """查看样片大图：加载当前 ±1 后推入浏览（可左右滑动翻看）。"""
+    if not push_allowed("sample:" + str(link)):
+        return      # 连点同一张样片只入栈一次
     samples = (state.detail or {}).get("samples") or []
     idx = 0
     for i, s in enumerate(samples):
@@ -2813,6 +2885,7 @@ def close_sample():
     note_nav_action()
     DETAIL_PATH.pop(count=1)
     state.sample_index = 0
+    clear_push_guard_prefix("sample:")   # 关闭后允许立刻再进大图浏览
 
 def copy_code():
     if state.detail:
@@ -3809,6 +3882,7 @@ def leave_tab_reset(prev):
         return      # 该 tab 未停在详情页：保留它的导航位置
     for h in hosts:
         DETAIL_STACKS.pop(h, None)
+    clear_push_guard_prefix("detail:")   # 切 tab 已退回列表：允许重新进入同一详情
     state.detail_open = False
     note_nav_action()
     path.pop_to_root()      # 整条导航链（含多层详情）回到主页面
