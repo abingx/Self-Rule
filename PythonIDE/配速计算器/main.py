@@ -174,7 +174,7 @@ def root():
     pace = current_pace_seconds()
 
     main = [
-        appui.Section("输入", [
+        appui.Section("目标", [
             input_row("目标配速", [
                 time_field(bind_pace_min, "分", submit_pace),
                 time_field(bind_pace_sec, "秒", submit_pace),
