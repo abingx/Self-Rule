@@ -29,8 +29,10 @@ from urllib.parse import quote
 
 import appui
 import clipboard
+import database
 import network
 import shortcuts
+import storage
 
 
 # ============================================================
@@ -188,25 +190,27 @@ WORKERS = 3
 _RELOAD_DIRTY = False
 _LAST_ACTIVITY = 0.0
 _CACHE_STARTED = False
-_PLACEHOLDER = None
+def _build_placeholder():
+    """生成一张纯色占位 PNG（8x12 浅灰），仅用 stdlib。"""
+    w, h = 8, 12
+    rgb = (0xED, 0xED, 0xEF)
+    sig = b"\x89PNG\r\n\x1a\n"
+
+    def _chunk(typ, data):
+        return (struct.pack(">I", len(data)) + typ + data +
+                struct.pack(">I", zlib.crc32(typ + data) & 0xffffffff))
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+    raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
+    idat = zlib.compress(raw, 9)
+    return (sig + _chunk(b"IHDR", ihdr) +
+            _chunk(b"IDAT", idat) + _chunk(b"IEND", b""))
+
+# 模块加载时直接构造一次：结果是确定性的常量，
+# 不再懒加载（避免多个下载 worker 同时判空重复构造）
+_PLACEHOLDER = _build_placeholder()
 
 def _placeholder_bytes():
-    """生成一张纯色占位 PNG（8x12 浅灰），仅用 stdlib。"""
-    global _PLACEHOLDER
-    if _PLACEHOLDER is None:
-        w, h = 8, 12
-        rgb = (0xED, 0xED, 0xEF)
-        sig = b"\x89PNG\r\n\x1a\n"
-
-        def _chunk(typ, data):
-            return (struct.pack(">I", len(data)) + typ + data +
-                    struct.pack(">I", zlib.crc32(typ + data) & 0xffffffff))
-
-        ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
-        raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
-        idat = zlib.compress(raw, 9)
-        _PLACEHOLDER = (sig + _chunk(b"IHDR", ihdr) +
-                        _chunk(b"IDAT", idat) + _chunk(b"IEND", b""))
     return _PLACEHOLDER
 
 def _image_dir():
@@ -259,7 +263,8 @@ def _download_one(url):
                 f.write(data)
             os.replace(tmp, path)
             return True
-    except Exception:
+    except Exception as e:
+        log("download err " + url[:80] + " : " + str(e))
         return None
 
 def request_img(src, priority=False):
@@ -330,7 +335,8 @@ def _prepare_src(src):
             os.makedirs(_image_dir(), exist_ok=True)
             with open(path, "wb") as f:
                 f.write(_placeholder_bytes())
-        except Exception:
+        except Exception as e:
+            log("prepare src err " + str(src)[:80] + " : " + str(e))
             _PREPARE_FAILED[src] = time.time()
             return
     _PREPARE_FAILED.pop(src, None)
@@ -443,9 +449,9 @@ def last_activity():
 # ============================================================
 
 
-state = appui.State(
+_STATE_FIELDS = dict(
     tab=0,
-    keyword="",
+    keyword="",             # 搜索框内容（原生 .searchable 的绑定值）
     status="",
     detail=None,
     detail_open=False,      # 详情页是否仍在导航栈顶
@@ -461,8 +467,22 @@ state = appui.State(
     title_trans=False,      # 标题是否已翻译成中文
     rating_text="",         # 详情页评分文本（JavDB）
     genre_group="全部",     # 类型 tab 当前选中的一级分类
+    page_input="",          # 页码输入框内容（空 = 未在输入，显示当前页码）
+    page_input_vid="",      # 页码输入当前归属的展示位
     reload=0,
 )
+
+# 官方 State 会把 JSON 兼容字段自动持久化并在冷启动时恢复：
+# 运行期字段必须声明 transient——否则冷启动可能恢复出「半截详情 /
+# 残留播放面板」，而且每次重建都会附带一次持久化写入。
+# 只让 genre_group 跨启动保留（tab 由 start() 固定复位到影片页）。
+_TRANSIENT_FIELDS = [k for k in _STATE_FIELDS if k != "genre_group"]
+
+try:
+    state = appui.State(transient=_TRANSIENT_FIELDS, **_STATE_FIELDS)
+except TypeError as e:      # 运行时无 transient 参数：退化为默认构造
+    log("state transient unsupported: " + str(e))
+    state = appui.State(**_STATE_FIELDS)
 
 def _batch_state(**updates):
     """一次动作改多个字段只触发一次重建（官方 batch_update）。
@@ -499,7 +519,9 @@ DETAIL_STACKS = {}
 # ============================================================
 
 
-SET_FILE = os.path.join(os.getcwd(), "settings.json")
+SETTINGS_KEY = "javvault.settings"
+# 旧版本地设置文件（一次性迁移用，迁移后由 storage 托管）
+LEGACY_SET_FILE = os.path.join(os.getcwd(), "settings.json")
 
 # 每页项数不再提供设置项：按界面实际尺寸动态计算
 # （在不超出「上一页 / 第X页 / 下一页」分页条的前提下取最大条目数，
@@ -509,19 +531,36 @@ DEFAULT_SETTINGS = {
     "mute": True,             # 视频播放是否默认静音
 }
 
-def load_settings():
-    """读取设置；文件缺失/损坏时回退默认值。"""
-    data = dict(DEFAULT_SETTINGS)
+def _load_legacy_settings():
+    """读取旧版本地 settings.json（一次性迁移用）；缺失/损坏返回 None。"""
     try:
-        if os.path.exists(SET_FILE):
-            with open(SET_FILE, "r", encoding="utf-8") as f:
+        if os.path.exists(LEGACY_SET_FILE):
+            with open(LEGACY_SET_FILE, "r", encoding="utf-8") as f:
                 saved = json.load(f)
             if isinstance(saved, dict):
-                for k in data:
-                    if k in saved:
-                        data[k] = saved[k]
-    except Exception:
-        pass
+                return saved
+    except Exception as e:
+        log("legacy settings err: " + str(e))
+    return None
+
+def load_settings():
+    """读取设置；缺失/损坏时回退默认值（storage 内部已处理解析兜底）。"""
+    data = dict(DEFAULT_SETTINGS)
+    saved = None
+    try:
+        saved = storage.get_json(SETTINGS_KEY, None)
+        if saved is None:
+            # 首次运行新版本：把旧版本地文件迁移进 storage
+            saved = _load_legacy_settings()
+            if saved is not None:
+                storage.set_json(SETTINGS_KEY, saved)
+    except Exception as e:
+        log("load_settings err: " + str(e))
+        saved = None
+    if isinstance(saved, dict):
+        for k in data:
+            if k in saved:
+                data[k] = saved[k]
     if data["player"] not in EXTERNAL_PLAYERS:
         data["player"] = DEFAULT_SETTINGS["player"]
     data["mute"] = bool(data["mute"])
@@ -529,10 +568,7 @@ def load_settings():
 
 def save_settings():
     try:
-        tmp = SET_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(SETTINGS, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, SET_FILE)
+        storage.set_json(SETTINGS_KEY, SETTINGS)
     except Exception as e:
         log("save_settings err: " + str(e))
 
@@ -743,30 +779,107 @@ def page_size(vid=None, kind=None):
 # ============================================================
 
 
-FAV_FILE = os.path.join(os.getcwd(), "favorites.json")
+# 收藏按记录存储在官方 database 的 Collection 里（key = 番号）：
+# 收藏/取消只 upsert/delete 单条记录，不再整份 JSON 重写磁盘，
+# I/O 成本不随收藏总量增长。SHELF 是启动时载入的内存镜像，
+# 列表渲染 / 排序 / 计数仍走内存，不写盘。
+FAV_COL = database.collection("favorites")
+# 旧版本地收藏文件（一次性迁移用，迁移后由 database 托管）
+LEGACY_FAV_FILE = os.path.join(os.getcwd(), "favorites.json")
+
+_FAV_SEQ = 0        # 收藏顺序号：单调递增，越大越新（同一天内的排序依据）
+
+def _fav_sort_key(item):
+    """排序键：(收藏日期, 收藏顺序号) 倒序。
+
+    日期新的在前；同一天内顺序号大的在前——即新增的收藏始终在最上方，
+    与旧 favorites.json「从上到下 = 从新到旧」的顺序完全一致。
+    """
+    return (str(item.get("fav_time") or item.get("date") or ""),
+            int(item.get("seq") or 0))
+
+def _norm_fav(item, seq=None):
+    """规整一条收藏记录；缺番号的返回 None（无法成为收藏项）。"""
+    if not isinstance(item, dict):
+        return None
+    code = str(item.get("code") or "").strip().upper()
+    if not code:
+        return None
+    rec = {"code": code,
+           "img": item.get("img") or "",
+           # 去掉日期前后空格，避免字符串排序时被排到所有人后面
+           "fav_time": str(item.get("fav_time") or "").strip()}
+    order = item.get("seq", seq)
+    if order is not None:
+        try:
+            rec["seq"] = int(order)
+        except (TypeError, ValueError):
+            pass
+    return rec
+
+def _load_legacy_favs():
+    """读取旧版本地 favorites.json（一次性迁移用）；缺失/损坏返回 None。"""
+    try:
+        if os.path.exists(LEGACY_FAV_FILE):
+            with open(LEGACY_FAV_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                data.pop("arc", None)
+                data = data.get("fav")
+            if isinstance(data, list):
+                return data
+    except Exception as e:
+        log("legacy favorites err: " + str(e))
+    return None
 
 def load_shelf():
+    """从 Collection 载入收藏（内存镜像 SHELF），并保证跨启动顺序稳定。
+
+    顺序号 seq 的来源（按优先级）：
+      1. 记录自身带的 seq（新版本写入的）；
+      2. 旧版 favorites.json 的行号——旧文件「从上到下 = 从新到旧」，
+         迁移时按行号赋 seq（顶部最大），与展示顺序一致；
+      3. 都没有时退回数据库行序（updated_at desc，近期写入在前）。
+    历史记录在首次载入时补写一次 seq，之后不再需要推断。
+    """
+    global _FAV_SEQ
+    favs = []
+    legacy = _load_legacy_favs() or []
+    legacy_rank = {}
+    for i, item in enumerate(legacy):
+        rec = _norm_fav(item)
+        if rec:
+            legacy_rank.setdefault(rec["code"], i)   # 行号越小越新
+    legacy_total = len(legacy)
     try:
-        if os.path.exists(FAV_FILE):
-            with open(FAV_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            data = {"fav": []}
-        if not isinstance(data, dict):
-            data = {"fav": []}
-        data.pop("arc", None)
-        if not isinstance(data.get("fav"), list):
-            data["fav"] = []
-        else:
-            data["fav"] = [x for x in data["fav"] if isinstance(x, dict)]
-            for item in data["fav"]:
-                item["img"] = item.get("img") or ""
-                # 去掉日期前后空格，避免字符串排序时被排到所有人后面
-                item["fav_time"] = str(item.get("fav_time") or "").strip()
-            data["fav"].sort(key=lambda x: x.get("fav_time", ""), reverse=True)
-        return data
-    except Exception:
-        return {"fav": []}
+        rows = FAV_COL.list(order_by="updated_at desc")
+        if not rows:
+            # 首次运行新版本：把旧版本地文件按「从上到下 = 从新到旧」写进 Collection
+            rows = []
+            for i, item in enumerate(legacy):
+                rec = _norm_fav(item)
+                if rec:
+                    rec["seq"] = legacy_total - i
+                    FAV_COL.upsert(rec["code"], rec)
+                    rows.append(rec)
+        for i, raw in enumerate(rows):      # updated_at desc：近期写入的在前
+            rec = _norm_fav(raw)
+            if not rec:
+                continue
+            if "seq" not in rec:
+                rank = legacy_rank.get(rec["code"])
+                rec["seq"] = (legacy_total - rank) if rank is not None \
+                    else (len(rows) - i)
+                try:
+                    FAV_COL.upsert(rec["code"], rec)   # 补写一次，修正历史顺序
+                except Exception as e:
+                    log("fav reorder write err: " + str(e))
+            favs.append(rec)
+    except Exception as e:
+        log("load_shelf err: " + str(e))
+    favs.sort(key=_fav_sort_key, reverse=True)
+    _FAV_SEQ = max([int(x.get("seq") or 0) for x in favs] or [0])
+    return {"fav": favs}
 
 SHELF = load_shelf()
 
@@ -786,15 +899,6 @@ def _rebuild_fav_codes():
 
 _rebuild_fav_codes()
 
-def save_shelf():
-    try:
-        tmp = FAV_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(SHELF, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, FAV_FILE)
-    except Exception as e:
-        log("save_shelf err: " + str(e))
-
 def in_fav(code):
     return code in _FAV_CODES
 
@@ -813,13 +917,26 @@ def mark_fav_dirty():
     _FAV_ITEMS_CACHE = None    # 收藏列表缓存同步失效
 
 def add_fav(code, img=""):
-    SHELF["fav"].insert(0, {"code": code, "img": img, "fav_time": now_time()})
+    global _FAV_SEQ
+    code = str(code or "").strip().upper()   # 与 _norm_fav 的键规整保持一致
+    _FAV_SEQ += 1                            # 新收藏的顺序号最大 → 始终排最上方
+    rec = {"code": code, "img": img, "fav_time": now_time(), "seq": _FAV_SEQ}
+    SHELF["fav"].insert(0, rec)
     _FAV_CODES.add(code)
+    try:
+        FAV_COL.upsert(code, rec)      # 按记录写入，不整表重写
+    except Exception as e:
+        log("fav upsert err: " + str(e))
     mark_fav_dirty()
 
 def remove_fav(code):
+    code = str(code or "").strip().upper()   # 与 _norm_fav 的键规整保持一致
     SHELF["fav"] = [x for x in SHELF["fav"] if x.get("code") != code]
     _FAV_CODES.discard(code)
+    try:
+        FAV_COL.delete(code)           # 按记录删除，不整表重写
+    except Exception as e:
+        log("fav delete err: " + str(e))
     mark_fav_dirty()
 
 def toggle_bookmark(d, img=""):
@@ -828,7 +945,6 @@ def toggle_bookmark(d, img=""):
         remove_fav(code)
     else:
         add_fav(code, img=img)
-    save_shelf()
 
 
 # ============================================================
@@ -858,8 +974,8 @@ def _save_movie_cache(movies):
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(movies, f, ensure_ascii=False)
         os.replace(tmp, _MOVIE_CACHE_FILE)
-    except Exception:
-        pass
+    except Exception as e:
+        log("save movie cache err: " + str(e))
 
 _MOVIES = _load_movie_cache()
 _MOVIE_PENDING = set()
@@ -1577,9 +1693,10 @@ def fav_items():
             out.append({"code": code,
                         "img": item.get("img") or "",
                         "date": str(item.get("fav_time") or "").strip(),
+                        "seq": int(item.get("seq") or 0),
                         "link": BASE + "/" + quote(code)})
-        _FAV_ITEMS_CACHE = sorted(out, key=lambda x: x.get("date") or "",
-                                  reverse=True)
+        # 日期新的在前；同一天内按顺序号从新到旧（与 SHELF 顺序一致）
+        _FAV_ITEMS_CACHE = sorted(out, key=_fav_sort_key, reverse=True)
     return _FAV_ITEMS_CACHE
 
 def sort_new_items(items):
@@ -1922,32 +2039,33 @@ def max_page(vid):
             return max(1, (pool_end(v) + size - 1) // size)
     return None
 
-# 页码输入框的临时输入（按展示位分开保存；普通变量：按键时不写入
-# State，避免每次按键整树重建闪动）。
-# 键不存在 = 未在输入：输入框直接显示当前页码。
-_PAGE_INPUT = {}
-
+# 页码输入框绑定 State（page_input / page_input_vid）：
+# 之前用普通 dict 存输入，网格图片刷新等重建会把已键入内容顶掉；
+# 绑定后输入值即 State 真源，重建不会覆盖用户输入。
 def page_field_text(vid, page):
     """输入框显示值：输入中显示键入内容，其余时候显示当前页码。"""
-    v = _PAGE_INPUT.get(vid)
-    return str(page) if v is None else v
+    if state.page_input_vid == vid and state.page_input:
+        return state.page_input
+    return str(page)
 
 def set_page_input_value(vid, v):
-    """输入校验：只保留数字，非法字符在记录时直接过滤（不触发重建）。"""
-    _PAGE_INPUT[vid] = "".join(ch for ch in str(v) if ch.isdigit())
+    """输入校验：只保留数字后写回 State（同值不重复写，避免多余重建）。"""
+    digits = "".join(ch for ch in str(v) if ch.isdigit())
+    if state.page_input == digits and state.page_input_vid == vid:
+        return
+    _batch_state(page_input=digits, page_input_vid=vid)
 
 def reset_page_inputs(vid=None):
-    """放弃未提交的页码输入（点击输入框之外：翻页、打开详情、切 tab、
-    换筛选……），之后的重建会让输入框回到当前页码显示。"""
-    if vid is None:
-        _PAGE_INPUT.clear()
-    else:
-        _PAGE_INPUT.pop(vid, None)
+    """放弃未提交的页码输入（翻页、打开详情、切 tab、换筛选……），
+    之后的重建会让输入框回到当前页码显示。"""
+    if vid is None or state.page_input_vid == vid:
+        if state.page_input or state.page_input_vid:
+            _batch_state(page_input="", page_input_vid="")
 
 def submit_page_input(vid):
     """回车跳页：输入有效则跳转，无效则放弃输入回到当前页码显示。"""
     try:
-        page = int(_PAGE_INPUT.get(vid, "") or "0")
+        page = int(state.page_input or "0")
     except ValueError:
         page = 0
     reset_page_inputs(vid)
@@ -2160,21 +2278,26 @@ def _commit_detail():
             return
         log("detail ready code=" + str(d.get("code")))
         if d.get("error"):
-            if cur and cur.get("_loading"):
-                cur["_loading"] = False
-                cur["error"] = True
+            if cur:
+                # 整体重赋值：State 对 dict 的原地修改不可见（见下方说明）
+                err = dict(cur)
+                err["_loading"] = False
+                err["error"] = True
+                state.detail = err
             state.reload += 1
             return
         if not d.get("code") and cur and cur.get("code"):
             d["code"] = cur["code"]
         if not d.get("cover") and cur and cur.get("cover"):
             d["cover"] = cur["cover"]
-        if cur:
-            for k, v in d.items():
-                cur[k] = v
-            cur.pop("_loading", None)
-            cur.pop("error", None)
-        # cur 为空时 detail 字段并入下方批量提交，不再单独写
+        # 整体重赋值，不做原地修改：State 的 dict getter 可能返回副本/代理，
+        # cur[k]=v 的原地写法对后续读取不可见，详情会永远停在 _loading
+        d.pop("_loading", None)
+        d.pop("error", None)
+        state.detail = d
+        st = DETAIL_STACKS.get(DETAIL_HOST)
+        if st:
+            st[-1]["detail"] = d      # 栈内快照同步为已提交版本（返回上层时恢复用）
         prepare_images([d["cover"]] + [a["img"] for a in d["actresses"]]
                        + [s["img"] for s in d["samples"]])
         for a in d["actresses"]:
@@ -2188,8 +2311,6 @@ def _commit_detail():
         name_text, title_trans, rating_text = _initial_title_display(d)
         updates = {"name_text": name_text, "title_trans": title_trans,
                    "rating_text": rating_text, "reload": state.reload + 1}
-        if not cur:
-            updates["detail"] = d
         _batch_state(**updates)
         # 后台翻译 / 评分（初始显示值已在上面提交，defer_state 不再写）
         translate_title_async(d, defer_state=True)
@@ -2200,8 +2321,11 @@ def _commit_detail():
             return
         cur = state.detail
         if cur and cur.get("_loading"):
-            cur["_loading"] = False
-            cur["error"] = True
+            # 整体重赋值：State 对 dict 的原地修改不可见（见 _commit_detail）
+            err = dict(cur)
+            err["_loading"] = False
+            err["error"] = True
+            state.detail = err
         state.reload += 1
 
 # ============================================================
@@ -2484,7 +2608,7 @@ def open_detail(movie, vid):
     if not need_fetch and name_text \
             and str(new_detail.get("code") or "").strip():
         rating_text = "评分：获取中..."
-    updates = {"detail": new_detail, "detail_open": True,
+    updates = {"detail_open": True,
                "name_text": name_text, "title_trans": title_trans,
                "rating_text": rating_text}
     if state.detail_thumb != thumb:
@@ -2493,6 +2617,11 @@ def open_detail(movie, vid):
         updates.update(panel="", panel_title="", play="", status="")
     # 播放源复位值 / 缓存值也合并进同一次提交
     prefetch_play_sources(new_detail.get("code"), updates=updates)
+    # detail 必须直写，不能走 batch_update：批量提交不保留 dict 值的对象
+    # 身份（会拷贝/重序列化），而 DETAIL_STACKS 存的是同一个原始 dict——
+    # 身份一旦失效，detail_destination 每次重建都会把还带 _loading 的
+    # 原始快照写回 State，详情页永远停在加载中
+    state.detail = new_detail
     _batch_state(**updates)
     DETAIL_OPEN_AT = time.time()
     if not need_fetch and name_text:
@@ -2690,12 +2819,13 @@ def grid_cover(url, ratio=None):
     之间的空隙。ratio 缺省用影片封面比例 5:7；女优头像传 5:6（更矮，
     人脸裁切更自然，且 4 行头像可正好铺满可视高度）。
 
-    url 为空（如旧收藏尚未补全封面）时渲染同比例灰底占位框：
-    AsyncImage 无地址不会渲染任何内容，格子会塌陷压缩；
-    固定比例的占位框保证布局稳定，封面补全后平滑填入。
+    源为空、或本地路径尚未准备（img_src 返回空串）时，渲染同比例灰底
+    占位框：AsyncImage 收到空地址不会渲染任何内容，格子会塌陷成 0 高，
+    真图填入时整行跳动；固定比例的占位框保证布局稳定，图片就绪后填入。
     """
     ratio = ratio or COVER_RATIO
-    if not url:
+    src = img_src(url) if url else ""
+    if not src:
         return appui.Rectangle() \
             .foreground_color("secondarySystemBackground") \
             .aspect_ratio(ratio, content_mode="fill") \
@@ -2703,7 +2833,7 @@ def grid_cover(url, ratio=None):
             .clipped() \
             .background("secondarySystemBackground", corner_radius=COVER_CELL_RADIUS) \
             .z_index(0)
-    return appui.AsyncImage(url=img_src(url)) \
+    return appui.AsyncImage(url=src) \
         .aspect_ratio(ratio, content_mode="fill") \
         .frame(max_width=appui.infinity) \
         .clipped() \
@@ -2830,7 +2960,6 @@ def fav_cell(m):
 
     def unfav():
         remove_fav(m["code"])
-        save_shelf()
 
     return movie_cell(item, FAV_VID).context_menu(content=[
         appui.Button("从收藏移除", action=unfav, role="destructive"),
@@ -2867,12 +2996,18 @@ def sample_cell(s):
     def open():
         show_sample(s["link"])
 
-    return appui.Button(
-        action=open,
-        content=appui.AsyncImage(url=img_src(s["img"]))
-            .frame(height=110).clipped()
-            .background("secondarySystemBackground", corner_radius=6),
-    ).button_style("plain")
+    src = img_src(s["img"])
+    if src:
+        content = appui.AsyncImage(url=src) \
+            .frame(height=110).clipped() \
+            .background("secondarySystemBackground", corner_radius=6)
+    else:
+        # 未就绪的缩略图：同高占位框，避免样图网格高度跳动
+        content = appui.Rectangle() \
+            .foreground_color("secondarySystemBackground") \
+            .frame(max_width=appui.infinity, min_height=110, max_height=110) \
+            .background("secondarySystemBackground", corner_radius=6)
+    return appui.Button(action=open, content=content).button_style("plain")
 
 def magnet_row(m):
     """磁链行（左滑可复制）。"""
@@ -2884,13 +3019,16 @@ def magnet_row(m):
         appui.Button("复制", action=copy, role="destructive"),
     ])
 
-# 搜索栏的临时输入（普通变量：按键时不写入 State，避免每字符整树重建）。
-# 搜索栏已改为原生 .searchable（挂在影片 tab 根页，见 display_page_view），
-# 不再手写搜索行；text 只在整树重建时回读本变量。
-_SEARCH_INPUT = {"value": ""}
-
+# 搜索框直接绑定 State.keyword（原生 .searchable 的 text）：
+# 之前用普通 dict 存输入，任何一次重建都会把用户正在输入的内容顶掉。
 def set_search_input(v):
-    _SEARCH_INPUT["value"] = v      # 只记录，不写 State：按键不触发重建
+    """on_change 回调：写回 State（重建频率由 State 的 debounce 收敛）。
+
+    系统「取消」清空输入时（v 为空）同步退回最新影片列表。
+    """
+    state.keyword = v
+    if not v and view_kind(HOME_VID) == "search":
+        clear_search()
 
 def pager_row(vid):
     """翻页条：左上翻、右下翻、中间页码即输入框（未输入时显示当前页码）。"""
@@ -2985,7 +3123,9 @@ def movie_display(vid, with_pager=True):
         ))
     elif not loading:
         # 无内容且不在加载中才提示；加载中显示整页占位格
-        parts.append(appui.Text("没有找到影片").foreground_color("secondaryLabel"))
+        parts.append(appui.ContentUnavailableView(
+            "没有找到影片", system_image="film",
+            description="换个筛选条件或下拉刷新再试"))
 
     if with_pager:
         parts.append(pager_row(vid))
@@ -3080,8 +3220,9 @@ def display_page_view(vid, titled=True):
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
     if v["extras"].get("search"):
-        # 原生搜索栏挂在导航栏（只影片首页有），搜索/取消交互全部交给系统
-        sv = sv.searchable(text=_SEARCH_INPUT["value"], prompt="番号或演员",
+        # 原生搜索栏挂在导航栏（只影片首页有），搜索/取消交互全部交给系统；
+        # text 绑定 State.keyword，重建不会顶掉用户正在输入的内容
+        sv = sv.searchable(text=state.keyword, prompt="番号或演员",
                            on_change=set_search_input, on_submit=do_search)
     return appui.GeometryReader(
         content=sv.safe_area_inset(edge="bottom", content=pager),
@@ -3093,6 +3234,26 @@ def display_page_view(vid, titled=True):
 #  UI 层：路由目标（详情 / 大图 / 跳转列表）
 # ============================================================
 
+
+def _restore_detail_host(host):
+    """生成 on_appear 回调：切回该 tab 时恢复它自己的详情。
+
+    构建期（body() 内）只读不写 State——官方硬规则：body() 不得修改状态。
+    以前这里直接赋值，构成「构建 -> 写 State -> 重建 -> 再写」的风暴，
+    并且会把栈里的旧快照写回、覆盖已提交的详情。恢复动作改由
+    on_appear 触发（切回该 tab 时执行一次）。
+    """
+    def restore():
+        stack = DETAIL_STACKS.get(host)
+        if not stack:
+            return
+        entry = stack[-1]
+        cur = state.detail
+        if (cur or {}).get("link") != (entry["detail"] or {}).get("link"):
+            state.detail = entry["detail"]
+        if not state.detail_open:
+            state.detail_open = True
+    return restore
 
 def detail_destination(data):
     """详情路由：所有入口统一走 detail_page_view()，展示完全一致。
@@ -3106,20 +3267,17 @@ def detail_destination(data):
         host = DETAIL_HOST if DETAIL_HOST in VIEWS else HOME_VID
     stack = DETAIL_STACKS.get(host)
     if stack:
-        entry = stack[-1]
-        if entry["detail"] is not state.detail:
-            # 切回该 tab：显示它自己的详情（两字段合并一次提交）
-            _batch_state(detail=entry["detail"], detail_open=True)
-        else:
-            state.detail_open = True
+        # 这里只做模块级导航簿记（点按回调需要），不写 State
         DETAIL_HOST = host
         DETAIL_PATH = VIEWS[host]["path"]
-        _DETAIL_PATH_DEPTH = entry["depth"]
+        _DETAIL_PATH_DEPTH = stack[-1]["depth"]
 
     def on_closed():
         on_detail_closed(host)
 
-    return detail_page_view().on_disappear(action=on_closed)
+    return detail_page_view() \
+        .on_appear(action=_restore_detail_host(host)) \
+        .on_disappear(action=on_closed)
 
 def sample_destination(data):
     return sample_preview_view()
@@ -3314,12 +3472,21 @@ def detail_page_view():
         def open():
             open_filter(a["link"], a["name"])
 
+        src = img_src(a["img"])
+        if src:
+            thumb = appui.AsyncImage(url=src) \
+                .frame(width=58, height=58).clipped() \
+                .background("secondarySystemBackground", corner_radius=8)
+        else:
+            # 未就绪的头像：同尺寸占位框，避免女优网格跳动
+            thumb = appui.Rectangle() \
+                .foreground_color("secondarySystemBackground") \
+                .frame(width=58, height=58) \
+                .background("secondarySystemBackground", corner_radius=8)
         return appui.Button(
             action=open,
             content=appui.VStack([
-                appui.AsyncImage(url=img_src(a["img"]))
-                    .frame(width=58, height=58).clipped()
-                    .background("secondarySystemBackground", corner_radius=8),
+                thumb,
                 appui.Text(a["name"]).font("caption2").line_limit(1),
             ], spacing=3),
         ).button_style("plain")
@@ -3405,7 +3572,8 @@ def sample_preview_view():
         pages.append(appui.Tab(content=content, tag=i))
     if not pages:
         return appui.VStack([
-            appui.Text("没有样片").foreground_color("secondaryLabel"),
+            appui.ContentUnavailableView(
+                "没有样片", system_image="photo.on.rectangle"),
             appui.Button("关闭", action=close_sample),
         ], spacing=12).padding(bottom=24)
     index = max(0, min(int(state.sample_index), len(pages) - 1))
@@ -3431,12 +3599,10 @@ def sample_preview_view():
 def do_search():
     """在影片首页发起搜索：把首页展示位的筛选条件换成关键词。
 
-    只在提交时读取临时输入并写一次 State（触发一次重建），
-    输入过程的每个按键都不经过 State。
+    输入内容由 State.keyword 承载（searchable 绑定），提交时规整番号格式。
     """
-    kw = norm_keyword(_SEARCH_INPUT["value"])
+    kw = norm_keyword(state.keyword or "")
     state.keyword = kw
-    _SEARCH_INPUT["value"] = kw
     if not kw:
         clear_search()
         return
@@ -3445,7 +3611,6 @@ def do_search():
 def clear_search():
     """退出搜索，回到最新影片。"""
     state.keyword = ""
-    _SEARCH_INPUT["value"] = ""
     set_filter(HOME_VID, HOME_FILTER)
 
 _LIST_DESTINATIONS = {"detail": detail_destination,
@@ -3457,7 +3622,7 @@ def movies_tab():
         display_page_view(HOME_VID, titled=False),
         path=PATH_MOVIES,
         destinations=_LIST_DESTINATIONS,
-    ).id("movies")
+    ).on_appear(action=load_home_once).id("movies")
 
 def actress_tab():
     """女优 tab：头像网格 + 翻页，点击进入该女优的作品列表。"""
@@ -3481,7 +3646,7 @@ def fav_tab():
         display_page_view(FAV_VID, titled=False),
         path=PATH_FAV,
         destinations=_LIST_DESTINATIONS,
-    ).id("fav")
+    ).on_appear(action=load_fav_once).id("fav")
 
 def set_player(name):
     if name not in EXTERNAL_PLAYERS:
@@ -3542,15 +3707,32 @@ def start():
     PATH_GENRE.pop_to_root()
     PATH_FAV.pop_to_root()
     PATH_SETTINGS.pop_to_root()
-    _pump(HOME_VID)
-    _pump(FAV_VID)
+    # 首页 / 收藏的首次拉取不在这里做：统一挂在各自 tab 的 .on_appear 上
+    # （load_home_once / load_fav_once），四个 tab 的加载时机模型一致，
+    # 不依赖「脚本只会被执行一次」的隐含时序
     # 冷启动 2 秒后预热女优/类型数据：首次切 tab 时数据已在/在路上，
     # 显著缩短切入等待；延迟错开启动时首页/收藏的网络高峰
     _TASK_POOL.submit(_prewarm_tabs)
 
 # 首次进入 tab 才预加载（避免启动时并发请求过多）
+_HOME_LOADED = False
+_FAV_LOADED = False
 _ACTRESS_LOADED = False
 _GENRE_LOADED = False
+
+def load_home_once():
+    global _HOME_LOADED
+    if _HOME_LOADED:
+        return
+    _HOME_LOADED = True
+    _pump(HOME_VID)
+
+def load_fav_once():
+    global _FAV_LOADED
+    if _FAV_LOADED:
+        return
+    _FAV_LOADED = True
+    _pump(FAV_VID)
 
 def load_actresses_once():
     global _ACTRESS_LOADED
