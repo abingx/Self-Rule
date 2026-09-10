@@ -1,17 +1,45 @@
 import appui
 
-FULL = 42.195
-HALF = 21.0975
+MARATHON = 42.095
+HALF_MARATHON = 21.0975
 
-# 默认值互相自洽：6'00"/公里 对应全程 4:13:10。
+PROJECTS = [
+    ("马拉松", MARATHON),
+    ("半马", HALF_MARATHON),
+    ("10K", 10),
+    ("5K", 5),
+]
+PROJECT_NAMES = [name for name, _ in PROJECTS]
+PROJECT_DISTANCES = dict(PROJECTS)
+DEFAULT_PROJECT = "马拉松"
+
+SPLITS = [
+    ("5K", 5),
+    ("10K", 10),
+    ("15K", 15),
+    ("20K", 20),
+    ("半马", HALF_MARATHON),
+    ("25K", 25),
+    ("30K", 30),
+    ("35K", 35),
+    ("40K", 40),
+    ("全马", MARATHON),
+]
+
+# 默认值互相自洽：6'00"/公里 对应全马 4:12:34。
 state = appui.PersistentState(
     persist_key="app.paces.calculator.v1",
+    project=DEFAULT_PROJECT,
     pace_min="6",
     pace_sec="00",
     time_h="4",
-    time_m="13",
-    time_s="10",
+    time_m="12",
+    time_s="34",
 )
+
+# 旧数据里若存有已改名的项目，回落到默认项目，避免下拉框无选中项。
+if state.project not in PROJECT_NAMES:
+    state.project = DEFAULT_PROJECT
 
 # state.bind 返回的 Binding 可直接传给 TextField.text。
 bind_pace_min = state.bind("pace_min")
@@ -35,21 +63,6 @@ def fmt_seconds(total_sec):
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
-def split_distances():
-    return [
-        ("5 公里", 5),
-        ("10 公里", 10),
-        ("15 公里", 15),
-        ("20 公里", 20),
-        ("半程", HALF),
-        ("25 公里", 25),
-        ("30 公里", 30),
-        ("35 公里", 35),
-        ("40 公里", 40),
-        ("全程", FULL),
-    ]
-
-
 def current_pace_seconds():
     return to_int(state.pace_min) * 60 + to_int(state.pace_sec)
 
@@ -58,26 +71,30 @@ def current_time_seconds():
     return to_int(state.time_h) * 3600 + to_int(state.time_m) * 60 + to_int(state.time_s)
 
 
+def project_distance():
+    return PROJECT_DISTANCES.get(state.project, MARATHON)
+
+
+def time_fields(pace, km):
+    finish = int(round(pace * km))
+    h, rem = divmod(finish, 3600)
+    m, s = divmod(rem, 60)
+    return {"time_h": str(h), "time_m": str(m), "time_s": str(s)}
+
+
 def update_from_pace():
     pace = current_pace_seconds()
     if pace <= 0:
         return
-    finish = int(round(pace * FULL))
-    h, rem = divmod(finish, 3600)
-    m, s = divmod(rem, 60)
-    state.batch_update(time_h=str(h), time_m=str(m), time_s=str(s))
+    state.batch_update(**time_fields(pace, project_distance()))
 
 
 def update_from_time():
-    """用时反推配速，每公里秒数向下取整。
-
-    例如 3:00:00（10800 秒）：10800 / 42.195 ≈ 255.95 秒/公里，
-    取 255 秒即 4:15/公里，全程约 2:59:20，不超过目标用时。
-    """
+    """用时反推配速，每公里秒数向下取整，使换算结果不超过目标用时。"""
     target = current_time_seconds()
     if target <= 0:
         return
-    pace_sec_per_km = target / FULL
+    pace_sec_per_km = target / project_distance()
     pmin = int(pace_sec_per_km // 60)
     psec = int(pace_sec_per_km % 60)
     state.batch_update(pace_min=str(pmin), pace_sec=f"{psec:02d}")
@@ -122,13 +139,27 @@ def submit_time(_value=None):
     compute("time")
 
 
-def split_section(title, splits):
+def set_project(value):
+    """切换项目：按新距离重算用时，与项目一次提交避免中间态。"""
+    pace = current_pace_seconds()
+    if pace > 0:
+        state.batch_update(project=value, **time_fields(
+            pace, PROJECT_DISTANCES.get(value, MARATHON)))
+    else:
+        state.project = value
+        update_from_time()
+
+
+def split_section(title, pace, limit):
+    """分段用时按配速换算，超出所选项目距离的分段以灰色显示时间。"""
     rows = []
-    for label, v in splits:
+    for label, km in SPLITS:
+        beyond = km > limit
         rows.append(
             appui.HStack([
                 appui.Text(label).foreground_color("label"),
-                appui.Text(fmt_seconds(v))
+                appui.Text(fmt_seconds(pace * km))
+                    .foreground_color("secondaryLabel" if beyond else "label")
                     .frame(max_width=appui.infinity, alignment="trailing"),
             ], spacing=6)
         )
@@ -136,7 +167,6 @@ def split_section(title, splits):
 
 
 FIELD_WIDTH = 40
-LABEL_WIDTH = 88   # 标签定宽，使两行输入组左侧对齐
 
 
 def time_field(bind, placeholder, submit_action):
@@ -157,29 +187,33 @@ def separ_colon():
             .foreground_color("label"))
 
 
-def input_row(label, fields):
-    """标签定宽 + 弹性占位 + 右侧字段组，使两行的分/秒/时纵向对齐。"""
-    row = [appui.Text(label).foreground_color("label")
-           .frame(width=LABEL_WIDTH, alignment="leading")]
-    row.append(appui.Spacer())
+def labeled_row(label, fields):
+    """原生 LabeledContent 排布：标签与分区标题同源对齐，字段组靠行尾。"""
+    row = [appui.Spacer()]
     for i, item in enumerate(fields):
         if i > 0:
             row.append(separ_colon())
         row.append(item)
-    return appui.HStack(row, spacing=4).frame(max_width=appui.infinity)
+    return appui.LabeledContent(label, content=appui.HStack(row, spacing=4))
 
 
 def root():
     # 分段用时始终以配速为基准。
     pace = current_pace_seconds()
+    limit = project_distance()
 
     main = [
-        appui.Section("目标", [
-            input_row("目标配速", [
+        appui.Section(header="目标", content=[
+            labeled_row("项目", [
+                appui.Picker(selection=state.project,
+                             options=PROJECT_NAMES,
+                             on_change=set_project).tint("label"),
+            ]),
+            labeled_row("配速", [
                 time_field(bind_pace_min, "分", submit_pace),
                 time_field(bind_pace_sec, "秒", submit_pace),
             ]),
-            input_row("目标用时", [
+            labeled_row("用时", [
                 time_field(bind_time_h, "时", submit_time),
                 time_field(bind_time_m, "分", submit_time),
                 time_field(bind_time_s, "秒", submit_time),
@@ -188,17 +222,13 @@ def root():
     ]
 
     if pace > 0:
-        main.append(split_section("分段用时", [
-            (label, pace * km) for label, km in split_distances()
-        ]))
+        main.append(split_section("分段", pace, limit))
     else:
-        main.append(appui.Section("分段用时", [
+        main.append(appui.Section("分段", [
             appui.Text("请输入有效的配速或用时").foreground_color("secondaryLabel"),
         ]))
 
-    return appui.NavigationStack(
-        appui.Form(main).navigation_title("配速计算器")
-    )
+    return appui.Form(main)
 
 
 appui.run(root, state=state, presentation="fullscreen_with_close")
