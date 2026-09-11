@@ -7,7 +7,7 @@
 #   ├─ 影片 tab：通用展示函数（封面网格 + 翻页），筛选条件随位置变化
 #   ├─ 女优 / 类型 / 收藏 tab：同一套通用展示，只是数据源与筛选条件不同
 #   ├─ 设置 tab：播放设置与关于
-#   └─ 播放：TabView 底部常驻条 + 系统 sheet 展开完整面板（不占独立 tab）
+#   └─ 播放：详情页「预览 / 预告 / 视频」按钮下方内嵌播放器（不占独立 tab）
 #
 #  数据
 #   ├─ 设置：storage.get_json / set_json（设备本地，不参与 iCloud 同步）
@@ -111,13 +111,24 @@ def log(msg):
 
 def get(url):
     """GET 请求返回文本；失败返回空串。"""
+    return get_page(url)[0]
+
+def get_page(url):
+    """GET 请求返回 (文本, HTTP 状态码)；网络异常时状态码为 0、文本为空串。
+
+    列表抓取必须区分「页面不存在」与「网络失败」：站点对越界页直接返回
+    404/410（正文为空，靠关键字判断不到），若按网络失败处理，列表就永远
+    等不到结尾——结尾处残留空的占位格，「下一页」也一直可点。
+    """
     try:
         resp = network.get(url, headers=dict(HEADERS), timeout=15)
+        status = int(getattr(resp, "status", 0) or 0)
         if resp and resp.ok:
-            return resp.text
+            return resp.text, status
+        return "", status
     except Exception as e:
         log("get err " + url[:80] + " : " + str(e))
-    return ""
+    return "", 0
 
 def fill_base(src):
     """相对路径补全为完整 URL（已是 http 开头则原样返回）。"""
@@ -206,6 +217,12 @@ def image_cache_maintenance():
         mark_dirty()
 WORKERS = 3
 _RELOAD_DIRTY = False
+# 本轮脏刷新涉及的图片 URL：详情页打开时据此判断「到货的图是否属于详情页」，
+# 不属于就不重建整棵树——列表封面在后台陆续下完时，重建会让详情页的
+# 封面 / 样图跟着重新创建，表现为图片隔几秒闪一下。
+_DIRTY_SRCS = set()
+# 非下载来源的图片变更（磁盘缓存清理等）：无法按 URL 判定，一律视为需要重建
+_DIRTY_FORCE = False
 _LAST_ACTIVITY = 0.0
 _CACHE_STARTED = False
 def _build_placeholder():
@@ -433,6 +450,7 @@ def _worker():
         with _LOCK:
             _INFLIGHT.discard(url)
             if ok:
+                _DIRTY_SRCS.add(url)        # 记录到货的图，供详情页判断相关性
                 _DOWNLOADED[url] = None
                 _DOWNLOADED.move_to_end(url)
                 while len(_DOWNLOADED) > MAX_DOWNLOADED:
@@ -469,13 +487,16 @@ def is_dirty():
     return _RELOAD_DIRTY
 
 def mark_dirty():
-    global _RELOAD_DIRTY, _LAST_ACTIVITY
+    global _RELOAD_DIRTY, _DIRTY_FORCE, _LAST_ACTIVITY
     _RELOAD_DIRTY = True
+    _DIRTY_FORCE = True     # 非下载来源：无法按 URL 判定，一律需要重建
     _LAST_ACTIVITY = time.time()
 
 def clear_dirty():
-    global _RELOAD_DIRTY
+    global _RELOAD_DIRTY, _DIRTY_FORCE
     _RELOAD_DIRTY = False
+    _DIRTY_FORCE = False
+    _DIRTY_SRCS.clear()
 
 def last_activity():
     return _LAST_ACTIVITY
@@ -496,7 +517,6 @@ _STATE_FIELDS = dict(
     panel="",
     panel_title="",
     play="",                # 当前播放来源："" / 预览 / 预告 / 完整视频
-    panel_open=False,       # 播放面板（sheet）是否展开
     src_preview="",         # 详情页预览链接（进入详情即并行预取，空表示还没取到）
     src_trailer="",         # 详情页预告链接
     src_video="",           # 详情页完整视频链接
@@ -602,7 +622,10 @@ SETTINGS = load_settings()
 # 发生、页码被连锁重置（即「切 tab 闪烁 + 页码回第一页」的根因）。
 _GRID_GEOMETRY_BY_KIND = {"movie": {"w": 0.0, "h": 0.0},
                           "actress": {"w": 0.0, "h": 0.0},
-                          "fav": {"w": 0.0, "h": 0.0}}
+                          "fav": {"w": 0.0, "h": 0.0},
+                          # 推入的跳转列表：导航栏带标题，可用高度与影片首页不同，
+                          # 必须单独记一份测量值（否则两边互相覆盖 → 行数跳变）
+                          "link": {"w": 0.0, "h": 0.0}}
 PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()）
 
 # ------------------------------------------------------------------
@@ -611,7 +634,7 @@ PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()�
 # 规则：在不超出「上一页 / 第X页 / 下一页」分页条的前提下，
 # 按各 tab 的可视高度取可容纳的最大行数（行数向下取整），
 # 图片尺寸保持不变（列数与 adaptive(minimum, maximum) 一致）。
-_GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每页项数
+_GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0, "link": 0}   # 各类页生效的每页项数
 # GeometryReader 回调防抖：tab 首次出现时 iOS 往往连续回调多次（安全区 /
 # Tab 栏高度未稳定的过渡尺寸 → 最终尺寸），行数每次变化都立即重建会让
 # 网格连续抖动（先按兜底值撑满、被砍掉一行、又补回来）。回调只登记待
@@ -625,10 +648,11 @@ PAGER_ROW_H = 56             # 分页条自身高度（按钮 min_height 44 + �
 # 计算只需扣除插肩条自身高度（PAGER_ROW_H）。
 # 各 tab 顶部工具行高度（含与网格的间距）：影片=0（搜索栏已改为原生
 # searchable 上移导航栏，不再占据滚动内容顶部），收藏=「共X部」，女优=无
-TOP_TOOL_H_BY_KIND = {"movie": 0, "actress": 0, "fav": 48}
+TOP_TOOL_H_BY_KIND = {"movie": 0, "actress": 0, "fav": 48, "link": 0}
 # 未完成首次测量时的兜底每页项数（与旧设置默认一致）
-FALLBACK_PAGE_SIZE = {"movie": 9, "actress": 12, "fav": 9}
-RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO, "fav": COVER_RATIO}
+FALLBACK_PAGE_SIZE = {"movie": 9, "actress": 12, "fav": 9, "link": 9}
+RATIO_BY_KIND = {"movie": COVER_RATIO, "actress": ACTRESS_RATIO,
+                 "fav": COVER_RATIO, "link": COVER_RATIO}
 
 def make_grid_observer(kind):
     """生成某个 tab 的 GeometryReader 回调：只记录并重算本 tab 的测量值。
@@ -745,11 +769,17 @@ def _apply_pending_geometry(kind):
         _pump(vid)             # 补足变长后的预加载窗口（缺失数据增量抓）
 
 def page_size_key(kind):
-    """展示位的 filter.kind -> 计算键（女优 / 收藏 / 其余都用影片）。"""
+    """展示位的 filter.kind -> 计算键。
+
+    女优 / 收藏各占一键；推入的跳转列表单独用 link（导航栏带标题，
+    可用高度与影片首页不同）；其余（首页 / 搜索）都按影片首页计算。
+    """
     if kind == "actress":
         return "actress"
     if kind == "fav":
         return "fav"
+    if kind == "link":
+        return "link"
     return "movie"
 
 def grid_column_count(kind="movie"):
@@ -1210,15 +1240,14 @@ def fetch_movie_page(url):
 
     返回值严格区分三种情况：
       list     请求成功（可为空列表 = 这一页确实没有内容）
-      "empty"  请求成功但确认没有更多数据（404 / 空结果页）→ 可置 exhausted
+      "empty"  请求成功但确认没有更多数据（越界 404/410、空结果页）→ 置 exhausted
       None     网络失败 → 不代表列表结束，允许重试
     """
-    html = get(url)
+    html, status = get_page(url)
     if not html:
-        return None
-    if "404 Page Not Found" in html:
-        return "empty"
-    if "沒有您要的結果" in html:
+        # 越界页正文为空，只能靠状态码判定；其余状态按「可重试」处理
+        return "empty" if status in (404, 410) else None
+    if "404 Page Not Found" in html or "沒有您要的結果" in html:
         return "empty"
     return parse_movies(html)
 
@@ -1601,6 +1630,8 @@ def new_view(flt, extras, path):
         "remote": 1,        # 下一个待抓的远程页码
         "loading": False,
         "exhausted": False, # 远程已无更多内容
+        "total_pages": 0,   # 已知的末页页码（0 = 未知）：输入超范围时据此落到末页
+        "probing": False,   # 是否正在探测末页（避免重复发起）
         "generation": 0,    # 递增代号：筛选/数据池重置后 +1，在途 worker 结果作废
         "fail_streak": 0,   # 连续网络失败次数：决定重试退避时长
         "next_retry": 0.0,  # 失败退避截止时刻：期内 _pump 不再重试
@@ -1844,6 +1875,9 @@ def can_next(vid):
     if not v:
         return False
     with _VIEWS_LOCK:
+        last = v.get("total_pages") or 0
+        if last:
+            return v["page"] < last      # 末页已知：一律以它为准
         if pool_end(v) > v["page"] * page_size(vid):
             return True
         return not v["exhausted"]
@@ -1939,6 +1973,17 @@ def _trim(v, size):
     del v["pool"][:drop]
     v["base"] += drop
 
+def _mark_exhausted(vid, v):
+    """标记列表已到底，并记下末页页码（需持有 _VIEWS_LOCK 调用）。
+
+    末页 = 数据池覆盖到的最后一页。记下来后，「下一页」可点性、页码输入
+    超范围的处理都以它为准（与收藏页天然全量已知时的行为一致）。
+    """
+    v["exhausted"] = True
+    size = page_size(vid)
+    if size > 0:
+        v["total_pages"] = max(1, (pool_end(v) + size - 1) // size)
+
 def _pump(vid, force=False):
     """补足展示位的预加载窗口；不足则后台增量抓取。"""
     v = VIEWS.get(vid)
@@ -1953,7 +1998,7 @@ def _pump(vid, force=False):
                 v["pool"] = list(fav_items())   # 拷贝：头部回收不会动到缓存
                 v["base"] = 0
                 v["remote"] = 1
-                v["exhausted"] = True
+                _mark_exhausted(vid, v)         # 一并记下末页（收藏天然全量已知）
                 v["loading"] = False
                 changed = True    # 数据池真的重建了才需要刷新
         # 可视窗口的封面检查 / 解析 / 下载：数据池未重建（仅翻页）时也要滑动窗口
@@ -2045,10 +2090,20 @@ def _pump_worker(vid, gen):
                 if VIEWS.get(vid) is not v or v["generation"] != gen:
                     return
                 if res == "empty" or not res:
-                    v["exhausted"] = True
+                    _mark_exhausted(vid, v)
                     break
+                fresh = res
+                if not v["base"] and res[0].get("code"):
+                    # 池尚未回收过时才做重复判定（女优头像列表没有 code，跳过）：
+                    # 越界页若被站点以 200 返回（正文其实是已有内容），据此收尾，
+                    # 否则会「永远能翻下一页」、结尾一直残留空的占位格
+                    known = {x.get("code") for x in v["pool"]}
+                    fresh = [x for x in res if x.get("code") not in known]
+                    if not fresh:
+                        _mark_exhausted(vid, v)
+                        break
                 # 增量追加：新数据排在已有数据之后，已翻过的页码内容不受影响
-                v["pool"].extend(sort_new_items(res))
+                v["pool"].extend(sort_new_items(fresh))
                 v["remote"] += 1
                 v["fail_streak"] = 0
                 v["next_retry"] = 0.0
@@ -2091,6 +2146,8 @@ def set_filter(vid, flt):
         v["base"] = 0
         v["remote"] = 1
         v["exhausted"] = False
+        v["total_pages"] = 0    # 新筛选的末页未知：需要时重新探测
+        v["probing"] = False
         v["loading"] = False
         v["fail_streak"] = 0    # 新筛选视为全新任务：清掉旧退避
         v["next_retry"] = 0.0
@@ -2111,19 +2168,90 @@ def apply_page(vid, page):
     if not v:
         return False
     page = max(1, int(page))
+    probe = 0
     with _VIEWS_LOCK:
         size = page_size(vid)
+        last = v.get("total_pages") or 0
+        loaded_last = max(1, (pool_end(v) + size - 1) // size)
         if (page - 1) * size < v["base"]:
             # 该页已被回收：退到数据池仍能覆盖的第一页即可，
             # 数据池 / 远程游标 / 在途任务保持不动（不重置、不重新抓取）
             page = max(1, v["base"] // size + 1)
+        elif last:
+            # 末页已知（收藏天然全量已知；跳转列表到底或探测后写入）：
+            # 输入超过上限直接落到最后一页
+            page = min(page, last)
         elif v["exhausted"]:
-            # 已知列表总长时，不允许跳过最后一页
-            page = min(page, max(1, (pool_end(v) + size - 1) // size))
+            # 兜底：已知到底但没记下末页时，按数据池末尾算
+            page = min(page, loaded_last)
+        elif page > loaded_last and not v["probing"]:
+            # 跳到了还没抓到的页码：后台探测真实末页。这样即使输入远超
+            # 上限，也会在探测完成后自动落到最后一页，而不是停在空页上
+            # （同时避免预加载窗口朝一个不存在的页码疯狂抓取）
+            v["probing"] = True
+            probe = page
+            gen = v["generation"]
         if page != v["page"]:
             v["page"] = page
+    if probe:
+        _FETCH_POOL.submit(_probe_worker, vid, gen, probe)
     _pump(vid)
     return True
+
+# 末页探测的二分步数上限：即使输入 9999 这类离谱页码，也只多花十几次请求
+PROBE_MAX_STEPS = 12
+
+def _probe_worker(vid, gen, want):
+    """后台探测跳转列表的真实末页（页码输入超出已加载范围时触发）。
+
+    站点对越界页返回 404 / 空页，且页码连续，于是在
+    [已加载末页, 请求页] 之间二分即可定位「最后一个有内容的页」：
+      · 请求页本身有内容 → 说明它没越界，末页仍未确定，不做任何修改；
+      · 请求页越界 → 二分收敛到边界，写入末页并把当前页夹到该页，
+        即「输入超过上限直接跳到最后一页」（与收藏页的处理一致）。
+    网络失败一律放弃本轮探测（不写末页），交由原有重试机制处理。
+    """
+    v = VIEWS.get(vid)
+    if not v:
+        return
+    try:
+        size = page_size(vid)
+        with _VIEWS_LOCK:
+            lo = max(1, (pool_end(v) + size - 1) // size)    # 已知有内容的页
+        res = fetch_view_page(v, want)
+        if res is None:
+            return                       # 网络失败：保持原状，等下次重试
+        if isinstance(res, list) and res:
+            return                       # 请求页没越界：末页仍未知
+        hi = want
+        last = lo
+        steps = 0
+        while lo + 1 < hi and steps < PROBE_MAX_STEPS:
+            steps += 1
+            mid = (lo + hi) // 2
+            res = fetch_view_page(v, mid)
+            if res is None:
+                return                   # 中途失败：放弃本轮探测
+            if isinstance(res, list) and res:
+                lo = mid
+                last = mid
+            else:
+                hi = mid
+        with _VIEWS_LOCK:
+            if VIEWS.get(vid) is not v or v["generation"] != gen:
+                return                   # 展示位已换筛选 / 已被回收：丢弃
+            v["total_pages"] = last
+            if v["page"] > last:
+                v["page"] = last         # 超范围：直接落到最后一页
+        _pump(vid)
+        mark_views_dirty(vid)
+    except Exception as e:
+        log("probe last page err: " + str(e))
+    finally:
+        v = VIEWS.get(vid)
+        if v is not None:
+            with _VIEWS_LOCK:
+                v["probing"] = False
 
 def goto_page(vid, page):
     """翻页：页码立即生效，缺失的数据由后台增量补足。"""
@@ -2268,6 +2396,23 @@ def _detail_worker(link, seq):
         if seq == _DETAIL_SEQ:
             _DETAIL_ERROR = True
 
+def _detail_image_urls():
+    """当前详情页用到的图片 URL 集合（判断图片刷新是否需要重建详情页）。
+
+    覆盖封面、样图（缩略图与大图）与女优头像；不含列表缩略图
+    （state.detail_thumb 只用于收藏封面，详情页不渲染它，
+    把它算进来会让列表缩略图到货时也触发一次无谓重建）。
+    统一用 _to_abs 规范化，便于与下载队列里的 URL 直接比较。
+    """
+    d = state.detail or {}
+    srcs = [d.get("cover") or ""]
+    for s in d.get("samples") or []:
+        srcs.append(s.get("img") or "")
+        srcs.append(s.get("link") or "")    # 大图（样图浏览器里按 link 取图）
+    for a in d.get("actresses") or []:
+        srcs.append(a.get("img") or "")
+    return {_to_abs(s) for s in srcs if s}
+
 def _sync_dirty():
     """主线程周期任务：图片刷新 + 列表提交 + 播放请求 + 详情提交。"""
     global _VIEWS_DIRTY, _LAST_IMG_RELOAD
@@ -2315,6 +2460,13 @@ def _sync_dirty():
     if is_dirty():
         quiet = now - last_activity() >= IMG_SILENCE_INTERVAL
         detail = state.detail_open
+        # 详情页打开时，只有「详情页自己的图」到货才值得重建：列表封面 /
+        # 收藏封面补全的下载在后台陆续完成，每次都整树重建会让详情页的
+        # 封面与样图跟着重新创建（表现为图片隔几秒闪一下）。
+        # 判定为不相关时不消费脏标记——返回列表后一次性刷新。
+        relevant = True
+        if detail:
+            relevant = _DIRTY_FORCE or bool(_DIRTY_SRCS & _detail_image_urls())
         max_wait = IMG_MAX_RELOAD_LONG if detail else IMG_MAX_RELOAD_INTERVAL
         min_gap = IMG_RELOAD_MIN_GAP_DETAIL if detail else IMG_RELOAD_MIN_GAP
         overdue = now - _LAST_IMG_RELOAD >= max_wait
@@ -2322,7 +2474,7 @@ def _sync_dirty():
         # 不等下载静默 / 节流，让切入 tab 后封面尽快出现；
         # 后续刷新仍走原节流，避免下载高峰期频繁重建
         first_flush = not _TAB_IMG_FLUSHED
-        if ((quiet or overdue or first_flush) and settled
+        if (relevant and (quiet or overdue or first_flush) and settled
                 and (first_flush or now - _LAST_IMG_RELOAD >= min_gap)):
             clear_dirty()
             _LAST_IMG_RELOAD = now
@@ -2338,7 +2490,11 @@ def _sync_dirty():
         # 不等切换宽限窗立即重建；转场静默（settled 内含）仍遵守
         first_screen = any(vid not in _SHOWN_VIDS and _pool_has_data(vid)
                            for vid in visible)
-        if (settled or first_screen) and (_VIEWS_DIRTY or visible):
+        # 详情页打开时列表被盖住、不可见，但它在后台仍会增量补数据：
+        # 这些标记此时重建只会让详情页的图片跟着重新创建（闪动），
+        # 因此保留标记，等返回列表时一次性刷新。
+        if (not state.detail_open and (settled or first_screen)
+                and (_VIEWS_DIRTY or visible)):
             need_reload = True
             _VIEWS_DIRTY = False
             _DIRTY_VIDS.clear()
@@ -2665,7 +2821,7 @@ def _halt_player():
 def stop_local_playback():
     """暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放。"""
     _halt_player()
-    _batch_state(panel="", panel_title="", panel_open=False)
+    _batch_state(panel="", panel_title="")
 
 def play_url(url, title="", source=""):
     log("play: " + str(title) + " -> " + str(url)[:120])
@@ -2673,8 +2829,8 @@ def play_url(url, title="", source=""):
         start_playback(url)      # 自动播放 + 默认静音
     except Exception as e:
         log("player load err: " + str(e))
-    # 播放面板交给系统 sheet：点播放即展开，同时 TabView 底部出现常驻条
-    _batch_state(panel=url, panel_title=title, play=source, panel_open=True,
+    # 内嵌播放：只记录当前播放来源与标题，详情页据此在按钮下方加载播放器
+    _batch_state(panel=url, panel_title=title, play=source,
                  status="", reload=state.reload + 1)
 
 def open_detail(movie, vid):
@@ -2726,6 +2882,9 @@ def open_detail(movie, vid):
         updates["detail_thumb"] = thumb
     if state.panel or state.panel_title or state.play or state.status:
         updates.update(panel="", panel_title="", play="", status="")
+        # 打开的是另一部影片：先停掉上一部的内嵌播放，避免播放器已经收起
+        # 但声音还在继续
+        _halt_player()
     # 播放源复位值 / 缓存值也合并进同一次提交
     prefetch_play_sources(new_detail.get("code"), updates=updates)
     # detail 必须直写，不能走 batch_update：批量提交不保留 dict 值的对象
@@ -2811,9 +2970,9 @@ def open_genre(link, value):
     open_filter_at(PATH_GENRE, link, value)
 
 def clear_panel():
-    """关闭播放：停止本地播放（含画中画）并收起播放面板。"""
+    """关闭播放：停止本地播放（含画中画）并收起详情页内嵌的播放器。"""
     _halt_player()
-    _batch_state(panel="", panel_title="", play="", panel_open=False)
+    _batch_state(panel="", panel_title="", play="")
 
 def open_external_player():
     """把当前播放链接交给设置里选定的外部播放器（URL Scheme 可配置）。"""
@@ -2829,10 +2988,10 @@ def open_external_player():
     # 先暂停并停止本地播放、关闭画中画，避免与外部播放器同时播放/冲突
     _halt_player()
     if shortcuts.open_url(target):
-        _batch_state(panel="", panel_title="", play="", panel_open=False,
+        _batch_state(panel="", panel_title="", play="",
                      status="已跳转 " + name, reload=state.reload + 1)
     else:
-        _batch_state(panel="", panel_title="", panel_open=False,
+        _batch_state(panel="", panel_title="", play="",
                      status="打开失败", reload=state.reload + 1)
 
 def copy_video_link():
@@ -3319,13 +3478,13 @@ def fav_count_row():
         .foreground_color("secondaryLabel") \
         .frame(min_height=36, max_width=appui.infinity, alignment="center")
 
-def movie_display(vid, with_pager=True):
-    """通用影片展示：封面网格（+ 翻页条）。
+def movie_display(vid):
+    """通用影片展示：封面网格。
 
     vid 决定用哪个展示位；展示位的 filter 决定筛选条件，
     extras 决定这一处额外显示什么（搜索框 / 下拉刷新 / 提示行）。
-    with_pager=False 用于三个 tab 根页：分页条由 display_page_view
-    固定显示在 Tab 栏上方，不进滚动区。
+    分页条不在这里渲染：统一由 display_page_view 以底部安全区插肩固定在
+    页面底部（见该函数），因此任何页面的分页条位置完全一致、不随内容滚动。
     数据按发布时间从新到旧固定排列，增量加载只追加、不覆盖已有内容。
     """
     v = VIEWS.get(vid)
@@ -3357,9 +3516,6 @@ def movie_display(vid, with_pager=True):
         parts.append(appui.ContentUnavailableView(
             "没有找到影片", system_image="film",
             description="换个筛选条件或下拉刷新再试"))
-
-    if with_pager:
-        parts.append(pager_row(vid))
 
     if ex.get("status") and state.status:
         parts.append(appui.Text(state.status).font("caption")
@@ -3410,13 +3566,16 @@ def set_genre_group(v):
 def display_page_view(vid, titled=True):
     """把通用展示包装成可导航的页面（下拉刷新按附加设置决定）。
 
-    titled=False 用于影片 / 女优 / 收藏三个 tab 根页：
-      - 分页条以底部安全区插肩（safeAreaInset）钉在底部，不随内容
-        滚动，无需滚动页面即可点击；原生键盘避让自动让它贴紧键盘；
+    titled=False 用于影片 / 女优 / 收藏三个 tab 根页；titled=True 用于从
+    详情页推入的跳转列表（保留导航标题）。两者结构完全一致：
+
+      - 分页条一律以底部安全区插肩（safeAreaInset）钉在底部：位置与任何
+        页面完全一致，不随内容滚动、也不会因内容行数变化而上下移动；
+        原生键盘避让自动把它抬到键盘上方并紧贴键盘；
       - 滚动区铺满 GeometryReader 实测的整个可用区域（不对其内容限高），
         每页项数按「实测高度 - 分页条插肩高度」计算，内容不会越过分页条，
-        测量与布局完全解耦，无反馈回路。
-    推入的跳转列表仍保留标题，分页条随内容滚动。
+        测量与布局完全解耦，无反馈回路；
+      - 跳转列表的测量值按 link 键单独记录，不与影片首页互相覆盖。
     """
     v = VIEWS.get(vid)
     if not v:
@@ -3435,21 +3594,11 @@ def display_page_view(vid, titled=True):
             sv = sv.navigation_title(view_title(vid))
         return sv
 
-    if titled:
-        # 推入的跳转列表：分页条随内容滚动（保持原结构）
-        sv = appui.ScrollView(movie_display(vid, with_pager=True))
-        if v["extras"].get("refresh"):
-            sv = sv.refreshable(action=refresh_view)
-        return sv.navigation_title(view_title(vid))
-
-    # 三个 tab 根页：分页条以底部安全区插肩（safeAreaInset）钉在底部，
-    # 原生键盘避让自动把它抬到键盘上方并紧贴键盘——弹出/收起全程
-    # 无需跟踪键盘状态或手动重建；滚动内容自动为插肩条让位
     pager = pager_row(vid) \
         .padding(horizontal=PAGE_H_PAD) \
         .padding(vertical=6) \
         .background("systemBackground", opacity=0.92)
-    sv = appui.ScrollView(movie_display(vid, with_pager=False))
+    sv = appui.ScrollView(movie_display(vid))
     if v["extras"].get("refresh"):
         sv = sv.refreshable(action=refresh_view)
     if v["extras"].get("search"):
@@ -3457,10 +3606,13 @@ def display_page_view(vid, titled=True):
         # text 绑定 State.keyword，重建不会顶掉用户正在输入的内容
         sv = sv.searchable(text=state.keyword, prompt="番号或演员",
                            on_change=set_search_input, on_submit=do_search)
-    return appui.GeometryReader(
+    view = appui.GeometryReader(
         content=sv.safe_area_inset(edge="bottom", content=pager),
         on_change=make_grid_observer(page_size_key(view_kind(vid))),
     )
+    if titled:
+        view = view.navigation_title(view_title(vid))
+    return view
 
 
 # ============================================================
@@ -3659,17 +3811,22 @@ def detail_page_view():
                        spacing=12, alignment="leading")
 
     if state.panel:
-        # 播放状态由 TabView 底部常驻条 + 系统 sheet 承载（官方模式）：
-        # 详情页不再内嵌播放器——重型媒体视图不放可滚动区域，
-        # 这里只留一个入口，把完整的播放控制交给 sheet
+        # 播放：直接在「预览 / 预告 / 视频」按钮下方内嵌播放器（点按钮即在
+        # 原位加载），不经过弹出面板；关闭播放 = 停止本地播放并收起这一段。
+        op_buttons = [eq_btn("关闭播放", clear_panel)]
+        if state.play == "完整视频":
+            op_buttons = [
+                eq_btn("外部播放", open_external_player),
+                eq_btn("复制链接", copy_video_link),
+                eq_btn("关闭播放", clear_panel),
+            ]
         top = appui.VStack([
             top,
-            appui.HStack([
-                appui.Text("正在播放：" + (state.panel_title or state.play))
-                    .font("caption").foreground_color("secondaryLabel").line_limit(1),
-                appui.Spacer(min_length=8),
-                appui.Button("播放面板", action=open_player_panel),
-            ], spacing=8),
+            appui.Text(state.panel_title).font("caption")
+                .foreground_color("secondaryLabel").line_limit(1),
+            appui.VideoPlayer(player=get_player(), autoplay=True,
+                              pause_on_disappear=False).frame(height=220),
+            appui.HStack(op_buttons, spacing=8),
         ], spacing=8)
     if state.status:
         top = appui.VStack([
@@ -3926,7 +4083,7 @@ def start():
     # 15 个复位字段合并成一次重建（原来是 15 次）
     _batch_state(tab=0, keyword="", detail=None, detail_open=False,
                  detail_thumb="", panel="", panel_title="", play="",
-                 panel_open=False, page_input="", page_input_vid="",
+                 page_input="", page_input_vid="",
                  page_editing=False,
                  src_preview="", src_trailer="", src_video="", status="",
                  sample_index=0, name_text="", title_trans=False)
@@ -4045,7 +4202,7 @@ def _tab_content(tag, builder):
     return builder()
 
 def wide_button(label, action, prominent=False):
-    """等宽操作按钮（详情页 / 播放面板共用）。
+    """等宽操作按钮（详情页操作行与播放操作行共用）。
 
     文字不折行（自动缩字号）、同排均分宽度；min_height=44 保证触控目标
     达到 iOS 建议的最小尺寸（原来 34pt 偏小）。
@@ -4057,51 +4214,8 @@ def wide_button(label, action, prominent=False):
         .button_style("bordered_prominent" if prominent else "bordered") \
         .frame(min_height=44, max_width=appui.infinity)
 
-def open_player_panel():
-    state.panel_open = True
-
-def close_player_panel():
-    state.panel_open = False
-
-def player_accessory_view():
-    """TabView 底部常驻播放条（官方底部附件模式）：显示在播内容，点击展开面板。"""
-    return appui.HStack([
-        appui.VStack([
-            appui.Label(state.panel_title or "正在播放",
-                        system_image="play.circle.fill")
-                .font("subheadline").bold().line_limit(1),
-            appui.Text((state.play or "播放中") + " · 点击展开")
-                .font("caption").foreground_color("secondaryLabel"),
-        ], alignment="leading", spacing=2)
-            .frame(max_width=appui.infinity, alignment="leading"),
-        appui.Label("", system_image="chevron.up")
-            .foreground_color("secondaryLabel"),
-    ], spacing=10).padding(horizontal=14, vertical=10)
-
-def player_panel_view():
-    """播放面板（系统 sheet）：播放器 + 操作按钮。
-
-    圆角、拖拽条、下拉关闭与 detents 全部交给系统 sheet 处理，
-    不再把 VideoPlayer 塞进详情页的可滚动列表（重型媒体视图放稳定区域）。
-    """
-    rows = [appui.Text(state.panel_title or "播放").font("subheadline").bold().line_limit(2),
-            appui.VideoPlayer(player=get_player(), autoplay=True,
-                              pause_on_disappear=False).frame(height=220)]
-    if state.play == "完整视频":
-        rows.append(appui.HStack([
-            wide_button("外部播放", open_external_player),
-            wide_button("复制链接", copy_video_link),
-        ], spacing=8))
-    rows.append(appui.HStack([
-        wide_button("关闭播放", clear_panel),
-        wide_button("收起面板", close_player_panel),
-    ], spacing=8))
-    return appui.NavigationStack(
-        appui.Form([appui.Section(rows, header="播放中")]).navigation_title("播放")
-    )
-
 def make_body():
-    tabs = appui.TabView(
+    return appui.TabView(
         tabs=[
             appui.Tab("影片", system_image="play.rectangle",
                       content=_tab_content(0, movies_tab), tag=0),
@@ -4116,18 +4230,6 @@ def make_body():
         ],
         selection=state.bind.tab,
         on_change=set_tab,
-    )
-    if state.panel:
-        # 有播放会话时才挂底部常驻条；展开面板由系统 sheet 呈现
-        tabs = tabs.tab_view_bottom_accessory(
-            content=player_accessory_view().content_shape("rect")
-                .on_tap(open_player_panel))
-    return tabs.sheet(
-        is_presented=state.panel_open,
-        on_dismiss=close_player_panel,
-        content=player_panel_view,
-        detents="medium_large",
-        drag_indicator="visible",
     )
 
 start()
