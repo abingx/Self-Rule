@@ -10,8 +10,8 @@
 #   └─ 播放：TabView 底部常驻条 + 系统 sheet 展开完整面板（不占独立 tab）
 #
 #  数据
-#   ├─ 设置：storage.get_json / set_json
-#   ├─ 收藏：database.collection（按记录增删，顺序号 seq 保证跨启动稳定）
+#   ├─ 设置：storage.get_json / set_json（设备本地，不参与 iCloud 同步）
+#   ├─ 收藏：目录内 favorites.json（随 iCloud 同步到其他设备，原子替换写入）
 #   └─ 图片：自建磁盘缓存 + 后台下载队列
 #
 #  通用展示函数 movie_display(vid) 是唯一的影片列表实现，
@@ -36,10 +36,17 @@ from urllib.parse import quote
 
 import appui
 import clipboard
-import database
 import network
 import shortcuts
 import storage
+
+# 设备信息（官方 device 模块，文档标注「所需权限：无」）：
+# 用于按设备类型取网格尺寸（见 device_class）。个别运行时上若不可用，
+# 统一回退 iPhone 布局，不影响其余功能。
+try:
+    import device
+except Exception:
+    device = None
 
 
 # ============================================================
@@ -552,8 +559,6 @@ DETAIL_STACKS = {}
 
 
 SETTINGS_KEY = "javvault.settings"
-# 旧版本地设置文件（一次性迁移用，迁移后由 storage 托管）
-LEGACY_SET_FILE = os.path.join(os.getcwd(), "settings.json")
 
 # 每页项数不再提供设置项：按界面实际尺寸动态计算
 # （在不超出「上一页 / 第X页 / 下一页」分页条的前提下取最大条目数，
@@ -563,29 +568,11 @@ DEFAULT_SETTINGS = {
     "mute": True,             # 视频播放是否默认静音
 }
 
-def _load_legacy_settings():
-    """读取旧版本地 settings.json（一次性迁移用）；缺失/损坏返回 None。"""
-    try:
-        if os.path.exists(LEGACY_SET_FILE):
-            with open(LEGACY_SET_FILE, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-            if isinstance(saved, dict):
-                return saved
-    except Exception as e:
-        log("legacy settings err: " + str(e))
-    return None
-
 def load_settings():
     """读取设置；缺失/损坏时回退默认值（storage 内部已处理解析兜底）。"""
     data = dict(DEFAULT_SETTINGS)
-    saved = None
     try:
         saved = storage.get_json(SETTINGS_KEY, None)
-        if saved is None:
-            # 首次运行新版本：把旧版本地文件迁移进 storage
-            saved = _load_legacy_settings()
-            if saved is not None:
-                storage.set_json(SETTINGS_KEY, saved)
     except Exception as e:
         log("load_settings err: " + str(e))
         saved = None
@@ -623,7 +610,7 @@ PAGE_H_PAD = 16              # 展示内容左右内边距（VStack .padding()�
 # ------------------------------------------------------------------
 # 规则：在不超出「上一页 / 第X页 / 下一页」分页条的前提下，
 # 按各 tab 的可视高度取可容纳的最大行数（行数向下取整），
-# 图片尺寸保持不变（列数与 adaptive(minimum=GRID_MIN_COLUMN) 一致）。
+# 图片尺寸保持不变（列数与 adaptive(minimum, maximum) 一致）。
 _GRID_PAGE_SIZE = {"movie": 0, "actress": 0, "fav": 0}   # 各 tab 生效的每页项数
 # GeometryReader 回调防抖：tab 首次出现时 iOS 往往连续回调多次（安全区 /
 # Tab 栏高度未稳定的过渡尺寸 → 最终尺寸），行数每次变化都立即重建会让
@@ -766,14 +753,25 @@ def page_size_key(kind):
     return "movie"
 
 def grid_column_count(kind="movie"):
-    """按实测可用宽度算列数：与 adaptive(minimum=GRID_MIN_COLUMN) 的
-    实际渲染一致（图片尺寸由此保持不变，计算只用于确定每页行数）。"""
+    """按实测可用宽度算列数：与 adaptive(minimum, maximum) 的实际渲染一致。
+
+    先按列宽下限「能放几列放几列」，再按 maximum 的语义（列宽触顶即转为
+    更多列）尝试加列——若加列后会低于下限则不再加。图片尺寸由此确定，
+    这里的计算只用于确定每页行数（见 compute_page_size）。
+    """
     w = _GRID_GEOMETRY_BY_KIND.get(kind, {}).get("w", 0.0)
     if w <= 0:
         return 3                            # 未测量时的兜底
+    mn, mx = grid_column_spec()
     grid_w = max(0.0, w - PAGE_H_PAD * 2)
-    cols = int((grid_w + GRID_SPACING) // (GRID_MIN_COLUMN + GRID_SPACING))
-    return max(2, cols)
+    cols = max(2, int((grid_w + GRID_SPACING) // (mn + GRID_SPACING)))
+    while cols < 40:
+        if (grid_w - (cols - 1) * GRID_SPACING) / cols <= mx:
+            break                           # 列宽未触顶：不再加列
+        if (grid_w - cols * GRID_SPACING) / (cols + 1) < mn:
+            break                           # 加列会低于下限：到此为止
+        cols += 1
+    return cols
 
 def compute_page_size(kind):
     """某个 tab 的每页项数：在不超出分页条的前提下取最大值（列数 × 行数）。
@@ -811,13 +809,12 @@ def page_size(vid=None, kind=None):
 # ============================================================
 
 
-# 收藏按记录存储在官方 database 的 Collection 里（key = 番号）：
-# 收藏/取消只 upsert/delete 单条记录，不再整份 JSON 重写磁盘，
-# I/O 成本不随收藏总量增长。SHELF 是启动时载入的内存镜像，
-# 列表渲染 / 排序 / 计数仍走内存，不写盘。
-FAV_COL = database.collection("favorites")
-# 旧版本地收藏文件（一次性迁移用，迁移后由 database 托管）
-LEGACY_FAV_FILE = os.path.join(os.getcwd(), "favorites.json")
+# 收藏保存在 MiniApp 目录内的 favorites.json：该目录随 iCloud 同步，
+# 收藏状态才能跨设备。官方 database 存放在宿主沙盒（SQLite）里、不参与同步，
+# 因此这里用「整份文件」存储：只在收藏真正变动时写入一次，
+# 且先写临时文件再 os.replace 原子替换——避免同步过程中被读到半份文件。
+# SHELF 是启动时载入的内存镜像，列表渲染 / 排序 / 计数都走内存。
+FAV_FILE = os.path.join(os.getcwd(), "favorites.json")
 
 _FAV_SEQ = 0        # 收藏顺序号：单调递增，越大越新（同一天内的排序依据）
 
@@ -825,13 +822,17 @@ def _fav_sort_key(item):
     """排序键：(收藏日期, 收藏顺序号) 倒序。
 
     日期新的在前；同一天内顺序号大的在前——即新增的收藏始终在最上方，
-    与旧 favorites.json「从上到下 = 从新到旧」的顺序完全一致。
+    与 favorites.json「从上到下 = 从新到旧」的顺序完全一致。
     """
     return (str(item.get("fav_time") or item.get("date") or ""),
             int(item.get("seq") or 0))
 
 def _norm_fav(item, seq=None):
-    """规整一条收藏记录；缺番号的返回 None（无法成为收藏项）。"""
+    """规整一条收藏记录；缺番号的返回 None（无法成为收藏项）。
+
+    img / seq 只保存在内存镜像里（img 由后台补全、seq 由行序推断），
+    两者都不落盘，见 save_favs。
+    """
     if not isinstance(item, dict):
         return None
     code = str(item.get("code") or "").strip().upper()
@@ -849,66 +850,61 @@ def _norm_fav(item, seq=None):
             pass
     return rec
 
-def _load_legacy_favs():
-    """读取旧版本地 favorites.json（一次性迁移用）；缺失/损坏返回 None。"""
+def _load_fav_file():
+    """读取 favorites.json；缺失/损坏返回 []。
+
+    兼容两种历史写法：{"fav": [...]}，以及外层还包一层 arc 的形式。
+    """
     try:
-        if os.path.exists(LEGACY_FAV_FILE):
-            with open(LEGACY_FAV_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                data.pop("arc", None)
-                data = data.get("fav")
-            if isinstance(data, list):
-                return data
+        if not os.path.exists(FAV_FILE):
+            log("fav file missing: " + FAV_FILE)
+            return []
+        with open(FAV_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            data.pop("arc", None)
+            data = data.get("fav")
+        if isinstance(data, list):
+            return data
     except Exception as e:
-        log("legacy favorites err: " + str(e))
-    return None
+        log("fav file read err: " + str(e))
+    return []
+
+def save_favs():
+    """把内存镜像写回 favorites.json（先写临时文件再原子替换）。
+
+    文件里只落盘 code 与 fav_time：图片是后台补全得到的运行期缓存，
+    顺序由文件行序表达（从上到下 = 从新到旧），两者都不写进文件——
+    文件格式与历史版本保持一致，也不会因为补全封面而反复触发同步。
+    只在收藏真正变动时调用；临时文件与目标同目录，
+    保证 os.replace 是同卷上的原子操作。
+    """
+    try:
+        rows = [{"code": r.get("code"), "fav_time": r.get("fav_time") or ""}
+                for r in SHELF["fav"]]
+        tmp = FAV_FILE + "." + str(threading.get_ident()) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"fav": rows}, f, ensure_ascii=False)
+        os.replace(tmp, FAV_FILE)
+        return True
+    except Exception as e:
+        log("fav file write err: " + str(e))
+        return False
 
 def load_shelf():
-    """从 Collection 载入收藏（内存镜像 SHELF），并保证跨启动顺序稳定。
+    """载入收藏（内存镜像 SHELF），并保证跨启动顺序稳定。
 
-    顺序号 seq 的来源（按优先级）：
-      1. 记录自身带的 seq（新版本写入的）；
-      2. 旧版 favorites.json 的行号——旧文件「从上到下 = 从新到旧」，
-         迁移时按行号赋 seq（顶部最大），与展示顺序一致；
-      3. 都没有时退回数据库行序（updated_at desc，近期写入在前）。
-    历史记录在首次载入时补写一次 seq，之后不再需要推断。
+    文件只存 code 与 fav_time，顺序由文件行序表达（从上到下 = 从新到旧），
+    因此载入时按行号推断 seq（行号越小序号越大），同一天内的先后不会乱；
+    新收藏取当前最大 seq + 1 并排在最前，落盘时同样按「新到旧」排列。
     """
     global _FAV_SEQ
     favs = []
-    legacy = _load_legacy_favs() or []
-    legacy_rank = {}
-    for i, item in enumerate(legacy):
-        rec = _norm_fav(item)
+    rows = _load_fav_file()
+    for i, item in enumerate(rows):
+        rec = _norm_fav(item, seq=len(rows) - i)
         if rec:
-            legacy_rank.setdefault(rec["code"], i)   # 行号越小越新
-    legacy_total = len(legacy)
-    try:
-        rows = FAV_COL.list(order_by="updated_at desc")
-        if not rows:
-            # 首次运行新版本：把旧版本地文件按「从上到下 = 从新到旧」写进 Collection
-            rows = []
-            for i, item in enumerate(legacy):
-                rec = _norm_fav(item)
-                if rec:
-                    rec["seq"] = legacy_total - i
-                    FAV_COL.upsert(rec["code"], rec)
-                    rows.append(rec)
-        for i, raw in enumerate(rows):      # updated_at desc：近期写入的在前
-            rec = _norm_fav(raw)
-            if not rec:
-                continue
-            if "seq" not in rec:
-                rank = legacy_rank.get(rec["code"])
-                rec["seq"] = (legacy_total - rank) if rank is not None \
-                    else (len(rows) - i)
-                try:
-                    FAV_COL.upsert(rec["code"], rec)   # 补写一次，修正历史顺序
-                except Exception as e:
-                    log("fav reorder write err: " + str(e))
             favs.append(rec)
-    except Exception as e:
-        log("load_shelf err: " + str(e))
     favs.sort(key=_fav_sort_key, reverse=True)
     _FAV_SEQ = max([int(x.get("seq") or 0) for x in favs] or [0])
     return {"fav": favs}
@@ -952,20 +948,14 @@ def add_fav(code, img=""):
     rec = {"code": code, "img": img, "fav_time": now_time(), "seq": _FAV_SEQ}
     SHELF["fav"].insert(0, rec)
     _FAV_CODES.add(code)
-    try:
-        FAV_COL.upsert(code, rec)      # 按记录写入，不整表重写
-    except Exception as e:
-        log("fav upsert err: " + str(e))
+    save_favs()                              # 写回 favorites.json（随 iCloud 同步）
     mark_fav_dirty()
 
 def remove_fav(code):
     code = str(code or "").strip().upper()   # 与 _norm_fav 的键规整保持一致
     SHELF["fav"] = [x for x in SHELF["fav"] if x.get("code") != code]
     _FAV_CODES.discard(code)
-    try:
-        FAV_COL.delete(code)           # 按记录删除，不整表重写
-    except Exception as e:
-        log("fav delete err: " + str(e))
+    save_favs()                              # 写回 favorites.json（随 iCloud 同步）
     mark_fav_dirty()
 
 def toggle_bookmark(d, img=""):
@@ -2926,20 +2916,119 @@ def toggle_fav():
 # ============================================================
 
 
-# 封面网格列宽下限：同时用作叠在封面上的文字的最大宽度，
-# 保证文字再长也不会把单元格撑得比列还宽（adaptive 的列宽一定 >= 该值）
-GRID_MIN_COLUMN = 104
+# 封面网格尺寸：按设备类型给「单列宽度」定下限 / 上限。
+# 官方 adaptive 支持 maximum（stub: adaptive(minimum=50, maximum=None)）：
+# 只设 minimum 时，屏幕越宽列数越多、单格尺寸却始终锚在 ~104pt（iPad 排到
+# 7~9 列、Mac 13 列，封面反而更小）；补上 maximum 后，列宽触顶即转为更多列，
+# 单格尺寸随平台上调：
+#   iPhone 104~130pt（与调整前一致，3 列约 117pt）
+#   iPad   125~155pt（封面约为 iPhone 的 1.2×）
+#   Mac    160~200pt（封面约为 iPhone 的 1.4~1.5×；1920pt 宽屏 ≈ 11 列 × 169pt）
+# 设备类型由 device 模块判定（见 device_class），判定失败一律回退 iPhone。
+GRID_COLUMN_SPEC = {"iphone": (104, 130), "ipad": (125, 155), "mac": (160, 200)}
+# 基准平台（iPhone）的列宽下限与封面文字字号：其余平台按同一比例缩放
+GRID_BASE_COLUMN = 104
+GRID_BASE_FONT = 10
 # 封面网格间距：影片 / 收藏 / 女优 三个 tab 共用同一套网格与单元格
 GRID_SPACING = 3
-# 叠在封面上的文字框最大宽度：必须 <= GRID_MIN_COLUMN。
-# adaptive 保证实际列宽一定 >= GRID_MIN_COLUMN，因此文字框永远落在封面边框之内，
-# 不会横向溢出到列间距里（否则会让横向空隙看起来比行间距小）
-GRID_CAPTION_WIDTH = 104
 # 已收藏的强调色：与原 JS recGra（colorData[9]）一致，
 # 整张封面盖一层蓝紫渐变，透明度 0.4（原 JS 的 alpha）。
 FAV_GRADIENT = ["#2f74e0", "#5d44e0"]
 FAV_TINT_ALPHA = 0.4
 COVER_CELL_RADIUS = 6
+
+_device_class = ""
+
+def screen_aspect(a, b):
+    """屏幕长边 / 短边：真机 iPad 为 4:3 左右（1.33~1.52），Mac 屏为 1.6+。"""
+    if a <= 0 or b <= 0:
+        return 0.0
+    return max(a, b) / min(a, b)
+
+def _device_probe():
+    """一次性读取判定所需的设备字段；任一字段不可用只留空值，不影响其余判定。"""
+    val = {"info": "", "wide": 0.0, "tall": 0.0, "orient": "", "memory": 0}
+    try:
+        val["info"] = ("%s %s" % (device.model(), device.system_name())).lower()
+    except Exception:
+        pass
+    try:
+        size = device.screen_size()
+        val["wide"] = float(size[0])
+        val["tall"] = float(size[1])
+    except Exception:
+        pass
+    try:
+        val["orient"] = str(device.orientation() or "").lower()
+    except Exception:
+        pass
+    try:
+        val["memory"] = int(device.total_memory())
+    except Exception:
+        pass
+    return val
+
+def device_class():
+    """当前设备类别："iphone" / "ipad" / "mac"（用于网格尺寸档位）。
+
+    官方 device 模块没有 idiom / is_ipad / is_mac（stub 只有 22 个函数），
+    只能按型号 + 屏幕 / 设备特征判定。两轮实测值：
+        iPhone 14  model()="iPhone", system_name()="iOS", (390, 844), 3.0
+        Mac（Designed for iPad）
+                   model()="iPad",  system_name()="iPadOS",
+                   (1920, 1080), 2.0, orientation()="unknown", 16GB
+    即 Mac 上跑 iPad App 时，型号与系统名与真机 iPad 完全一致，只能补充判断：
+        1) 真机 iPad 最宽 1366pt（12.9″ 横屏）——宽度 > 1400 必为 Mac；
+        2) 真机 iPad 长宽比 1.33~1.52——> 1.6 即 Mac 屏（16:9 / 16:10）；
+        3) Mac 没有设备方向（orientation() 恒为 "unknown"）且内存 >= 16GB，
+           用于窗口被缩窄、上面两条失效时仍能认出 Mac。
+
+    判定只读、无副作用、不触发权限，结果缓存一次（Mac 上 screen_size 会随
+    窗口变化，缓存保证同一次运行内尺寸稳定）；异常一律回退 "iphone"。
+    """
+    global _device_class
+    if _device_class:
+        return _device_class
+    p = _device_probe()
+    mac_like = (p["wide"] > 1400
+                or screen_aspect(p["wide"], p["tall"]) > 1.6
+                or (p["orient"] == "unknown" and p["memory"] >= 16 * 1024 ** 3))
+    if "mac" in p["info"]:
+        cls = "mac"
+    elif "ipad" in p["info"]:
+        cls = "mac" if mac_like else "ipad"
+    elif "iphone" in p["info"] or "ipod" in p["info"]:
+        cls = "iphone"
+    else:
+        # 型号字符串不可用或未识别时按屏幕宽度兜底：
+        # iPhone 竖屏最宽 440pt，超过即视为 iPad 级宽屏
+        cls = "ipad" if p["wide"] > 500 else "iphone"
+    _device_class = cls
+    return cls
+
+def grid_column_spec():
+    """当前平台的 adaptive 列规格：(列宽下限, 列宽上限)。"""
+    return GRID_COLUMN_SPEC[device_class()]
+
+def grid_scale():
+    """当前平台的档位比例：iPhone 1× / iPad 1.2× / Mac 1.54×（= 下限之比）。"""
+    return grid_column_spec()[0] / float(GRID_BASE_COLUMN)
+
+def grid_caption_width():
+    """叠在封面上的文字框最大宽度：取列宽下限。
+
+    adaptive 保证实际列宽一定 >= 下限，因此文字框永远落在封面边框之内，
+    不会横向溢出到列间距里（否则横向空隙看起来会比行间距小）。
+    """
+    return grid_column_spec()[0]
+
+def grid_caption_font():
+    """封面文字字号：与列宽同比例缩放（iPhone 10 / iPad 12 / Mac 15）。"""
+    return int(round(GRID_BASE_FONT * grid_scale()))
+
+def grid_metric(value):
+    """文字框的内边距 / 圆角：与字号同比例缩放，保持胶囊的长宽比例不变。"""
+    return int(round(value * grid_scale()))
 
 def grid_cover(url, ratio=None):
     """网格封面：与详情页封面同一套已验证的填充模式。
@@ -2983,8 +3072,13 @@ def fav_tint_layer():
         .z_index(0.5)
 
 def grid_columns():
-    """列规格：显式带上列间距，使其与 LazyVGrid 的行间距一致。"""
-    col = appui.adaptive(minimum=GRID_MIN_COLUMN)
+    """列规格：显式带上列间距，使其与 LazyVGrid 的行间距一致。
+
+    下限决定列数，上限给单列宽度封顶（列宽触顶即转为更多列）：
+    与 grid_column_count 的算法逐条对应，保证渲染与分页计算一致。
+    """
+    mn, mx = grid_column_spec()
+    col = appui.adaptive(minimum=mn, maximum=mx)
     col["spacing"] = GRID_SPACING
     return [col]
 
@@ -2993,10 +3087,10 @@ def _caption_line(text):
     """叠在封面上的一行文字（番号 / 发布日期 / 女优名共用同一样式）。
 
     统一的小字号 + 高透明度样式：弱化对封面内容的遮挡（影片 / 收藏 /
-    女优三处一致）。
+    女优三处一致）。字号按平台档位缩放，与封面尺寸保持同一比例。
     """
     return appui.Text(text) \
-        .font(size=10) \
+        .font(size=grid_caption_font()) \
         .foreground_color("white") \
         .opacity(0.85) \
         .line_limit(1) \
@@ -3018,10 +3112,10 @@ def movie_cell(m, vid):
     if date:
         lines.append(_caption_line(date))
     caption = appui.VStack(lines, spacing=1) \
-        .padding(horizontal=4, vertical=3) \
-        .frame(max_width=GRID_CAPTION_WIDTH) \
-        .background("black", corner_radius=4, opacity=0.4) \
-        .padding(bottom=6) \
+        .padding(horizontal=grid_metric(4), vertical=grid_metric(3)) \
+        .frame(max_width=grid_caption_width()) \
+        .background("black", corner_radius=grid_metric(4), opacity=0.4) \
+        .padding(bottom=grid_metric(6)) \
         .z_index(1)      # 提升层级，保证叠在封面之上而不是被封面盖住
     # 封面撑满整列宽度：与详情页封面同一套填充模式（见 grid_cover），
     # 图片严格贴合自身框内，不会溢出盖住单元格之间的空隙；
@@ -3044,16 +3138,11 @@ def actress_cell(a):
     def open():
         open_actress(a["link"], a["name"])
 
-    caption = appui.Text(a.get("name") or "") \
-        .font(size=10) \
-        .foreground_color("white") \
-        .opacity(0.85) \
-        .line_limit(1) \
-        .minimum_scale_factor(0.6) \
-        .padding(horizontal=4, vertical=3) \
-        .frame(max_width=GRID_CAPTION_WIDTH) \
-        .background("black", corner_radius=4, opacity=0.4) \
-        .padding(bottom=6) \
+    caption = _caption_line(a.get("name") or "") \
+        .padding(horizontal=grid_metric(4), vertical=grid_metric(3)) \
+        .frame(max_width=grid_caption_width()) \
+        .background("black", corner_radius=grid_metric(4), opacity=0.4) \
+        .padding(bottom=grid_metric(6)) \
         .z_index(1)
     # 女优头像用独立比例 5:6（比封面矮）：人脸裁切更自然，
     # 且 4 行头像可正好铺满可视高度
