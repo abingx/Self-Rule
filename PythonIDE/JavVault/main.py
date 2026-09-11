@@ -500,6 +500,7 @@ _STATE_FIELDS = dict(
     genre_group="全部",     # 类型 tab 当前选中的一级分类
     page_input="",          # 页码输入框内容（空 = 未在输入，显示当前页码）
     page_input_vid="",      # 页码输入当前归属的展示位
+    page_editing=False,     # 页码输入框是否获得焦点（编辑中隐藏左右翻页按钮）
     reload=0,
 )
 
@@ -2140,9 +2141,22 @@ def goto_page(vid, page):
     if apply_page(vid, page):
         state.reload += 1
 
-# 页码输入框绑定 State（page_input / page_input_vid）：
+# 页码输入框绑定 State（page_input / page_input_vid / page_editing）：
 # 之前用普通 dict 存输入，网格图片刷新等重建会把已键入内容顶掉；
 # 绑定后输入值即 State 真源，重建不会覆盖用户输入。
+def pager_editing(vid):
+    """该分页条是否处于「输入页码」状态（焦点在输入框上）。
+
+    唯一作用：编辑中把左右翻页按钮隐藏起来。输入框内容、提交与复位
+    行为都保持原样。
+
+    page_input_vid 为空表示刚聚焦、还没键入；此时当前分页条进入编辑态，
+    被覆盖在导航栈后面的分页条会在首次键入后退出编辑态。
+    """
+    if not state.page_editing:
+        return False
+    return state.page_input_vid in ("", vid)
+
 def page_field_text(vid, page):
     """输入框显示值：输入中显示键入内容，其余时候显示当前页码。"""
     if state.page_input_vid == vid and state.page_input:
@@ -2158,10 +2172,11 @@ def set_page_input_value(vid, v):
 
 def reset_page_inputs(vid=None):
     """放弃未提交的页码输入（翻页、打开详情、切 tab、换筛选……），
-    之后的重建会让输入框回到当前页码显示。"""
-    if vid is None or state.page_input_vid == vid:
-        if state.page_input or state.page_input_vid:
-            _batch_state(page_input="", page_input_vid="")
+    之后的重建会让输入框回到当前页码显示，并收起编辑态。"""
+    if vid is not None and state.page_input_vid not in ("", vid):
+        return          # 该 vid 不是当前输入会话：不动
+    if state.page_input or state.page_input_vid or state.page_editing:
+        _batch_state(page_input="", page_input_vid="", page_editing=False)
 
 def submit_page_input(vid):
     """回车跳页：输入有效则跳转，无效则放弃输入回到当前页码显示。"""
@@ -2212,9 +2227,13 @@ IMG_MAX_RELOAD_LONG = 6.0
 IMG_RELOAD_MIN_GAP_DETAIL = 2.5
 
 def note_nav_action():
-    """导航/转场前调用：开启静默窗。"""
+    """导航/转场前调用：开启静默窗，并收起页码输入的编辑态。"""
     global _RELOAD_SILENT_UNTIL
     _RELOAD_SILENT_UNTIL = time.time() + _NAV_SILENCE
+    if state.page_editing:
+        # 任何 push / pop 都结束页码编辑：避免返回后分页条停在编辑态
+        # （翻页按钮不显示）
+        state.page_editing = False
 
 def reload_allowed():
     """当前是否允许整树刷新。"""
@@ -3161,16 +3180,17 @@ def pager_row(vid):
 
     # 翻页按钮做到 44pt 触控高度（PAGER_ROW_H 已同步为 44+12=56，
     # compute_page_size 依此扣减可用高度，保证内容不会越过分页条）
+    editing = pager_editing(vid)
     prev_btn = appui.Button(
         content=appui.Label("上一页", system_image="chevron.left"),
         action=prev,
     ).button_style("bordered") \
-        .frame(min_height=44).disabled(page <= 1)
+        .frame(min_height=44).disabled(page <= 1 or editing)
     next_btn = appui.Button(
         content=appui.Label("下一页", system_image="chevron.right"),
         action=next_page,
     ).button_style("bordered") \
-        .frame(min_height=44).disabled(not can_next(vid))
+        .frame(min_height=44).disabled((not can_next(vid)) or editing)
     # 中间：页码本身就是输入框——未输入时显示当前页码，
     # 输入数字 + 回车即跳转；点其他区域未提交则回到当前页码显示
     center = appui.HStack([
@@ -3182,9 +3202,15 @@ def pager_row(vid):
             .multiline_text_alignment("center")
             .on_submit(on_submit)
             .font("subheadline").bold()
+            .focused(state.bind.page_editing)
             .frame(min_width=20, max_width=56),
         appui.Text("页").font("subheadline"),
     ], spacing=0)
+    if editing:
+        # 输入页码时隐藏左右翻页按钮：用 hidden() 只隐藏、保留占位，
+        # 视图层级完全不变——若换成另一套结构，输入框会被重建而失去焦点
+        prev_btn = prev_btn.hidden()
+        next_btn = next_btn.hidden()
     return appui.HStack([
         prev_btn,
         appui.Spacer(min_length=8),
@@ -3811,7 +3837,8 @@ def start():
     # 15 个复位字段合并成一次重建（原来是 15 次）
     _batch_state(tab=0, keyword="", detail=None, detail_open=False,
                  detail_thumb="", panel="", panel_title="", play="",
-                 panel_open=False,
+                 panel_open=False, page_input="", page_input_vid="",
+                 page_editing=False,
                  src_preview="", src_trailer="", src_video="", status="",
                  sample_index=0, name_text="", title_trans=False)
     DETAIL_STACKS.clear()      # 全部栈复位：各 tab 的详情状态一并清空
