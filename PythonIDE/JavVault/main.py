@@ -3069,14 +3069,14 @@ def genre_cell(c):
     def open():
         open_genre(c["link"], c["name"])
 
-    return     appui.Button(
+    return appui.Button(
         action=open,
         content=appui.Label(c["name"], system_image="tag")
             .font("caption")
             .line_limit(1)
             .minimum_scale_factor(0.7)
-            .frame(max_width=appui.infinity, min_height=44)
-            .padding(vertical=12)
+            .frame(max_width=appui.infinity)
+            .padding(vertical=9)
             .background("secondarySystemBackground", corner_radius=8),
     ).button_style("plain")
 

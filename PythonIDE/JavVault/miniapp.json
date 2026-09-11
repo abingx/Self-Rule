@@ -3,7 +3,7 @@
   "category": "tool",
   "collectionID": "DD2B7FAB-69E4-4CC1-B5B5-826A19FDD398",
   "createdAt": "2026-08-31T08:10:52Z",
-  "description": "JSBox上JavBus.js移植版",
+  "description": "JSBox JavBus.js移植版",
   "entry": "main.py",
   "icon": "film",
   "iconColor": "orange",
