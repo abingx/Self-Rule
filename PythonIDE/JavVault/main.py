@@ -3909,17 +3909,18 @@ def detail_page_view():
             appui.Spacer(min_length=8),
             partner_menu(d["code"]),
         ], spacing=8))
+    # 区块顺序：女优 -> 样图 -> 资料 -> 磁链。
+    # 女优提升为与「样图 / 资料」同级的区块标题（不再是资料里的一行），
+    # 因此放在最前；资料收纳发片商 / 制作商 / 系列 / 导演 / 类别 / 友商链接。
+    sections = []
     if d["actresses"]:
-        detail_rows.append(appui.VStack([
-            appui.Text("女优").font("body").foreground_color("secondaryLabel"),
+        sections.append(appui.Section([
             appui.LazyVGrid(
                 columns=[appui.adaptive(minimum=72)],
                 spacing=10,
                 content=[actress_block(a) for a in d["actresses"]],
             ),
-        ], spacing=8, alignment="leading"))
-
-    sections = [appui.Section(detail_rows, header="详情")]
+        ], header="女优"))
     if d["samples"]:
         sections.append(appui.Section([
             appui.LazyVGrid(
@@ -3928,6 +3929,7 @@ def detail_page_view():
                 content=[sample_cell(s) for s in d["samples"]],
             )
         ], header="样图"))
+    sections.append(appui.Section(detail_rows, header="资料"))
     if d["magnets"]:
         sections.append(appui.Section(
             [magnet_row(m) for m in d["magnets"]], header="磁链"))
