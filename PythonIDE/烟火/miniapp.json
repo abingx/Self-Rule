@@ -1,0 +1,15 @@
+{
+  "author" : "",
+  "category" : "tool",
+  "collectionID" : "DD2B7FAB-69E4-4CC1-B5B5-826A19FDD398",
+  "createdAt" : "2026-09-17T01:17:55Z",
+  "description" : "Hearth",
+  "entry" : "main.py",
+  "icon" : "flame.fill",
+  "iconColor" : "blue",
+  "id" : "2D20688D-7DB7-4F84-A6A1-49CBAC52643A",
+  "name" : "烟火",
+  "runtime" : "appui",
+  "updatedAt" : "2026-09-17T01:17:55Z",
+  "version" : "1.0"
+}
