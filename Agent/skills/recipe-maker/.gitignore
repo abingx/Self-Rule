@@ -1,0 +1,9 @@
+# 本机私有配置，不随技能分发
+config.env
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]

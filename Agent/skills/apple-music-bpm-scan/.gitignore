@@ -1,0 +1,18 @@
+# 本机私有配置，不随技能分发
+config.env
+
+# 运行时数据（用户在哪个目录跑，就落在那个目录的 .apple-music-bpm-scan/ 下）
+.apple-music-bpm-scan/
+work/
+out/
+
+# 用户自己的曲库导出与交付物，绝不打包外发
+*.txt
+*.csv
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
