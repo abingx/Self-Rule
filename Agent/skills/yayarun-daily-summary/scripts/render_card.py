@@ -8,8 +8,10 @@
 
 版面（卡片主要在 iPhone 14 竖屏 390×844 上预览）：
   - **无图表**（配速曲线 / 心率区间 / 步频功率均已按需求移除）。
-  - 分段明细表版式对齐跑鸭 App「训练分段」：父行=连续同类型组（灰底 + 类型配色），
-    子行=组内各圈（缩进序号）。窄屏保持表格形态、横向滚动，
+  - 分段明细表版式对齐跑鸭 App「训练分段」：**父行（段）**=连续同类型组，
+    灰底 + 整行加粗，第一列**只放类型名**（热身/训练/恢复/缓和…，不带序号/距离/段数），
+    其余列放该组汇总（**用时求和**、配速加权平均、其余字段平均）；**子行（子段）**=组内各圈，
+    整行常规字重，第一列放**该段距离**（km）。窄屏保持表格形态、横向滚动，
     不要改成卡片堆叠 —— 那会破坏父行/子行的分组关系。
   - 字号整体对齐 ~/Documents/YaYaRun/run-summary-2026-09-25.html 的口径
     （表格 12px、小节标题 14px、页脚 11.5px）。
@@ -53,6 +55,11 @@ def fmt_duration(seconds) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+def fmt_km(meters, digits=2) -> str:
+    """分段距离：米 -> "1.02 km"（缺数据显示 —）。"""
+    return "—" if meters is None else f"{meters / 1000:.{digits}f} km"
+
+
 def fmt_num(value, digits=0, suffix=""):
     if value is None:
         return "—"
@@ -72,53 +79,54 @@ def esc(text) -> str:
 def seg_table(groups):
     """分段明细表（版式对齐跑鸭 App「训练分段」，但保留本卡片自己的 10 列）。
 
-    - 每个**连续同类型组**一行父行（灰底）：段列放「序号 + 类型名」，
-      其余指标列放该组汇总（总用时 / 组均配速 / 组均心率 / 组均步频）；
-      总距离以副标题形式跟在类型名后面（本表无「距离」列）。
-    - 组内每圈一行子行：缩进的圈序号 + 该圈各项数据。
-    - 列序：段 / 用时 / 配速 / 心率 / 步频 / 功率 / 触地 / 步幅 / 垂直振幅 / 爬升
-    - **无「距离 (m)」列**，「用时」是该段自身时长（非累计），不显示「尾段」标记
-    - 每个单元格带 data-label，窄屏下切换成「每段一张小卡」的堆叠布局
+    - **父行（段）**：每个连续同类型组一行，灰底 + **整行加粗**。第一列**只放类型名**
+      （热身/训练/恢复/缓和…），不再显示组序号、组距离与段数；
+      其余指标列放该组汇总：**用时是该组合计（求和项，不是平均）**，
+      配速按"总时长÷总距离"加权，其余字段取各段算术平均。
+    - **子行（子段）**：组内每圈一行，整行**常规字重**，第一列放该圈**距离**（km），
+      其余列放该圈自身数据（子段不再显示序号）。
+    - 列序：段/距离 / 用时 / 配速 / 心率 / 步频 / 功率 / 触地 / 步幅 / 垂直振幅 / 爬升
+    - 「用时」是该段自身时长（非累计），不显示「尾段」标记
+    - 每个单元格带 data-label，便于窄屏与无障碍阅读
     """
-    # (标签, 取值函数, 单位) —— 单位供窄屏 data-label 用
+    # (表头, 单位, 子行取值 key, 父行取值 key, 格式化函数)
+    # 父行的「用时」是**该组合计**（不是平均值），其余列才是组内平均
+    parent_labels = {"durationSeconds": "总用时"}
     cols = [
-        ("用时", lambda s: fmt_duration(s.get("durationSeconds")), ""),
-        ("配速", lambda s: fmt_pace(s.get("paceMinPerKm")), "/km"),
-        ("心率", lambda s: fmt_num(s.get("avgHeartRate")), "bpm"),
-        ("步频", lambda s: fmt_num(s.get("cadence")), "spm"),
-        ("功率", lambda s: fmt_num(s.get("power")), "W"),
-        ("触地", lambda s: fmt_num(s.get("contactTimeMs"), 1), "ms"),
-        ("步幅", lambda s: fmt_num(s.get("strideCm"), 2), "cm"),
-        ("垂直振幅", lambda s: fmt_num(s.get("verticalOscillationCm"), 1), "cm"),
-        ("爬升", lambda s: fmt_num(s.get("elevationGain"), 1), "m"),
+        ("用时", "", "durationSeconds", "durationSeconds", fmt_duration),
+        ("配速", "/km", "paceMinPerKm", "paceMinPerKm", fmt_pace),
+        ("心率", "bpm", "avgHeartRate", "avgHeartRate", lambda v: fmt_num(v)),
+        ("步频", "spm", "cadence", "avgCadence", lambda v: fmt_num(v)),
+        ("功率", "W", "power", "avgPower", lambda v: fmt_num(v)),
+        ("触地", "ms", "contactTimeMs", "avgContactTimeMs", lambda v: fmt_num(v, 1)),
+        ("步幅", "cm", "strideCm", "avgStrideCm", lambda v: fmt_num(v, 2)),
+        ("垂直振幅", "cm", "verticalOscillationCm", "avgVerticalOscillationCm",
+         lambda v: fmt_num(v, 1)),
+        ("爬升", "m", "elevationGain", "avgElevationGain", lambda v: fmt_num(v, 1)),
     ]
-    n_metric = len(cols)
 
     def label_of(label, unit):
         # 单位自带斜杠的（配速的 /km）不要再拼一个斜杠，否则出现 "配速//km"
         return f"{label}{unit}" if unit.startswith("/") else (f"{label}/{unit}" if unit else label)
 
     out = []
-    for gi, g in enumerate(groups, start=1):
+    for g in groups:
         st = g["stats"]
-        # 父行：段列 = 序号 + 类型名（+距离副标题）；指标列 = 该组汇总
+        # 父行（段）：只放类型名；其余列 = 该组合计（用时）或该组各字段的平均值
+        tds = "".join(
+            f'<td data-label="{esc(parent_labels.get(akey, label))}">{fn(st.get(akey))}</td>'
+            for label, unit, skey, akey, fn in cols)
         out.append(f'''<tr class="g" data-t="{esc(g['type'])}">
-  <td class="c-gidx" data-label="组"><span class="g-no">{gi}</span>
-    <span class="t-{esc(g['type'])} g-name">{esc(g['label'])}</span>
-    <span class="g-sub">{st['distanceMeters'] / 1000:.2f} km · {st['count']} 段</span></td>
-  <td data-label="总用时">{fmt_duration(st['durationSeconds'])}</td>
-  <td data-label="组均配速">{fmt_pace(st['paceMinPerKm'])}</td>
-  <td data-label="组均心率">{fmt_num(st.get('avgHeartRate'))}</td>
-  <td data-label="组均步频">{fmt_num(st.get('avgCadence'))}</td>
-  <td colspan="{n_metric - 4}"></td>
+  <td class="c-gtype" data-label="段"><span class="t-{esc(g['type'])} g-name">{esc(g['label'])}</span></td>
+  {tds}
 </tr>''')
-        # 子行：组内第 n 圈（序号从 1 起，不沿用全局 segmentIndex，避免"第 9 段"出现在第 2 组里）
-        for si, s in enumerate(g["segments"], start=1):
+        # 子行（子段）：第一列放该段距离，其余列放该段自身数据
+        for s in g["segments"]:
             tds = "".join(
-                f'<td data-label="{esc(label_of(label, unit))}">{fn(s)}</td>'
-                for label, fn, unit in cols)
+                f'<td data-label="{esc(label_of(label, unit))}">{fn(s.get(skey))}</td>'
+                for label, unit, skey, akey, fn in cols)
             out.append(f'''<tr class="s">
-  <td class="c-sidx" data-label="段">{si}</td>
+  <td class="c-dist" data-label="距离">{fmt_km(s.get("distanceMeters"))}</td>
   {tds}
 </tr>''')
     return "\n".join(out)
@@ -274,7 +282,7 @@ def build(d: dict) -> str:
         n_groups = len(groups)
         group_hint = (f"{n_groups} 个训练分段" if n_groups > 1 else f"{len(km)} 个分段")
         head_cells = "".join(f"<th>{h}</th>" for h in
-                             ("段", "用时", "配速", "心率", "步频", "功率 (W)",
+                             ("段/距离", "用时", "配速", "心率", "步频", "功率 (W)",
                               "触地 (ms)", "步幅 (cm)", "垂直振幅 (cm)", "爬升 (m)"))
         sections_html = f'''
   <section>
@@ -398,7 +406,8 @@ def build(d: dict) -> str:
   th {{ font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap;
        background: #FAFCFE; }}
   th:first-child, td:first-child {{ text-align: left; }}
-  /* 列序：段 / 用时 / 配速 / 心率 / 步频 / 功率 / 触地 / 步幅 / 垂直振幅 / 爬升 */
+  /* 列序：距离 / 用时 / 配速 / 心率 / 步频 / 功率 / 触地 / 步幅 / 垂直振幅 / 爬升
+     （td:nth-child(3)=配速 全局强调；子行的加粗在 tr.s td 里被覆盖掉） */
   .strong, td:nth-child(3) {{ font-weight: 700; color: var(--brand-dark); }}
   .c-idx {{ font-weight: 600; }}
   .table-scroll {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
@@ -408,18 +417,16 @@ def build(d: dict) -> str:
   table.seg th {{ font-size: 11px; padding: 0 9px 7px 0; }}
   table.seg td {{ padding: 5px 9px 5px 0; border-bottom: 1px solid #F2F5F9; }}
   table.seg td:first-child {{ padding-left: 2px; }}
-  /* 父行：灰底加粗；第一列放「序号 + 类型名 + 组小计」 */
+  /* 父行（段）：灰底 + 整行加粗；第一列只有类型名，其余列是该组各字段的平均值 */
   tr.g td {{ background: #F7F9FC; font-weight: 700; border-top: 1px solid #EDF1F7;
             border-bottom: 1px solid #EDF1F7; white-space: nowrap; }}
-  tr.g .c-gidx {{ white-space: normal; }}
-  tr.g .g-no {{ color: #3B82F6; font-size: 11.5px; font-weight: 700; margin-right: 5px; }}
+  tr.g .c-gtype {{ white-space: normal; }}
   tr.g .g-name {{ font-size: 12.5px; }}
-  tr.g .g-sub {{ display: block; font-weight: 500; font-size: 10.5px; color: var(--muted);
-                margin-top: 1px; }}
-  /* 子行：白底常规字重，序号缩进弱化 */
-  tr.s td {{ background: #fff; color: #334155; }}
-  tr.s .c-sidx {{ color: #B6C2D2; font-size: 11px; font-weight: 500; padding-left: 9px; }}
-  /* 按训练类型着色（对齐 App：热身蓝 / 训练橙 / 恢复绿 / 冷身青） */
+  /* 子行（子段）：白底整行常规字重（覆盖配速列的全局加粗），第一列是该段距离 */
+  tr.s td, tr.s td:nth-child(3) {{ background: #fff; color: #334155; font-weight: 400; }}
+  tr.s .c-dist {{ color: var(--muted); font-size: 11.5px; padding-left: 9px;
+                 white-space: nowrap; }}
+  /* 按训练类型着色（对齐 App：热身蓝 / 训练橙 / 恢复绿 / 缓和青） */
   .t-warmup {{ color: #3B82F6; }}
   .t-work, .t-interval {{ color: #F59E0B; }}
   .t-recovery {{ color: #10B981; }}
@@ -471,7 +478,7 @@ def build(d: dict) -> str:
     table.seg th {{ padding: 0 9px 7px 0; }}
     table.seg td {{ padding: 5px 9px 5px 0; }}
     tr.g .g-name {{ font-size: 12px; }}
-    tr.g .g-sub {{ font-size: 10px; }}
+    tr.s .c-dist {{ font-size: 11px; }}
   }}
 
   /* 极小屏（iPhone SE 等 320~360px）再收一档 */
@@ -550,28 +557,36 @@ def _norm_cadence(v):
     return v / 100.0 if v >= 400 else v
 
 
-# 训练分段类型：显示名与排序权重（热身 → 训练 → 恢复 → 冷身 → 其他）
+# 训练分段类型：显示名与排序权重（热身 → 训练 → 恢复 → 缓和 → 其他）
 INTERVAL_LABELS = {
     "warmup": ("热身", 0),
     "work": ("训练", 1),
     "interval": ("间歇", 1),
     "recovery": ("恢复", 2),
-    "cooldown": ("冷身", 3),
+    "cooldown": ("缓和", 3),
     "rest": ("休息", 4),
     "other": ("其他", 9),
 }
 
 
 def _agg_stats(segs):
-    """组的汇总：段数 / 总距离 / 总时长 / 组均配速 / 组均心率 / 组均步频。
+    """组的汇总：段数 / 总距离 / 总时长（用时求和项）/ 组均配速 / 组均心率 / 组均步频
+    + 其余字段的组均值。
 
-    组平均配速用"总时长÷总距离"算，比各段配速取平均更贴合实际（各段长短不一）。
+    组平均配速用"总时长÷总距离"算，比各段配速取平均更贴合实际（各段长短不一）；
+    其余字段（功率/触地/步幅/垂直振幅/爬升）取**算术平均**，
+    且只在有值的段上平均（缺数据的段不算 0，全缺则留空显示 —）。
     """
     dist = sum(s.get("distanceMeters") or 0 for s in segs)
     dur = sum(s.get("durationSeconds") or 0 for s in segs)
     pace = (dur / 60.0) / (dist / 1000.0) if dist > 0 and dur > 0 else None
     hrs = [s["avgHeartRate"] for s in segs if s.get("avgHeartRate")]
     cads = [s["cadence"] for s in segs if s.get("cadence")]
+
+    def mean(key):
+        vals = [s[key] for s in segs if s.get(key) is not None]
+        return sum(vals) / len(vals) if vals else None
+
     return {
         "count": len(segs),
         "distanceMeters": dist,
@@ -579,6 +594,12 @@ def _agg_stats(segs):
         "paceMinPerKm": pace,
         "avgHeartRate": round(sum(hrs) / len(hrs)) if hrs else None,
         "avgCadence": round(sum(cads) / len(cads)) if cads else None,
+        # 父行（段）各列的平均值（「用时」列直接用上面的 durationSeconds 合计）
+        "avgPower": mean("power"),
+        "avgContactTimeMs": mean("contactTimeMs"),
+        "avgStrideCm": mean("strideCm"),
+        "avgVerticalOscillationCm": mean("verticalOscillationCm"),
+        "avgElevationGain": mean("elevationGain"),
     }
 
 
@@ -587,7 +608,7 @@ def group_segments(km):
 
     与"按类型归并"不同：这里保持**原始发生顺序**，只把**连续同类型**的圈合并成一组
     （对齐跑鸭 App「训练分段」的父行/子行版式）。例如 9/28：
-        热身(2) → 训练(2) → 恢复 → 训练(2) → 恢复 → 训练(2) → 恢复 → 训练(2) → 冷身(3)
+        热身(2) → 训练(2) → 恢复 → 训练(2) → 恢复 → 训练(2) → 恢复 → 训练(2) → 缓和(3)
     按类型归并会把这 8 个"训练"圈凑成一堆，打乱实际训练节奏，看不出组间恢复。
 
     没有 intervalType（普通跑步）时全部落在同一组，行为与改动前一致。
