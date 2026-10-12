@@ -13,7 +13,7 @@
     其余列放该组汇总（**用时求和**、配速加权平均、其余字段平均）；**子行（子段）**=组内各圈，
     整行常规字重，第一列放**该段距离**（km）。窄屏保持表格形态、横向滚动，
     不要改成卡片堆叠 —— 那会破坏父行/子行的分组关系。
-  - 字号整体对齐 ~/Documents/YaYaRun/run-summary-2026-09-25.html 的口径
+  - 字号整体对齐 ~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun/run-summary-2026-09-25.html 的口径
     （表格 12px、小节标题 14px、页脚 11.5px）。
   - 处理刘海/Home 指示条安全区、iOS 文字缩放、-webkit-tap-highlight 等。
 

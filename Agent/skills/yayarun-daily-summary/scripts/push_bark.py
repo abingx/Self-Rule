@@ -39,7 +39,7 @@ TITLE = "训练概况"
 GROUP = "跑鸭"
 ICON = "https://img.remit.ee/i/quVvHGq5WXlT"
 API_BASE = "https://api.day.app"
-CARD_DIR = "~/Documents/YaYaRun"
+CARD_DIR = "~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun"
 WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 FILE_DATE_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 

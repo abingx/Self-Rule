@@ -5,7 +5,7 @@ description: "拉取跑鸭·RunYay 里用户的跑步数据，清理过期卡片
 
 # 跑鸭跑步卡片全流程
 
-一条链路跑完：**取数 → 清理旧文件 → 渲染卡片 → 推通知**，产物落在 `~/Documents/YaYaRun`。
+一条链路跑完：**取数 → 清理旧文件 → 渲染卡片 → 推通知**，产物落在 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun`（iCloud 里的 shortcuts 工作流目录，供 iPhone 快捷指令读取）。
 
 **只读**。本 skill 不修改训练计划；用户要改计划时走跑鸭 MCP 的计划写入工具。
 
@@ -59,7 +59,7 @@ python3 <技能目录>/scripts/fetch_data.py --self-test     # 改动传输层�
 
 ## 第 2 步：清理七天前的文件
 
-按**修改时间**判断，只清理 `~/Documents/YaYaRun` **顶层**、文件名以 `run-summary-` 开头的文件：
+按**修改时间**判断，只清理 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun` **顶层**、文件名以 `run-summary-` 开头的文件：
 
 ```
 python3 <技能目录>/scripts/cleanup_old.py --days 7            # 先看
@@ -78,7 +78,7 @@ python3 <技能目录>/scripts/cleanup_old.py --days 7 --apply    # 再删（加
 ## 第 3 步：渲染卡片
 
 ```
-python3 <技能目录>/scripts/render_card.py <项目目录>/.yayarun-daily-summary/_work/latest.json ~/Documents/YaYaRun/run-summary-<日期>.html
+python3 <技能目录>/scripts/render_card.py <项目目录>/.yayarun-daily-summary/_work/latest.json "~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun/run-summary-<日期>.html"
 ```
 
 产出**单文件离线 HTML**：内联 CSS，**无 SVG、无 JS**，除品牌 Logo 外零外部依赖（Logo 加载失败会自动隐藏）。

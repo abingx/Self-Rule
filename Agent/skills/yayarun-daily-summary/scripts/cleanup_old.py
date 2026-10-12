@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""清理 ~/Documents/YaYaRun 下超过 N 天的卡片文件。
+"""清理 ~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun
+下超过 N 天的卡片文件。
 
 用法：
     python3 cleanup_old.py --days 7                  # 默认 dry-run，只列出
@@ -40,7 +41,7 @@ def human_age(seconds: float) -> str:
 def main():
     ap = argparse.ArgumentParser(description="清理超期卡片文件")
     ap.add_argument("--days", type=float, default=7, help="保留天数阈值，默认 7")
-    ap.add_argument("--dir", default="~/Documents/YaYaRun", help="目标目录")
+    ap.add_argument("--dir", default="~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/YaYaRun", help="目标目录")
     ap.add_argument("--prefix", default=DEFAULT_PREFIX,
                     help=f"只清理此文件名前缀，默认 {DEFAULT_PREFIX}")
     ap.add_argument("--all", action="store_true", help="不限前缀，清理顶层所有普通文件")
