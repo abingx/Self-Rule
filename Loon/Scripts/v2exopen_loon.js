@@ -27,7 +27,7 @@ if (!isIOS) {
 // 目标映射：{id} 会被替换为实际话题 ID，支持 scheme 与网页地址
 const appTargets = {
 	v2fun: 'v2fun://topic/{id}',
-	v2echo: 'https://app.v2echo.com/t/{id}',
+	v2echo: 'v2echo://www.v2ex.com/t/{id}',
 	vetiver: 'v2explorer://topic/{id}'
 };
 
