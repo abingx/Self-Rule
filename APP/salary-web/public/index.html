@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工资核算</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>工资核算</h1>
+  <nav>
+    <button class="tab active" data-view="wages">工资明细</button>
+    <button class="tab" data-view="tax">个税计算</button>
+    <button class="tab" data-view="bank">银行卡收入</button>
+    <button class="tab" data-view="reconcile">核对</button>
+  </nav>
+  <div class="year-box">
+    <label>年份</label>
+    <select id="year"></select>
+    <span id="meta-hint" class="hint"></span>
+  </div>
+</header>
+
+<main>
+  <section id="view-wages" class="view active">
+    <div class="toolbar">
+      <span class="hint">修改任一行后保存，会询问「更新至最新行」或「只修改当前」。灰底=带入值，白底=手工值。</span>
+      <span class="hint">计算结果列均可直接修改：<span class="legend-box auto">自动</span>公式计算，<span class="legend-box ov">改写</span>人工覆盖（点 ↺ 还原）。</span>
+      <button id="save-all">保存当前月</button>
+    </div>
+    <div id="wages-table"></div>
+  </section>
+
+  <section id="view-tax" class="view">
+    <div class="toolbar">
+      <span class="hint">个税次月计算上月：本月税额依据上月工资收入。1 月使用上年 12 月收入（跨年已写死结果）。</span>
+      <button id="recalc">重算</button>
+    </div>
+    <div id="tax-table"></div>
+  </section>
+
+  <section id="view-bank" class="view">
+    <div class="toolbar">
+      <span class="hint">录入到账流水；「目标」类型未确认为一次性奖金时，自动计入当月工资收入。</span>
+    </div>
+    <form id="bank-form" class="form-row">
+      <input type="date" name="date" required>
+      <select name="type" id="bank-type"></select>
+      <input type="number" step="0.01" name="amount" placeholder="金额" required>
+      <input type="text" name="note" placeholder="备注">
+      <button type="submit">添加</button>
+    </form>
+    <div id="bonus-box"></div>
+    <div id="bank-table"></div>
+  </section>
+
+  <section id="view-reconcile" class="view">
+    <div class="toolbar">
+      <span class="hint">预计实发（工资明细）与银行卡实际到账的分类对比。</span>
+    </div>
+    <div id="reconcile-table"></div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<div id="modal" class="modal-mask" hidden>
+  <div class="modal">
+    <h3 id="modal-title">保存</h3>
+    <p id="modal-text" class="hint"></p>
+    <div class="modal-actions">
+      <button id="modal-now" class="btn-primary">更新至最新行</button>
+      <button id="modal-only" class="btn-secondary">只修改当前</button>
+      <button id="modal-cancel" class="btn-ghost">取消</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

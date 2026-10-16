@@ -6,6 +6,8 @@
 #
 # 产物（默认落在「当前项目/.recipe-maker/work」，见 _dirs.sh）:
 #   url_<code>.txt    视频直链（已剥 JSON 引号，dl.sh 直接吃）
+#   durl_<code>.txt   （仅 blob 回落时）DASH 视频轨直链
+#   aurl_<code>.txt   （仅 blob 回落时）DASH 音频轨直链
 #   meta_<code>.txt   元信息 + 全量评论 + 作者回复（写 md 的「> 来源」行直接抄）
 #   grab_fail.log     失败/跳过记录（0 字节 = 全部成功）
 #
@@ -15,6 +17,13 @@
 #   - eval 走 stdin（ev()），规避抖音选择器里的嵌套引号
 #   - daemon 复用：多条链接一次传完；close 放 trap，异常/中断也会释放
 #   - 单条失败只跳过，不中断整批
+#
+# MSE/blob 回落（2026-10 起新版抖音 Web 实测）:
+#   新版播放走 MSE，video.currentSrc 返回 blob:https://www.douyin.com/...，
+#   直链是废的（curl 拿到 HTML）。此时本脚本自动从页面 performance entries
+#   过滤 douyinvod，分别取一条 avc1（视频轨）与一条 mp4a（音频轨）真直链，
+#   写 durl_/aurl_<code>.txt（url_ 置空），交给 dl.sh 下载后 ffmpeg -c copy 合并。
+#   无需 cookie、无需签名；直链带时效，请立即跑 dl.sh。
 source "${0:A:h}/_dirs.sh"
 AB=${AB:-$(command -v agent-browser)}
 if [[ -z "$AB" ]]; then
@@ -39,6 +48,26 @@ try:
     print(json.loads(s))
 except Exception:
     print(s.strip("\""))' 2>/dev/null
+}
+
+# MSE 回落：从页面 performance entries 里取 DASH 双轨真直链（抖音新版 Web）
+# 打印两行（视频轨 / 音频轨），任一缺失则该行为空。行序固定：① avc1 ② mp4a
+grab_dash() {
+  local js='(()=>{const a=performance.getEntriesByType("resource").map(x=>x.name);
+    const f=k=>a.filter(n=>n.indexOf("douyinvod")>=0&&n.indexOf(k)>=0)[0]||"";
+    return f("avc1")+"\n"+f("mp4a")})()'
+  print -r -- "$(ev "$js")" | "$PY" -c '
+import json, sys
+s = sys.stdin.read().strip()
+try:
+    s = json.loads(s)
+except Exception:
+    s = s.strip("\"")
+lines = [l.strip() for l in s.split("\n")]
+while len(lines) < 2:
+    lines.append("")
+print(lines[0])
+print(lines[1])' 2>/dev/null
 }
 
 # close 放 finally：正常、出错、Ctrl-C 都要释放 daemon（否则留僵尸 + 泄漏 Chromium）
@@ -103,9 +132,23 @@ for L in "$@"; do
     print -r -- "$acmts"
   } > "$META"
 
-  if [[ -n "$src" ]]; then
+  if [[ -n "$src" && "$src" != blob:* ]]; then
     print -r -- "$src" > "$OUT/url_$L.txt"
+    rm -f "$OUT/durl_$L.txt" "$OUT/aurl_$L.txt"   # 普通直链，清掉旧的 DASH 双轨
     print -r -- "  src      : OK -> url_$L.txt"
+  elif [[ "$src" == blob:* ]]; then
+    : > "$OUT/url_$L.txt"                          # blob 直链是废的，置空让 dl.sh 走 DASH
+    dash="$(grab_dash)"
+    dv="$(print -r -- "$dash" | sed -n 1p)"
+    da="$(print -r -- "$dash" | sed -n 2p)"
+    print -r -- "$dv" > "$OUT/durl_$L.txt"
+    print -r -- "$da" > "$OUT/aurl_$L.txt"
+    if [[ -n "$dv" ]]; then
+      print -r -- "  src      : blob:MSE → DASH 回落 OK（视频轨 $(print -r -- "$dv" | wc -c | tr -d ' ')B / 音频轨 $(print -r -- "$da" | wc -c | tr -d ' ')B）-> durl_/aurl_$L.txt"
+      [[ -z "$da" ]] && print -r -- "  !! 未取到音频轨（无音轨素材可忽略）" | tee -a "$LOG"
+    else
+      print -r -- "  !! blob:MSE 回落失败——未找到 douyinvod 资源（视频可能未真正播放 / 需先点一下播放）" | tee -a "$LOG"
+    fi
   else
     : > "$OUT/url_$L.txt"
     print -r -- "  !! 直链为空（视频可能已删除 / 需登录 / 直播回放）" | tee -a "$LOG"

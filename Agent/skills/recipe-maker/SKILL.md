@@ -93,8 +93,9 @@ python3 <技能目录>/scripts/_dirs.py
 
 **现成脚本在 `scripts/`（唯一正本，不要复制到别处）。已验证可跑，别再重写内联版本**：
 
-- `grab.sh <短链code...>` — 批量抓元信息 + 评论 + 直链。直链写 `url_<code>.txt`（**已剥 JSON 引号**）、元信息/全量评论/作者回复写 `meta_<code>.txt`、失败项写 `grab_fail.log`；顺带给建议抽帧间隔。`close` 放 `trap`，出错/中断也释放 daemon（走官方 `agent-browser` 技能：`eval --stdin` 规避引号地狱；`AB` 可覆盖，默认从 PATH 找 `agent-browser`）
-- `dl.sh <code>:<输出名> ...` — 下载 mp4（自动带 Referer 与桌面 UA + 重试）。**校验必须是真 MP4**：直链过期返回 HTML 时删掉坏文件并提示重跑 grab.sh；有失败则退出码 1
+- `grab.sh <短链code...>` — 批量抓元信息 + 评论 + 直链。直链写 `url_<code>.txt`（**已剥 JSON 引号**）、元信息/全量评论/作者回复写 `meta_<code>.txt`、失败项写 `grab_fail.log`；顺带给建议抽帧间隔。**新版抖音走 MSE，`video.currentSrc` 是 `blob:` 废链** → 自动从页面 `performance` 抓 `douyinvod` 双轨真直链，写 `durl_<code>.txt`（视频轨）+ `aurl_<code>.txt`（音频轨），`url_<code>.txt` 置空。`close` 放 `trap`，出错/中断也释放 daemon（走官方 `agent-browser` 技能：`eval --stdin` 规避引号地狱；`AB` 可覆盖，默认从 PATH 找 `agent-browser`）
+- `dl.sh <code>:<输出名> ...` — 下载 mp4（自动带 Referer 与桌面 UA + 重试）。**有 `durl_*.txt` 时自动走 DASH 双轨分支**：分别下载视频轨/音频轨，用 ffmpeg `-c copy` 合并；否则单轨下载。**校验必须是真 MP4**：直链过期返回 HTML 时删掉坏文件并提示重跑 grab.sh；有失败则退出码 1
+- `fetch_dash.py <video_url> <audio_url> [out.mp4]` — DASH 双轨直链合并的手动兜底（常态无需手跑，`grab.sh`+`dl.sh` 已自动处理）；单条调试或脱离 grab.sh 时用
 - `ocr.py <video.mp4> [间隔秒] [保留帧目录]` — 抽帧 + OCR，打印并落盘 `subs_<名>.txt`。**默认不落盘**（一次 ffmpeg 解码 + JPEG 管道直喂 OCR，比逐帧起进程快约 1/3）；只有给了第 3 个参数才写帧图。`ocr.py check <video> <t1,t2,...>` 抽指定时间点帧供 Read 核对
 - `asr.py <video.mp4> [small|medium] [prompt]` / `... slice <start> <dur> [size] [prompt]` / `... probe [size] [head秒]` — 整片转写、单段复核、**类型探针**（自动判口播型/字幕型并给出抽帧间隔与方言告警；无音轨视频直接提示转 OCR 而不报栈）
 
@@ -104,7 +105,7 @@ python3 <技能目录>/scripts/_dirs.py
 SK=<技能目录>/scripts
 
 zsh $SK/grab.sh <短链code>          # 直链 → <工作目录>/url_<code>.txt；元信息/评论/作者回复 → meta_<code>.txt
-zsh $SK/dl.sh <code>:<名>           # mp4  → <工作目录>/<名>.mp4（自动校验真 MP4）
+zsh $SK/dl.sh <code>:<名>           # mp4  → <工作目录>/<名>.mp4（自动校验真 MP4；blob:MSE 自动双轨合并）
 python3 $SK/asr.py <名>.mp4 probe   # 先探类型：口播型 or 字幕型 + 建议抽帧间隔
 python3 $SK/asr.py <名>.mp4 small   # 口播型才转写
 python3 $SK/ocr.py <名>.mp4 1.0     # 字幕型：不落帧图 → subs_<名>.txt
@@ -126,7 +127,7 @@ python3 -m pip install rapidocr-onnxruntime opencv-python numpy # OCR
 python3 -m pip install yt-dlp                                   # B站下载（5A）
 ```
 
-**任务结束只删媒体文件**（`*.mp4` / `frames_*/` / `url_*.txt`，`meta_*.txt` / `subs_*.txt` 用完也可一并删），**保留工作目录本身**。
+**任务结束只删媒体文件**（`*.mp4` / `frames_*/` / `url_*.txt` / `durl_*.txt` / `aurl_*.txt`，`meta_*.txt` / `subs_*.txt` 用完也可一并删），**保留工作目录本身**。
 
 **脚本可能没有可执行位**（克隆/同步后丢失）。调用时用 `zsh <脚本>`，或先 `chmod +x`，否则报 `permission denied`。
 
@@ -157,14 +158,15 @@ agent-browser skills get core --full     # 完整命令参考 + 工作流模板
 ## 关键坑（先读）
 
 1. **WebFetch 抓抖音必然失败**（返回"抱歉出错了"）。必须走官方 `agent-browser` 技能；未安装时按该技能文档安装（`npm install -g agent-browser && agent-browser install`）。
-2. **不要盲信 ASR**。抖音菜谱视频分两类：
+2. **新版抖音 Web 改用 MSE 播放，直链是 `blob:`**（2026-10 起实测）。`video.currentSrc` 返回 `blob:https://www.douyin.com/...`，curl 必拿到 HTML 错误页；页面里也**没有** `RENDER_DATA`/`play_addr`。解法：从 `performance.getEntriesByType("resource")` 过滤 `douyinvod` 取 DASH 双轨真直链（视频轨 `avc1` + 音频轨 `mp4a`），下载后 ffmpeg `-c copy` 合并，**无需 cookie/签名**。`grab.sh` 已自动检测并落 `durl_`/`aurl_<code>.txt`，`dl.sh` 自动合并——**别再手写 curl 单轨**。
+3. **不要盲信 ASR**。抖音菜谱视频分两类：
    - **口播型**：有真人讲解 → whisper 转写效果好。
    - **BGM+画面文字型**：无口播，做法全写在画面文字上 → whisper 会输出"秋天""春天"这类幻觉（`no_speech_prob` 偏高）。**必须先判断类型**，否则浪费大量时间。
-3. **判断技巧**：直接跑 `asr.py <video> probe`——只转片头就自动判型（命中 `謝謝觀賞 訂閱 打開小鈴鐺`/`字幕by索兰娅` 这类静音幻觉、或"单段横跨整窗口且仅几个字"的幻影段形态 → 判字幕型；否则判口播型），并顺带打印建议抽帧间隔与方言告警。手写判断也可以：文本连贯且与菜名相关 → 口播型；重复无意义词 → 文字型，转抽帧读字。
-4. 中文 ASR 一定要 `language="zh"`，加 `initial_prompt` 提示菜名与环节可显著提升准确率。
-5. **zsh 里 `set -- $var` 不做词分割**（默认无 `SH_WORD_SPLIT`）。批量循环里写 `for p in "name 1.0"; do set -- $p; ...` 会把 `$1` 变成整串 `name 1.0`，脚本报 `ValueError: could not convert string to float: './frames_name 1.0'`。改用 `${=p}` 显式分割，或干脆把每个视频的调用写成一条独立命令 / `{ ...; }` 分组。
-6. **zsh 脚本里禁止用 `path` 当普通变量名**。`$path` 是和 `$PATH` 绑定的特殊数组，`path=$(...)` 会把 PATH 覆盖成一个元素，之后 `tr`/`grep`/`sleep`/`awk` 全线报 `command not found`（写 grab.sh 时真实踩到，冒烟测试才逼出来）。要存路径就叫 `vpath`/`vurl`。同名雷区还有 `status`（只读）、`argv`、`pipestatus`。
-7. **ASR 会听错克数，OCR 也会漏行**，两者都不足为凭时按帧核对。实测：烧椒豆花滑肉的 `加入盐5克` ASR 听成「盐1克」，且该行 OCR 恰好没抓到，最终靠 `-ss 183` 抽帧读定；同一视频 `红花椒` ASR 说 1 克、OCR 说 3 克，抽帧确认 3 克。**凡是克数冲突，一律抽帧 Read 定稿。**（`ocr.py check <video> 183,215` 就是干这个的）
+4. **判断技巧**：直接跑 `asr.py <video> probe`——只转片头就自动判型（命中 `謝謝觀賞 訂閱 打開小鈴鐺`/`字幕by索兰娅` 这类静音幻觉、或"单段横跨整窗口且仅几个字"的幻影段形态 → 判字幕型；否则判口播型），并顺带打印建议抽帧间隔与方言告警。手写判断也可以：文本连贯且与菜名相关 → 口播型；重复无意义词 → 文字型，转抽帧读字。
+5. 中文 ASR 一定要 `language="zh"`，加 `initial_prompt` 提示菜名与环节可显著提升准确率。
+6. **zsh 里 `set -- $var` 不做词分割**（默认无 `SH_WORD_SPLIT`）。批量循环里写 `for p in "name 1.0"; do set -- $p; ...` 会把 `$1` 变成整串 `name 1.0`，脚本报 `ValueError: could not convert string to float: './frames_name 1.0'`。改用 `${=p}` 显式分割，或干脆把每个视频的调用写成一条独立命令 / `{ ...; }` 分组。
+7. **zsh 脚本里禁止用 `path` 当普通变量名**。`$path` 是和 `$PATH` 绑定的特殊数组，`path=$(...)` 会把 PATH 覆盖成一个元素，之后 `tr`/`grep`/`sleep`/`awk` 全线报 `command not found`（写 grab.sh 时真实踩到，冒烟测试才逼出来）。要存路径就叫 `vpath`/`vurl`。同名雷区还有 `status`（只读）、`argv`、`pipestatus`。
+8. **ASR 会听错克数，OCR 也会漏行**，两者都不足为凭时按帧核对。实测：烧椒豆花滑肉的 `加入盐5克` ASR 听成「盐1克」，且该行 OCR 恰好没抓到，最终靠 `-ss 183` 抽帧读定；同一视频 `红花椒` ASR 说 1 克、OCR 说 3 克，抽帧确认 3 克。**凡是克数冲突，一律抽帧 Read 定稿。**（`ocr.py check <video> 183,215` 就是干这个的）
 
 ## 标准流程
 
@@ -205,19 +207,26 @@ ev '(()=>{const c=document.querySelector("[data-e2e=\"comment-list\"]");return c
 
 ### 3. 下载视频
 
-> 优先直接跑 `scripts/dl.sh <code>:<名>`——它已经封装了下面这整段。
+> 优先直接跑 `scripts/dl.sh <code>:<名>`——它已经封装了下面这整段（含 MSE 双轨合并），**不要手写 curl**。
+
+**新版抖音 Web 走 MSE：`video.currentSrc` 返回 `blob:https://www.douyin.com/...`，是废链**（curl 拿到 HTML）。页面里也**没有** `RENDER_DATA` / `play_addr`。绕过办法（`grab.sh` 已内置）：从页面 `performance.getEntriesByType("resource")` 过滤 `douyinvod`，取 **视频轨（`media-video-avc1`）+ 音频轨（`media-audio-und-mp4a`）** 两条真直链，curl 带 Referer+UA 下载后 ffmpeg `-c copy` 合并。**不需要 cookie、不需要签名**。
 
 ```bash
-# 取直链（输出带 JSON 引号）
+# 普通单轨（旧版 / 非 MSE）：
 ev 'document.querySelector("video").currentSrc' > url.txt
 URL=$(sed 's/^"//; s/"$//' url.txt)
 curl -sL -H "Referer: https://www.douyin.com/" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36" \
   -o video.mp4 "$URL"
 file video.mp4   # 必须显示 "ISO Media, MP4"
+
+# MSE 双轨（currentSrc 是 blob: 时）→ 抓两轨真直链
+ev '(()=>{const a=performance.getEntriesByType("resource").map(x=>x.name);
+  const f=k=>a.filter(n=>n.indexOf("douyinvod")>=0&&n.indexOf(k)>=0)[0]||"";
+  return f("avc1")+"\n"+f("mp4a")})()'   # 第 1 行=视频轨，第 2 行=音频轨；二者各需 curl 带同样 Referer+UA 下载后 ffmpeg -c copy 合并
 ```
 
-**必须带 Referer + 桌面 UA**，否则只下到 ~351 字节的 HTML 错误页。（`dl.sh` 已带 `--retry` 并校验产物是真 MP4，过期直链会直接报错而不是留个假 mp4。）
+**必须带 Referer + 桌面 UA**，否则只下到 ~351 字节的 HTML 错误页。（`dl.sh` 已带 `--retry`、校验产物是真 MP4，并在检测到 `durl_*.txt` 时自动下载双轨 + ffmpeg 合并；过期直链会直接报错而不是留个假 mp4。）
 
 ### 4A. 口播型 → whisper
 

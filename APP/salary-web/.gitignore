@@ -1,0 +1,6 @@
+# 工资核算网页版：运行时生成的数据库（含个人薪资数据，不入公开仓库）
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/seed.json

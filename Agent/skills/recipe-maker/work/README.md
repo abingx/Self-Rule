@@ -18,10 +18,12 @@
 
 | 文件 | 来源 | 说明 |
 |---|---|---|
-| `url_<code>.txt` | `grab.sh` | 视频直链（已剥 JSON 引号），`dl.sh` 直接读 |
+| `url_<code>.txt` | `grab.sh` | 视频直链（已剥 JSON 引号），`dl.sh` 直接读；MSE/blob 回落时置空 |
+| `durl_<code>.txt` | `grab.sh` | （仅 blob:MSE 回落）DASH 视频轨真直链 |
+| `aurl_<code>.txt` | `grab.sh` | （仅 blob:MSE 回落）DASH 音频轨真直链 |
 | `meta_<code>.txt` | `grab.sh` | 元信息 + 全量评论 + 作者回复 |
 | `grab_fail.log` | `grab.sh` | 失败/跳过记录，0 字节表示全部成功 |
-| `<名>.mp4` | `dl.sh` | 下载的视频 |
+| `<名>.mp4` | `dl.sh` | 下载的视频（blob:MSE 时自动双轨 + ffmpeg 合并） |
 | `subs_<名>.txt` | `ocr.py` | 去重后的画面字幕 |
 | `chk/` | `ocr.py check` | 抽出的单帧，供逐字核对用量 |
 
@@ -54,5 +56,5 @@ python3 scripts/_dirs.py
 
 ## 收尾
 
-任务结束**只删媒体与中间文件**（`*.mp4`、`frames_*/`、`url_*.txt`；`meta_*.txt`、`subs_*.txt` 用完也可删），
+任务结束**只删媒体与中间文件**（`*.mp4`、`frames_*/`、`url_*.txt`、`durl_*.txt`、`aurl_*.txt`；`meta_*.txt`、`subs_*.txt` 用完也可删），
 保留目录本身。
