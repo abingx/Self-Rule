@@ -1,25 +1,28 @@
 //* 
 // v2exopen_loon.js
 // 说明: V2EX 页面拦截脚本，将非白名单客户端跳转到 app 方案
-// 触发条件: 访问 V2EX 话题页（https://www.v2ex.com/t/xxx）
+// 触发条件: GET 访问 V2EX 话题页（https://www.v2ex.com/t/xxx），非 GET 请求不处理
+// 平台支持: 全平台生效（不再限制 iOS）
 // 主要逻辑:
-//   1. 读取请求 URL 和 UA
-//   2. 如果是允许的客户端（V2Fun/Vetiver/V2Echo），保持原样返回
-//   3. 否则返回 302 Location => 目标方案（见下方 appTargets）
+//   1. 读取请求方法、URL 和 UA
+//   2. 仅处理 GET 请求，其他方法（PUT/POST/DELETE 等）原样返回
+//   3. 如果是允许的客户端（V2Fun/Vetiver/V2Echo），保持原样返回
+//   4. 否则返回 302 Location => 目标方案（见下方 appTargets）
 // 传参说明:
 //   通过 argument 传入目标 App（不区分大小写，默认 V2Echo）
 //   可选值见下方 appTargets，例: argument=app=V2Echo
 // */
-// http-request ^https:\/\/www\.v2ex\.com/t/(\d+) script-path=v2exopen_loon.js, argument=app=V2Echo, timeout=20, tag=v2exopen
+// Loon 配置示例（新语法）:
+// request if ${url} ~= /^https:\/\/www\.v2ex\.com\/t\/(\d+)$/i then script("https://raw.githubusercontent.com/abingx/Self-Rule/main/Loon/Scripts/v2exopen_loon.js", "V2Echo") with tag="v2exopen"
 
-// 入口参数抓取：URL 与 User-Agent
+// 入口参数抓取：请求方法、URL 与 User-Agent
+const method = ($request.method || 'GET').toUpperCase();
 const url = $request.url;
 const headers = $request.headers || {};
 const userAgent = (headers['User-Agent'] || headers['user-agent'] || '').toLowerCase();
 
-// 仅在 iOS 设备上执行白名单判断和重定向
-const isIOS = /iphone|ipad|ipod/i.test(userAgent);
-if (!isIOS) {
+// 仅在 GET 请求中生效，其他请求方法（PUT/POST/DELETE 等）保持原样
+if (method !== 'GET') {
 	$done({});
 	return;
 }
@@ -54,8 +57,8 @@ if (allowClients.some((c) => userAgent.includes(c))) {
 	return;
 }
 
-// 仅处理符合 /t/xxx 话题页格式的 URL，其他请求原样返回
-const topicMatch = url.match(/^https:\/\/www\.v2ex\.com\/t\/(\d+)/);
+// 仅处理符合 /t/xxx 话题页格式的 URL（与配置正则保持一致），其他请求原样返回
+const topicMatch = url.match(/^https:\/\/www\.v2ex\.com\/t\/(\d+)$/i);
 if (!topicMatch) {
 	$done({});
 	return;
