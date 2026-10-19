@@ -26,6 +26,10 @@
 #
 #   优先级：命令行环境变量 > 配置文件 > 自动解析。临时改一次只需内联即可覆盖。
 #
+#   数据目录解析（命中即止）：env → 配置文件 → 项目根/.recipe-maker/work
+#     → 当前已在 .recipe-maker/work 内则直接复用（防 work/work 嵌套）
+#     → 不安全 cwd 退回技能 work/ → 否则 $PWD/.recipe-maker/work
+#
 # ⚠️ 不要写 ~/.zshrc：本技能脚本是非交互调用，zsh 只读 ~/.zshenv，从不读 .zshrc；
 #    而且 python 脚本由 bash 直接启动，根本看不到 .zshrc 的导出。写在那里会静默失效。
 #
@@ -93,6 +97,8 @@ rm_resolve_work() {
   [[ -n "${RECIPE_WORK_DIR:-}" ]] && { print -r -- "${RECIPE_WORK_DIR:A}"; return }
   [[ -n "${OUT:-}" ]] && { print -r -- "${OUT:A}"; return }
   if root="$(rm_project_root "$PWD")"; then print -r -- "$root/.recipe-maker/work"; return; fi
+  # PWD 本身已在某个 .recipe-maker/work 里 → 直接复用，别再套一层（否则 work/work）
+  if [[ "${PWD:A}" == *"/.recipe-maker/work" ]]; then print -r -- "${PWD:A}"; return; fi
   if rm_unsafe_pwd "$PWD"; then print -r -- "$RM_SKILL_DIR/work"; return; fi
   print -r -- "${PWD:A}/.recipe-maker/work"
 }

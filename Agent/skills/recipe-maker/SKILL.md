@@ -79,10 +79,11 @@ python3 <技能目录>/scripts/_dirs.py
 2. `$OUT` 显式指定（兼容旧用法）
 3. 配置文件里的 `RECIPE_WORK_DIR`
 4. **当前项目根** `/.recipe-maker/work` —— 「项目根」= 从 `$PWD` 逐级向上第一个含 `.git` / `AGENTS.md` / `package.json` / `pyproject.toml` 的目录
-5. 无项目标记、且 `$PWD` 是 `/`、`$HOME` 或临时目录（`/tmp`、`$TMPDIR`）→ `<技能目录>/work/`
-6. 其余 → `$PWD/.recipe-maker/work`
+5. **`$PWD` 本身已在某个 `.recipe-maker/work` 里 → 直接复用它**（不再套一层，避免 `work/work` 二次嵌套）
+6. 无项目标记、且 `$PWD` 是 `/`、`$HOME` 或临时目录（`/tmp`、`$TMPDIR`）→ `<技能目录>/work/`
+7. 其余 → `$PWD/.recipe-maker/work`
 
-第 5 条是关键护栏：**在别人的仓库、其他 agent 的工作目录或 `/tmp` 里运行，数据退回到技能自己的 `work/`，绝不写进别人的项目。** 同理，本技能也从不读写其他技能或其他项目的目录。
+第 5 条是防嵌套护栏：在 `<项目>/.recipe-maker/work` 里再跑脚本（很容易发生——上一步刚 `cd` 进去看文件），zsh 与 python 两侧都会直接复用该目录，**不会再拼出 `work/.recipe-maker/work`**。第 6 条是隔离护栏：**在别人的仓库、其他 agent 的工作目录或 `/tmp` 里运行，数据退回到技能自己的 `work/`，绝不写进别人的项目。** 同理，本技能也从不读写其他技能或其他项目的目录。
 
 排查当前解析到哪：
 
@@ -93,7 +94,7 @@ python3 <技能目录>/scripts/_dirs.py
 
 **现成脚本在 `scripts/`（唯一正本，不要复制到别处）。已验证可跑，别再重写内联版本**：
 
-- `grab.sh <短链code...>` — 批量抓元信息 + 评论 + 直链。直链写 `url_<code>.txt`（**已剥 JSON 引号**）、元信息/全量评论/作者回复写 `meta_<code>.txt`、失败项写 `grab_fail.log`；顺带给建议抽帧间隔。**新版抖音走 MSE，`video.currentSrc` 是 `blob:` 废链** → 自动从页面 `performance` 抓 `douyinvod` 双轨真直链，写 `durl_<code>.txt`（视频轨）+ `aurl_<code>.txt`（音频轨），`url_<code>.txt` 置空。`close` 放 `trap`，出错/中断也释放 daemon（走官方 `agent-browser` 技能：`eval --stdin` 规避引号地狱；`AB` 可覆盖，默认从 PATH 找 `agent-browser`）
+- `grab.sh <短链code...>` — 批量抓元信息 + 评论 + 直链。直链写 `url_<code>.txt`（**已剥 JSON 引号**）、元信息/全量评论/作者回复写 `meta_<code>.txt`、失败项写 `grab_fail.log`；顺带给建议抽帧间隔。**新版抖音走 MSE，`video.currentSrc` 是 `blob:` 废链** → 自动从页面 `performance` 抓 `douyinvod` 双轨真直链，写 `durl_<code>.txt`（视频轨）+ `aurl_<code>.txt`（音频轨），`url_<code>.txt` 置空；**首次抓空会自动 `video.play()`（静音）并轮询重试 ~5 秒**（performance 只记录已发生的请求，页面没播就一条都没有）。`close` 放 `trap`，出错/中断也释放 daemon（走官方 `agent-browser` 技能：`eval --stdin` 规避引号地狱；`AB` 可覆盖，默认从 PATH 找 `agent-browser`）
 - `dl.sh <code>:<输出名> ...` — 下载 mp4（自动带 Referer 与桌面 UA + 重试）。**有 `durl_*.txt` 时自动走 DASH 双轨分支**：分别下载视频轨/音频轨，用 ffmpeg `-c copy` 合并；否则单轨下载。**校验必须是真 MP4**：直链过期返回 HTML 时删掉坏文件并提示重跑 grab.sh；有失败则退出码 1
 - `fetch_dash.py <video_url> <audio_url> [out.mp4]` — DASH 双轨直链合并的手动兜底（常态无需手跑，`grab.sh`+`dl.sh` 已自动处理）；单条调试或脱离 grab.sh 时用
 - `ocr.py <video.mp4> [间隔秒] [保留帧目录]` — 抽帧 + OCR，打印并落盘 `subs_<名>.txt`。**默认不落盘**（一次 ffmpeg 解码 + JPEG 管道直喂 OCR，比逐帧起进程快约 1/3）；只有给了第 3 个参数才写帧图。`ocr.py check <video> <t1,t2,...>` 抽指定时间点帧供 Read 核对
@@ -127,6 +128,19 @@ python3 -m pip install rapidocr-onnxruntime opencv-python numpy # OCR
 python3 -m pip install yt-dlp                                   # B站下载（5A）
 ```
 
+**隔离 runtime 下 `python3` 可能没装依赖（WorkBuddy 实测）**：`python3` 有时解析到
+`~/.workbuddy/binaries/python/versions/*/bin/python3` 这类隔离解释器，依赖却装在
+`~/.workbuddy/binaries/python/envs/default/`。`asr.py` / `ocr.py` 启动时会**自动探测并切换**
+（`scripts/_pyenv.py`），无需手工指定；候选顺序：
+
+1. `$RECIPE_PYTHON`
+2. `config.env` 里的 `RECIPE_PYTHON`
+3. `~/.workbuddy/binaries/python/envs/default/bin/python`
+4. PATH 上的 `python3` / `python`
+
+全都不满足时才报错，并打印**当前解释器绝对路径**、尝试过的候选和可直接复制的安装命令。
+要钉死解释器就写配置文件：`RECIPE_PYTHON="/path/to/python"`（`dl.sh` 找 ffmpeg 也认它）。
+
 **任务结束只删媒体文件**（`*.mp4` / `frames_*/` / `url_*.txt` / `durl_*.txt` / `aurl_*.txt`，`meta_*.txt` / `subs_*.txt` 用完也可一并删），**保留工作目录本身**。
 
 **脚本可能没有可执行位**（克隆/同步后丢失）。调用时用 `zsh <脚本>`，或先 `chmod +x`，否则报 `permission denied`。
@@ -158,7 +172,9 @@ agent-browser skills get core --full     # 完整命令参考 + 工作流模板
 ## 关键坑（先读）
 
 1. **WebFetch 抓抖音必然失败**（返回"抱歉出错了"）。必须走官方 `agent-browser` 技能；未安装时按该技能文档安装（`npm install -g agent-browser && agent-browser install`）。
-2. **新版抖音 Web 改用 MSE 播放，直链是 `blob:`**（2026-10 起实测）。`video.currentSrc` 返回 `blob:https://www.douyin.com/...`，curl 必拿到 HTML 错误页；页面里也**没有** `RENDER_DATA`/`play_addr`。解法：从 `performance.getEntriesByType("resource")` 过滤 `douyinvod` 取 DASH 双轨真直链（视频轨 `avc1` + 音频轨 `mp4a`），下载后 ffmpeg `-c copy` 合并，**无需 cookie/签名**。`grab.sh` 已自动检测并落 `durl_`/`aurl_<code>.txt`，`dl.sh` 自动合并——**别再手写 curl 单轨**。
+2. **新版抖音 Web 改用 MSE 播放，直链是 `blob:`**（2026-10 起实测）。`video.currentSrc` 返回 `blob:https://www.douyin.com/...`，curl 必拿到 HTML 错误页；页面里也**没有** `RENDER_DATA`/`play_addr`。解法：从 `performance.getEntriesByType("resource")` 过滤 `douyinvod` 取 DASH 双轨真直链（视频轨 `avc1` + 音频轨 `mp4a`），下载后 ffmpeg `-c copy` 合并，**无需 cookie/签名**。
+   **⚠️ performance 只记录「已发生」的请求**——页面刚 `open` 完、视频没播，entries 里一条 `douyinvod` 都没有，这是最容易踩的一层。`grab.sh` 首次抓空会自动 `video.play()`（静音，绕自动播放策略）再轮询重试 ~5 秒。手工救场同理：`open` → `video.play()` → 等几秒 → 再读 performance。
+   `grab.sh` 已自动检测并落 `durl_`/`aurl_<code>.txt`，`dl.sh` 自动合并——**别再手写 curl 单轨**。
 3. **不要盲信 ASR**。抖音菜谱视频分两类：
    - **口播型**：有真人讲解 → whisper 转写效果好。
    - **BGM+画面文字型**：无口播，做法全写在画面文字上 → whisper 会输出"秋天""春天"这类幻觉（`no_speech_prob` 偏高）。**必须先判断类型**，否则浪费大量时间。
@@ -220,7 +236,9 @@ curl -sL -H "Referer: https://www.douyin.com/" \
   -o video.mp4 "$URL"
 file video.mp4   # 必须显示 "ISO Media, MP4"
 
-# MSE 双轨（currentSrc 是 blob: 时）→ 抓两轨真直链
+# MSE 双轨（currentSrc 是 blob: 时）→ 先确保视频真的在播，再抓两轨真直链
+ev '(()=>{const v=document.querySelector("video");v.muted=true;v.play().catch(()=>{});return "playing"})()'
+sleep 3   # 等分片请求出现；performance 里没有 douyinvod 就是还没播
 ev '(()=>{const a=performance.getEntriesByType("resource").map(x=>x.name);
   const f=k=>a.filter(n=>n.indexOf("douyinvod")>=0&&n.indexOf(k)>=0)[0]||"";
   return f("avc1")+"\n"+f("mp4a")})()'   # 第 1 行=视频轨，第 2 行=音频轨；二者各需 curl 带同样 Referer+UA 下载后 ffmpeg -c copy 合并

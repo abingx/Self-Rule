@@ -22,13 +22,40 @@ import sys
 import tempfile
 from fractions import Fraction
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _pyenv  # noqa: E402
+
+# 先校验参数，再检查依赖：没给视频就该直接说用法。
+# 否则环境缺依赖时会先报「缺少依赖」，把真正的输入错误盖掉（2026-10-19）。
+if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
+
+if len(sys.argv) < 2:
+    print("缺少 video 参数", file=sys.stderr)
+    print("用法: python ocr.py <video.mp4> [抽帧间隔秒=1.0] [保留帧目录]\n"
+          "      python ocr.py check <video.mp4> <t1[,t2,...]> [输出目录]",
+          file=sys.stderr)
+    sys.exit(2)
+
+# 视频路径也要在依赖检查之前校验：文件不存在是输入错误，不该被环境问题盖掉
+_a = sys.argv[1:]
+_vi = 1 if _a[0] == "check" else 0
+if len(_a) > _vi and not os.path.isfile(_a[_vi]):
+    sys.exit(f"找不到视频文件: {_a[_vi]}")
+
+# WorkBuddy 等隔离 runtime 里 python3 可能没装依赖：自动换到 envs/default 等可用解释器
+_pyenv.ensure(("cv2", "imageio_ffmpeg", "numpy", "rapidocr_onnxruntime"),
+              "rapidocr-onnxruntime opencv-python numpy imageio-ffmpeg")
+
 try:
     import cv2
     import imageio_ffmpeg
     import numpy as np
     from rapidocr_onnxruntime import RapidOCR
 except ImportError as e:
-    sys.exit(f"缺少依赖 {e.name}，先装：python3 -m pip install rapidocr-onnxruntime imageio-ffmpeg")
+    sys.exit(f"缺少依赖 {e.name}，先装：{sys.executable} -m pip install "
+             "rapidocr-onnxruntime opencv-python numpy imageio-ffmpeg")
 
 import _dirs
 
@@ -156,9 +183,9 @@ def check(video, timestamps, outdir=None):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if not a:
+    if not a or a[0] in ("-h", "--help"):
         print(__doc__)
-        sys.exit(2)
+        sys.exit(0 if a else 2)
     if a[0] == "check":
         if len(a) < 3:
             sys.exit("用法: python ocr.py check <video.mp4> <t1[,t2,...]> [输出目录]")

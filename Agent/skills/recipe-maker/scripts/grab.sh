@@ -24,6 +24,8 @@
 #   过滤 douyinvod，分别取一条 avc1（视频轨）与一条 mp4a（音频轨）真直链，
 #   写 durl_/aurl_<code>.txt（url_ 置空），交给 dl.sh 下载后 ffmpeg -c copy 合并。
 #   无需 cookie、无需签名；直链带时效，请立即跑 dl.sh。
+#   ⚠️ performance 只记录已发生的请求：页面刚打开、视频未播放时一条都没有。
+#      所以首次为空会自动 video.play()（静音）并轮询重试，最多等 ~5 秒。
 source "${0:A:h}/_dirs.sh"
 AB=${AB:-$(command -v agent-browser)}
 if [[ -z "$AB" ]]; then
@@ -52,11 +54,15 @@ except Exception:
 
 # MSE 回落：从页面 performance entries 里取 DASH 双轨真直链（抖音新版 Web）
 # 打印两行（视频轨 / 音频轨），任一缺失则该行为空。行序固定：① avc1 ② mp4a
-grab_dash() {
-  local js='(()=>{const a=performance.getEntriesByType("resource").map(x=>x.name);
-    const f=k=>a.filter(n=>n.indexOf("douyinvod")>=0&&n.indexOf(k)>=0)[0]||"";
-    return f("avc1")+"\n"+f("mp4a")})()'
-  print -r -- "$(ev "$js")" | "$PY" -c '
+#
+# 关键：performance 只记录「已发生」的请求。页面刚 open 完、视频没播 → 一条
+# douyinvod 都没有。所以首次为空时必须主动 play() 一次再重试（实测必需）。
+DASH_JS='(()=>{const a=performance.getEntriesByType("resource").map(x=>x.name);
+  const f=k=>a.filter(n=>n.indexOf("douyinvod")>=0&&n.indexOf(k)>=0)[0]||"";
+  return f("avc1")+"\n"+f("mp4a")})()'
+
+dash_parse() {
+  "$PY" -c '
 import json, sys
 s = sys.stdin.read().strip()
 try:
@@ -68,6 +74,26 @@ while len(lines) < 2:
     lines.append("")
 print(lines[0])
 print(lines[1])' 2>/dev/null
+}
+
+grab_dash() {
+  local out dv
+  out="$(ev "$DASH_JS" | dash_parse)"
+  dv="$(print -r -- "$out" | sed -n 1p)"
+  if [[ -n "$dv" ]]; then print -r -- "$out"; return 0; fi
+
+  # 首次为空 → 主动播放（静音，避免被浏览器自动播放策略拦下），等分片请求出现
+  ev '(()=>{const v=document.querySelector("video");if(!v)return "no-video";
+    v.muted=true;const p=v.play();if(p&&p.catch)p.catch(()=>{});
+    return "playing"})()' >/dev/null
+  local i
+  for i in {1..10}; do            # 最多等 ~5 秒，分片一到就提前退出
+    sleep 0.5
+    out="$(ev "$DASH_JS" | dash_parse)"
+    dv="$(print -r -- "$out" | sed -n 1p)"
+    [[ -n "$dv" ]] && break
+  done
+  print -r -- "$out"
 }
 
 # close 放 finally：正常、出错、Ctrl-C 都要释放 daemon（否则留僵尸 + 泄漏 Chromium）

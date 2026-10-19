@@ -17,9 +17,14 @@ PY=${PY:-$(command -v python3 || print -r -- /usr/bin/python3)}
 oks=0; fails=0
 
 # 找 ffmpeg：优先 imageio_ffmpeg 自带静态版（与 asr.py/ocr.py 同源），否则退回 PATH
+# 隔离 runtime 的 python3 可能没装 imageio_ffmpeg → 依次试 $RECIPE_PYTHON / envs/default
 rm_ffmpeg() {
-  "$PY" -c 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())' 2>/dev/null \
-    || command -v ffmpeg
+  local py
+  for py in "${RECIPE_PYTHON:-}" "$HOME/.workbuddy/binaries/python/envs/default/bin/python" "$PY"; do
+    [[ -n "$py" && -x "$py" ]] || continue
+    "$py" -c 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())' 2>/dev/null && return
+  done
+  command -v ffmpeg
 }
 
 # 校验产物是真 MP4；非真则删文件、返回 1

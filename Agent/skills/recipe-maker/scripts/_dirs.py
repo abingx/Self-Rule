@@ -19,8 +19,9 @@
 
 解析顺序：
     work_dir()  ① $RECIPE_WORK_DIR  ② $OUT  ③ 配置文件  ④ 项目根/.recipe-maker/work
-                ⑤ cwd 不安全（/ 、$HOME 、临时目录）→ 技能内 work/
-                ⑥ 其余 → $PWD/.recipe-maker/work
+                ⑤ cwd 已在 .recipe-maker/work 内 → 直接复用该目录（防 work/work 嵌套）
+                ⑥ cwd 不安全（/ 、$HOME 、临时目录）→ 技能内 work/
+                ⑦ 其余 → $PWD/.recipe-maker/work
     note_dir()  ① $RECIPE_NOTE_DIR  ② 配置文件  ③ ~/Documents/RecipeNotes
 
 「项目根」= 从 cwd 逐级向上第一个含 .git / AGENTS.md / package.json /
@@ -128,10 +129,14 @@ def work_dir():
     root = project_root()
     if root:
         return os.path.join(root, ".recipe-maker", "work")
-    cwd = os.getcwd()
+    cwd = os.path.abspath(os.getcwd())
+    # cwd 本身已在某个 .recipe-maker/work 里 → 直接复用，别再套一层（否则 work/work）
+    if cwd.endswith(os.sep + ".recipe-maker" + os.sep + "work") or \
+       cwd.endswith(os.sep + ".recipe-maker" + os.sep + "work" + os.sep):
+        return cwd.rstrip(os.sep)
     if _unsafe(cwd):
         return os.path.join(SKILL_DIR, "work")
-    return os.path.join(os.path.abspath(cwd), ".recipe-maker", "work")
+    return os.path.join(cwd, ".recipe-maker", "work")
 
 
 def note_dir():

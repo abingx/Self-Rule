@@ -20,11 +20,36 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _pyenv  # noqa: E402
+
+# 先校验参数，再检查依赖：没给视频就该直接说用法。
+# 否则环境缺依赖时会先报「缺少依赖」，把真正的输入错误盖掉（2026-10-19）。
+if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
+
+if len(sys.argv) < 2:
+    print("缺少 video 参数", file=sys.stderr)
+    print("用法: python asr.py <video.mp4> [small|medium] [prompt]\n"
+          "      python asr.py <video.mp4> probe [size] [head_seconds]\n"
+          "      python asr.py <video.mp4> slice <start> <dur> [size] [prompt]",
+          file=sys.stderr)
+    sys.exit(2)
+
+# 视频路径也要在依赖检查之前校验：文件不存在是输入错误，不该被环境问题盖掉
+_v = sys.argv[1]
+if not os.path.isfile(_v):
+    sys.exit(f"找不到视频文件: {_v}")
+
+# WorkBuddy 等隔离 runtime 里 python3 可能没装依赖：自动换到 envs/default 等可用解释器
+_pyenv.ensure(("imageio_ffmpeg", "faster_whisper"), "faster-whisper imageio-ffmpeg")
+
 try:
     import imageio_ffmpeg
     from faster_whisper import WhisperModel
-except ImportError as e:  # 依赖缺失时给出可复制的修复命令
-    sys.exit(f"缺少依赖 {e.name}，先装：python3 -m pip install faster-whisper imageio-ffmpeg")
+except ImportError as e:  # 兜底：ensure 之后仍失败说明连候选都没有
+    sys.exit(f"缺少依赖 {e.name}，先装：{sys.executable} -m pip install faster-whisper imageio-ffmpeg")
 
 ff = imageio_ffmpeg.get_ffmpeg_exe()
 SIZES = ("tiny", "base", "small", "medium", "large-v3")
@@ -137,6 +162,7 @@ def main():
     ap.add_argument("rest", nargs="*", help="[size] [prompt] | slice <start> <dur> [size] [prompt] | probe [size] [head]")
     a = ap.parse_args()
     v, rest = a.video, a.rest
+    # 文件存在性已在 import 阶段前置校验，这里不再重复
 
     if rest and rest[0] == "probe":
         probe(v, rest[1] if len(rest) > 1 else "small",
