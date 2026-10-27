@@ -7,7 +7,8 @@
 //   1. 读取请求方法、URL 和 UA
 //   2. 仅处理 GET 请求，其他方法（PUT/POST/DELETE 等）原样返回
 //   3. 如果是允许的客户端（V2Fun/Vetiver/V2Echo），保持原样返回
-//   4. 否则返回 302 Location => 目标方案（见下方 appTargets）
+//   4. 非浏览器系 UA（app 内网页视图、原生网络库等）保持原样返回
+//   5. 否则返回 302 Location => 目标方案（见下方 appTargets）
 // 传参说明:
 //   通过 argument 传入目标 App（不区分大小写，默认 V2Echo）
 //   可选值见下方 appTargets，例: argument=app=V2Echo
@@ -53,6 +54,21 @@ const allowClients = ['V2Fun', 'Vetiver', 'V2Echo'].map((c) => c.toLowerCase());
 
 // 如果是白名单客户端，保持请求直通（不改写 URL）
 if (allowClients.some((c) => userAgent.includes(c))) {
+	$done({});
+	return;
+}
+
+// 仅允许「浏览器系 UA」触发跳转，其他请求（app 内网页视图、缺失 UA、curl/脚本等）一律直通
+// 原因：V2Echo 收藏/取消收藏是 GET /favorite|/unfavorite/topic/xxx?once=N，
+// V2EX 成功后返回 302 => https://www.v2ex.com/t/xxx（无查询参数），
+// app 靠这个 http 302 判定成功；若把这一步也改写成 v2echo:// 跳转，app 会提示操作失败（实际已生效）。
+const browserPattern = /(safari|chrome|crios|fxios|edgios|edgi?\/|firefox|gecko\/|applewebkit|mozilla\/)/i;
+const isBrowserRequest =
+	browserPattern.test(userAgent) &&
+	// 排除有 UA 伪装但带原生网络库特征的请求
+	!/(cfnetwork|darwin|okhttp|alamofire|urlsession|nsurlsession|electron|v2ex|\bapp\b)/i.test(userAgent);
+
+if (!isBrowserRequest) {
 	$done({});
 	return;
 }
