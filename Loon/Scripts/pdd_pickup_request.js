@@ -104,6 +104,17 @@
       if (code && groups[station].indexOf(code) < 0) groups[station].push(code);
     });
 
+    // 通知：各驿站取件码数量
+    var lines = order.map(function (station) {
+      return station + "：" + groups[station].length + " 个";
+    });
+    $notification.post(
+      "PDD取件",
+      "共 " + items.length + " 个待取",
+      lines.length ? lines.join("\n") : "当前暂无待取",
+      { openUrl: "pinduoduo://com.xunmeng.pinduoduo/psnl_goods_help.html?_t_module_name=assistant_pickup" }
+    );
+
     json({
       success: true,
       total: items.length,
