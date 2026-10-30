@@ -1,0 +1,16 @@
+#!name=拼多多取件码
+#!desc=打开拼多多自动捕获 Cookie；访问 https://loonjs.ai/pddpickup 直接返回当时全部取件码
+#!loon_version=3.5.1(983)
+
+[Argument]
+capture_enabled = switch,true,tag=自动捕获 Cookie
+
+[Script]
+# ① 捕获：访问 m.pinduoduo.net 时把 Cookie 存进持久化（仅需请求头，无需 body）
+request if ${url} ~= /^https:\/\/m\.pinduoduo\.net\//i then script("https://raw.githubusercontent.com/abingx/Self-Rule/main/Loon/Scripts/pdd_cookie_capture.js") with enable=${capture_enabled}, tag="拼多多 Cookie 捕获"
+
+# ② 查询：访问 https://loonjs.ai/pddpickup 时直接返回取件码页面（200）
+request if ${url} ~= /^https:\/\/loonjs\.ai\/pddpickup/i then script("https://raw.githubusercontent.com/abingx/Self-Rule/main/Loon/Scripts/pdd_pickup_request.js") with tag="拼多多取件码页面", timeout=60
+
+[MITM]
+hostname=m.pinduoduo.net
